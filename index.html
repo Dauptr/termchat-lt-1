@@ -3,52 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TERMOS: NEXUS CORE</title>
+    <title>TERMOS: HORIZON</title>
     
     <!-- LIBRARIES -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     
     <!-- FONTS -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
-    <!-- CONFIG & CUSTOM STYLES -->
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        cyber: {
-                            black: '#050508',
-                            dark: '#0a0a12',
-                            primary: '#00f2ff', /* Cyan */
-                            secondary: '#7000ff', /* Purple */
-                            accent: '#ff0055', /* Pink */
-                        }
-                    },
                     fontFamily: {
-                        sans: ['Rajdhani', 'sans-serif'],
-                        mono: ['Orbitron', 'monospace'],
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['Space Mono', 'monospace'],
                     },
-                    animation: {
-                        'float': 'float 6s ease-in-out infinite',
-                        'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                        'slide-up': 'slideUp 0.5s ease-out forwards',
-                    },
-                    keyframes: {
-                        float: {
-                            '0%, 100%': { transform: 'translateY(0)' },
-                            '50%': { transform: 'translateY(-10px)' },
-                        },
-                        pulseGlow: {
-                            '0%, 100%': { opacity: 1, boxShadow: '0 0 20px #00f2ff' },
-                            '50%': { opacity: .7, boxShadow: '0 0 5px #00f2ff' },
-                        },
-                        slideUp: {
-                            '0%': { opacity: 0, transform: 'translateY(20px)' },
-                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                    colors: {
+                        horizon: {
+                            bg: '#0f172a',
+                            card: 'rgba(30, 41, 59, 0.7)',
+                            primary: '#6366f1', // Indigo
+                            accent: '#8b5cf6', // Violet
+                            success: '#10b981',
+                            danger: '#ef4444',
                         }
                     }
                 }
@@ -59,658 +38,544 @@
     <style>
         body {
             background-color: #000;
-            color: #fff;
+            color: #e2e8f0;
             overflow: hidden;
-            height: 100vh;
         }
 
-        /* --- CUSTOM SCROLLBAR --- */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
-        ::-webkit-scrollbar-thumb { background: rgba(0, 242, 255, 0.3); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 242, 255, 0.6); }
+        /* --- BACKGROUND ANIMATION (Smoother) --- */
+        canvas {
+            position: fixed; inset: 0; z-index: -1;
+        }
 
-        /* --- GLASSMORPHISM --- */
+        /* --- SOFT SCROLLBAR --- */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.5); }
+
+        /* --- FRIENDLY UI COMPONENTS --- */
         .glass-panel {
-            background: rgba(10, 10, 18, 0.6);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
         }
 
-        /* --- NEON GLOW TEXT --- */
-        .text-glow {
-            text-shadow: 0 0 10px rgba(0, 242, 255, 0.7), 0 0 20px rgba(0, 242, 255, 0.5);
-        }
-        .text-glow-purple {
-            text-shadow: 0 0 10px rgba(112, 0, 255, 0.7);
-        }
-
-        /* --- INPUTS --- */
-        .cyber-input {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(0, 242, 255, 0.3);
-            color: #fff;
+        .input-capsule {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s ease;
         }
-        .cyber-input:focus {
-            outline: none;
-            border-color: #00f2ff;
-            box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+        .input-capsule:focus {
+            background: rgba(0, 0, 0, 0.5);
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
-
-        /* --- BUTTONS --- */
-        .cyber-btn {
-            background: linear-gradient(135deg, rgba(0,242,255,0.1), rgba(112,0,255,0.1));
-            border: 1px solid rgba(0, 242, 255, 0.4);
-            color: #00f2ff;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        .cyber-btn::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: 0.5s;
-        }
-        .cyber-btn:hover::before { left: 100%; }
-        .cyber-btn:hover {
-            background: linear-gradient(135deg, rgba(0,242,255,0.3), rgba(112,0,255,0.3));
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
-            text-shadow: 0 0 8px #fff;
-        }
-
-        /* --- VIDEO PLAYER --- */
-        .video-frame {
-            border: 1px solid rgba(112, 0, 255, 0.3);
-            box-shadow: 0 0 15px rgba(112, 0, 255, 0.1);
-            position: relative;
-        }
-        .video-frame::after {
-            content: 'LIVE SIGNAL';
-            position: absolute;
-            top: 10px; right: 10px;
-            background: rgba(255, 0, 85, 0.8);
-            color: #fff;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 2px;
-            font-weight: bold;
-            animation: pulseGlow 1.5s infinite;
-            display: none;
-        }
-        .video-frame.active::after { display: block; }
 
         /* --- MESSAGES --- */
         .msg-bubble {
-            animation: slideUp 0.3s ease-out forwards;
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            line-height: 1.5;
             position: relative;
+            transition: transform 0.2s;
         }
-        .msg-bubble::before {
-            content: '';
-            position: absolute;
-            inset: -2px;
-            border-radius: inherit;
-            padding: 2px;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
-            pointer-events: none;
+        .msg-bubble:hover { transform: translateY(-1px); }
+        
+        .msg-self {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+            align-self: flex-end;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+        
+        .msg-other {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e2e8f0;
+            border-bottom-left-radius: 4px;
+            align-self: flex-start;
+        }
+
+        .msg-system {
+            align-self: center;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.05);
+            color: #94a3b8;
+            font-size: 0.75rem;
+            padding: 6px 16px;
+            border-radius: 99px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 10px 0;
+        }
+
+        /* --- SIDEBAR DRAWER --- */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 320px;
+            height: 100%;
+            background: #0f172a;
+            z-index: 50;
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            box-shadow: -10px 0 40px rgba(0,0,0,0.5);
+        }
+        .sidebar.open { transform: translateX(0); }
+        
+        .overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6); 
+            z-index: 40; opacity: 0; pointer-events: none;
+            transition: opacity 0.3s;
+            backdrop-filter: blur(2px);
+        }
+        .overlay.open { opacity: 1; pointer-events: auto; }
+
+        /* --- VIDEO PLAYER --- */
+        .video-container {
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
         }
     </style>
 </head>
-<body class="antialiased selection:bg-cyber-secondary selection:text-white">
+<body class="font-sans antialiased h-screen flex flex-col">
 
-    <!-- BACKGROUND CANVAS -->
-    <canvas id="universe" class="fixed inset-0 z-0"></canvas>
+    <!-- BACKGROUND -->
+    <canvas id="bg-canvas"></canvas>
 
-    <!-- MAIN APP CONTAINER -->
-    <div class="relative z-10 h-full flex flex-col p-4 md:p-6 max-w-7xl mx-auto w-full">
-        
-        <!-- HEADER -->
-        <header class="glass-panel w-full rounded-2xl p-4 flex justify-between items-center mb-6 animate-slide-up" style="animation-delay: 0.1s;">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyber-secondary to-cyber-accent flex items-center justify-center shadow-lg shadow-cyber-secondary/30">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+    <!-- OVERLAY FOR SIDEBAR -->
+    <div id="sidebar-overlay" class="overlay" onclick="toggleSidebar()"></div>
+
+    <!-- SIDEBAR DRAWER (Settings) -->
+    <div id="sidebar" class="sidebar flex flex-col p-6">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-xl font-bold text-white tracking-wide">Settings</h2>
+            <button onclick="toggleSidebar()" class="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="space-y-6 flex-1">
+            <!-- Profile -->
+            <div class="glass-panel p-4 rounded-xl flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xl">
+                    U
                 </div>
                 <div>
-                    <h1 class="text-2xl font-mono font-black text-white tracking-widest text-glow">TERMOS <span class="text-cyber-primary text-sm align-top">NEXUS</span></h1>
-                    <div class="flex items-center gap-2 text-xs font-sans text-gray-400 tracking-wider">
-                        <span id="status-dot" class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_red]"></span>
-                        <span id="status-text">OFFLINE</span>
-                        <span class="text-gray-600">|</span>
-                        <span id="room-display" class="text-cyber-primary">LOBBY</span>
+                    <div class="text-sm text-gray-400 uppercase tracking-wider">Operator</div>
+                    <input type="text" id="settings-nick" class="bg-transparent text-white font-bold text-lg focus:outline-none border-b border-transparent focus:border-indigo-500 w-full" placeholder="Enter Name">
+                </div>
+            </div>
+
+            <!-- API Key -->
+            <div>
+                <label class="text-xs text-indigo-400 font-bold uppercase tracking-wider mb-2 block">Groq AI Key</label>
+                <input type="password" id="settings-api" class="input-capsule w-full p-3 rounded-lg text-sm text-white" placeholder="gsk_...">
+                <p class="text-[10px] text-gray-500 mt-2">Required for AI intelligence. Empty = Simulation Mode.</p>
+            </div>
+
+            <!-- Connection Status -->
+            <div>
+                <label class="text-xs text-indigo-400 font-bold uppercase tracking-wider mb-2 block">Network Status</label>
+                <div class="flex items-center gap-3 p-3 bg-black/30 rounded-lg border border-white/5">
+                    <div id="status-dot-lg" class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_red]"></div>
+                    <div>
+                        <div id="status-text-lg" class="text-sm font-bold text-white">OFFLINE</div>
+                        <div id="broker-text" class="text-[10px] text-gray-500">Scanning networks...</div>
                     </div>
                 </div>
             </div>
-            
-            <div class="flex gap-3">
-                <button onclick="toggleSettings()" class="p-2 rounded-lg hover:bg-white/10 text-gray-300 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                </button>
-                <button onclick="toggleMedia()" class="hidden md:flex cyber-btn px-4 py-2 rounded-lg font-bold text-sm items-center gap-2">
-                    <span>📺</span> DECK
-                </button>
+        </div>
+
+        <button onclick="applySettings()" class="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/30 transition-all">
+            Apply Changes
+        </button>
+    </div>
+
+    <!-- MAIN APP LAYOUT -->
+    <div class="flex-1 flex flex-col relative z-10 max-w-7xl mx-auto w-full h-full p-4 md:p-6">
+        
+        <!-- HEADER -->
+        <header class="flex justify-between items-center mb-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-tight">TermOS <span class="text-indigo-400">Horizon</span></h1>
+                    <div class="text-xs text-gray-400 flex items-center gap-2">
+                        <span id="mini-status" class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                        <span id="current-room-display">Lobby</span>
+                    </div>
+                </div>
             </div>
+
+            <button onclick="openRoomModal()" class="glass-panel px-4 py-2 rounded-lg text-sm text-indigo-300 font-medium hover:bg-white/10 transition-all flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                Switch Room
+            </button>
+
+            <button onclick="toggleSidebar()" class="p-2 glass-panel rounded-full hover:bg-white/10 transition-colors">
+                <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
         </header>
 
         <!-- CONTENT GRID -->
         <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
             
-            <!-- CHAT COLUMN (Left, Larger) -->
-            <div class="lg:col-span-8 flex flex-col glass-panel rounded-2xl overflow-hidden animate-slide-up" style="animation-delay: 0.2s;">
-                <!-- Messages Area -->
-                <div id="chat-container" class="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth">
-                    <div class="text-center text-gray-500 text-xs font-mono tracking-widest opacity-50">--- INITIALIZING LOGS ---</div>
+            <!-- LEFT: CHAT -->
+            <div class="lg:col-span-8 flex flex-col glass-panel rounded-2xl overflow-hidden">
+                <div id="chat-container" class="flex-1 overflow-y-auto p-6 space-y-4">
+                    <div class="text-center text-xs text-gray-600 font-mono">Welcome to Horizon. Type /help for commands.</div>
                 </div>
 
-                <!-- Input Area -->
-                <div class="p-4 border-t border-white/5 bg-black/20 backdrop-blur-md">
-                    <div class="flex gap-3">
-                        <button onclick="openRoomModal()" class="cyber-btn rounded-xl px-3 font-bold">🔒</button>
-                        <input type="text" id="user-input" placeholder="Execute Command or /ai Prompt..." class="cyber-input flex-1 rounded-xl px-5 py-3 text-sm focus:ring-0" autocomplete="off">
-                        <button onclick="handleSend()" class="cyber-btn rounded-xl px-6 font-bold bg-gradient-to-r from-cyber-primary/20 to-cyber-secondary/20">SEND</button>
+                <div class="p-4 bg-black/20 backdrop-blur-md border-t border-white/5">
+                    <div class="flex items-center gap-3">
+                        <input type="text" id="chat-input" placeholder="Type a message or /ai prompt..." class="input-capsule flex-1 px-5 py-3 rounded-full text-white placeholder-gray-500 focus:outline-none">
+                        <button onclick="sendMessage()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-3 rounded-full shadow-lg shadow-indigo-600/30 transition-transform active:scale-95">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- MEDIA COLUMN (Right, Smaller) -->
-            <div id="media-deck" class="lg:col-span-4 flex flex-col gap-4 animate-slide-up" style="animation-delay: 0.3s;">
-                
-                <!-- VIDEO MODULE -->
-                <div class="glass-panel rounded-2xl p-4 flex flex-col gap-3">
-                    <div class="flex justify-between items-center mb-1">
-                        <h3 class="text-xs font-mono text-cyber-secondary font-bold tracking-widest">VISUAL FEED</h3>
-                        <div id="sync-indicator" class="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/30">STANDBY</div>
-                    </div>
-                    
-                    <div class="video-frame rounded-lg aspect-video bg-black overflow-hidden relative group">
+            <!-- RIGHT: MEDIA -->
+            <div class="lg:col-span-4 flex flex-col gap-4">
+                <div class="glass-panel p-4 rounded-2xl h-full flex flex-col">
+                    <h3 class="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider flex justify-between items-center">
+                        Media Sync
+                        <span id="sync-badge" class="text-[10px] px-2 py-0.5 bg-gray-700 text-gray-300 rounded-full">OFF</span>
+                    </h3>
+
+                    <div class="video-container aspect-video bg-black relative mb-4">
                         <video id="main-video" class="w-full h-full object-cover" controls playsinline></video>
-                        <div id="video-overlay" class="absolute inset-0 flex items-center justify-center bg-black/90 text-gray-500 text-xs font-mono">
-                            [ AWAITING STREAM ]
+                        <div id="video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 text-sm">
+                            <svg class="w-10 h-10 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            No Stream
                         </div>
                     </div>
 
-                    <div class="flex gap-2">
-                        <input type="text" id="video-url" placeholder="Paste Stream URL (.mp4/.m3u8)" class="cyber-input w-full rounded-lg px-3 py-2 text-xs">
-                        <button onclick="broadcastVideo()" class="bg-cyber-secondary hover:bg-purple-500 text-white px-3 rounded-lg text-xs font-bold transition-colors">BROADCAST</button>
+                    <div class="space-y-2">
+                        <input type="text" id="video-url" placeholder="Paste video URL..." class="input-capsule w-full p-2 text-xs rounded-lg">
+                        <button onclick="shareVideo()" class="w-full py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold rounded-lg transition-colors">
+                            Broadcast to Room
+                        </button>
                     </div>
-                </div>
 
-                <!-- AUDIO MODULE -->
-                <div class="glass-panel rounded-2xl p-4 flex flex-col gap-3 flex-1">
-                    <h3 class="text-xs font-mono text-cyber-primary font-bold tracking-widest">AUDIO FREQUENCIES</h3>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="playAudio('https://streams.ilovemusic.com/iloveradio17.mp3')" class="bg-white/5 hover:bg-cyber-primary/20 border border-white/10 rounded-lg p-3 text-xs text-center transition-all hover:border-cyber-primary">
-                            <span class="block text-cyber-primary font-bold mb-1">CYBER</span>
-                            <span class="text-[10px] text-gray-400">Synthwave</span>
-                        </button>
-                        <button onclick="playAudio('https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3')" class="bg-white/5 hover:bg-cyber-primary/20 border border-white/10 rounded-lg p-3 text-xs text-center transition-all hover:border-cyber-primary">
-                            <span class="block text-purple-400 font-bold mb-1">LO-FI</span>
-                            <span class="text-[10px] text-gray-400">Chill</span>
-                        </button>
-                        <button onclick="playAudio('https://streams.ilovemusic.com/iloveradio109.mp3')" class="bg-white/5 hover:bg-cyber-primary/20 border border-white/10 rounded-lg p-3 text-xs text-center transition-all hover:border-cyber-primary">
-                            <span class="block text-pink-400 font-bold mb-1">POP</span>
-                            <span class="text-[10px] text-gray-400">Top 40</span>
-                        </button>
-                        <button onclick="stopAudio()" class="bg-red-500/10 hover:bg-red-500/30 border border-red-500/30 rounded-lg p-3 text-xs text-center transition-all text-red-400">
-                            <span class="block font-bold">STOP</span>
-                            <span class="text-[10px] opacity-70">Mute</span>
-                        </button>
+                    <div class="mt-auto pt-4 border-t border-white/5 grid grid-cols-2 gap-2">
+                        <button onclick="playAudio('https://streams.ilovemusic.com/iloveradio17.mp3')" class="p-2 bg-white/5 hover:bg-white/10 rounded text-xs text-gray-300 transition-colors">🎵 Cyber</button>
+                        <button onclick="playAudio('https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3')" class="p-2 bg-white/5 hover:bg-white/10 rounded text-xs text-gray-300 transition-colors">☕ Chill</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODALS -->
-    <!-- Settings -->
-    <div id="settings-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
-        <div class="glass-panel w-full max-w-md p-6 rounded-2xl border border-cyber-primary/30 shadow-[0_0_50px_rgba(0,242,255,0.1)]">
-            <h2 class="text-xl font-mono font-bold text-white mb-6 border-b border-white/10 pb-2">SYSTEM CONFIG</h2>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="text-xs text-cyber-primary font-bold tracking-wider">GROQ API KEY</label>
-                    <input type="password" id="api-key" class="cyber-input w-full mt-1 rounded-lg p-3 text-sm" placeholder="gsk_...">
-                    <p class="text-[10px] text-gray-500 mt-1">Leave empty for Neural Simulation Mode.</p>
-                </div>
-                <div>
-                    <label class="text-xs text-cyber-primary font-bold tracking-wider">OPERATOR ID</label>
-                    <input type="text" id="user-nick" class="cyber-input w-full mt-1 rounded-lg p-3 text-sm" placeholder="Enter Name">
-                </div>
-            </div>
-
-            <div class="flex gap-3 mt-8">
-                <button onclick="saveSettings()" class="flex-1 cyber-btn py-3 rounded-lg font-bold bg-gradient-to-r from-cyber-primary to-cyber-secondary">INITIALIZE</button>
-                <button onclick="toggleSettings()" class="px-6 py-3 rounded-lg border border-white/20 hover:bg-white/10 text-gray-300 font-bold">ABORT</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Join Room -->
-    <div id="room-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="glass-panel w-full max-w-sm p-8 rounded-2xl border border-cyber-secondary/50 shadow-[0_0_50px_rgba(112,0,255,0.2)] text-center">
-            <div class="w-16 h-16 rounded-full bg-cyber-secondary/20 border border-cyber-secondary flex items-center justify-center mx-auto mb-4 animate-pulse-glow">
-                <svg class="w-8 h-8 text-cyber-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-            </div>
-            <h2 class="text-2xl font-mono font-bold text-white mb-2">SECURE UPLINK</h2>
-            <p class="text-xs text-gray-400 mb-6 font-mono">Enter sector frequency to establish connection.</p>
-            
-            <input type="text" id="new-room-name" class="cyber-input w-full text-center text-lg mb-6 rounded-xl p-4 tracking-widest uppercase" placeholder="SECTOR NAME">
-            
-            <div class="flex gap-3">
-                <button onclick="joinRoom()" class="flex-1 cyber-btn py-3 rounded-lg font-bold">CONNECT</button>
-                <button onclick="closeRoomModal()" class="px-6 py-3 rounded-lg border border-white/20 hover:bg-white/10 text-gray-300 font-bold">CANCEL</button>
+    <!-- ROOM MODAL -->
+    <div id="room-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-sm text-center shadow-2xl">
+            <h3 class="text-lg font-bold text-white mb-2">Join Sector</h3>
+            <p class="text-sm text-gray-400 mb-4">Enter secure frequency name.</p>
+            <input type="text" id="new-room" class="input-capsule w-full p-3 rounded-xl text-center text-lg mb-4 bg-black/50 border-indigo-500/30">
+            <div class="flex gap-2">
+                <button onclick="joinRoom()" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl">Connect</button>
+                <button onclick="document.getElementById('room-modal').classList.add('hidden')" class="flex-1 py-3 bg-gray-700 text-white font-bold rounded-xl hover:bg-gray-600">Cancel</button>
             </div>
         </div>
     </div>
 
     <!-- LOGIC ENGINE -->
     <script>
-        // --- 1. VISUAL ENGINE (NEW AGE) ---
-        const canvas = document.getElementById('universe');
+        // --- 1. SOFT VISUALS ---
+        const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
-        let width, height;
-        let stars = [];
-        let nebulaClouds = [];
+        let w, h, particles = [];
 
         function initVisuals() {
             resize();
             window.addEventListener('resize', resize);
-            
-            // Stars
-            for(let i=0; i<600; i++) {
-                stars.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    z: Math.random() * 2, // Depth
-                    size: Math.random() * 2
+            for(let i=0; i<150; i++) {
+                particles.push({
+                    x: Math.random() * w, y: Math.random() * h,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    s: Math.random() * 2 + 1,
+                    a: Math.random() * 0.5 + 0.1
                 });
             }
-            
-            // Nebula (Soft Gradient Clouds)
-            for(let i=0; i<5; i++) {
-                nebulaClouds.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    vx: (Math.random() - 0.5) * 0.2,
-                    vy: (Math.random() - 0.5) * 0.2,
-                    r: Math.random() * 400 + 200,
-                    color: Math.random() > 0.5 ? 'rgba(112,0,255,0.05)' : 'rgba(0,242,255,0.05)'
-                });
-            }
-            animate();
+            loop();
         }
 
         function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
+            w = canvas.width = window.innerWidth;
+            h = canvas.height = window.innerHeight;
         }
 
-        function animate() {
-            ctx.fillStyle = '#020205'; // Very dark bg
-            ctx.fillRect(0, 0, width, height);
-
-            // Draw Nebulae
-            nebulaClouds.forEach(cloud => {
-                cloud.x += cloud.vx;
-                cloud.y += cloud.vy;
+        function loop() {
+            ctx.fillStyle = '#0f172a'; // Horizon Dark Blue
+            ctx.fillRect(0,0,w,h);
+            
+            ctx.fillStyle = '#6366f1'; // Indigo Particles
+            particles.forEach(p => {
+                p.x += p.vx; p.y += p.vy;
+                if(p.x < 0) p.x = w; if(p.x > w) p.x = 0;
+                if(p.y < 0) p.y = h; if(p.y > h) p.y = 0;
                 
-                if(cloud.x < -cloud.r) cloud.x = width + cloud.r;
-                if(cloud.x > width + cloud.r) cloud.x = -cloud.r;
-                if(cloud.y < -cloud.r) cloud.y = height + cloud.r;
-                if(cloud.y > height + cloud.r) cloud.y = -cloud.r;
-
-                const g = ctx.createRadialGradient(cloud.x, cloud.y, 0, cloud.x, cloud.y, cloud.r);
-                g.addColorStop(0, cloud.color);
-                g.addColorStop(1, 'transparent');
-                ctx.fillStyle = g;
-                ctx.beginPath();
-                ctx.arc(cloud.x, cloud.y, cloud.r, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.globalAlpha = p.a;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill();
             });
-
-            // Draw Stars (Parallax)
-            ctx.fillStyle = '#FFF';
-            stars.forEach(star => {
-                star.x -= star.z * 0.2; // Move left based on depth
-                if(star.x < 0) star.x = width;
-                
-                const alpha = Math.random() * 0.5 + 0.3;
-                ctx.globalAlpha = alpha;
-                ctx.beginPath();
-                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            ctx.globalAlpha = 1;
-
-            requestAnimationFrame(animate);
+            requestAnimationFrame(loop);
         }
-        
         initVisuals();
 
-        // --- 2. AUDIO ENGINE (Web Audio API - No external files) ---
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let currentAudio = null;
+        // --- 2. ROBUST CONNECTION MANAGER ---
+        const BROKERS = [
+            { url: "broker.hivemq.com", port: 8000, ssl: false },
+            { url: "broker.emqx.io", port: 8084, ssl: true },
+            { url: "test.mosquitto.org", port: 8080, ssl: false }
+        ];
 
-        function playSound(type) {
-            if(audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            const now = audioCtx.currentTime;
-            
-            if(type === 'hover') {
-                osc.frequency.setValueAtTime(400, now);
-                osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
-                gain.gain.setValueAtTime(0.02, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-                osc.start(now);
-                osc.stop(now + 0.1);
-            } else if(type === 'click') {
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(800, now);
-                gain.gain.setValueAtTime(0.05, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-                osc.start(now);
-                osc.stop(now + 0.05);
-            } else if(type === 'message') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(600, now);
-                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
-                gain.gain.setValueAtTime(0.05, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-                osc.start(now);
-                osc.stop(now + 0.3);
-            }
-        }
-
-        // --- 3. LOGIC CORE (MQTT + AI) ---
-        const MQTT_HOST = "broker.emqx.io";
-        const MQTT_PORT = 8084; // WSS
-        const BASE_TOPIC = "termos/nexus/";
-        
+        let currentBrokerIndex = 0;
         let mqttClient;
-        let myId = "user_" + Math.floor(Math.random() * 10000);
-        let currentTopic = BASE_TOPIC + "lobby";
-        let myNick = "Guest";
-        let groqKey = "";
         let isConnected = false;
+        let myId = "user_" + Math.floor(Math.random()*9999);
+        let currentTopic = "termos/horizon/lobby";
+        let myNick = "Traveler";
+        let groqKey = "";
 
-        function initMQTT() {
-            mqttClient = new Paho.Client(MQTT_HOST, MQTT_PORT, myId);
+        function connectMQTT() {
+            if(mqttClient && mqttClient.isConnected()) {
+                mqttClient.disconnect();
+            }
 
-            mqttClient.onConnectionLost = (responseObject) => {
-                updateStatus(false);
-                if (responseObject.errorCode !== 0) {
-                    addSystemMessage("⚠️ CONNECTION LOST. RETRYING...");
-                    setTimeout(initMQTT, 5000);
-                }
+            const broker = BROKERS[currentBrokerIndex];
+            updateStatusUI(false, "Connecting to " + broker.url + "...");
+
+            mqttClient = new Paho.Client(broker.url, broker.port, myId);
+
+            mqttClient.onConnectionLost = (resp) => {
+                isConnected = false;
+                updateStatusUI(false, "Connection Lost. Rotating...");
+                // Try next broker in 3 seconds
+                setTimeout(() => {
+                    currentBrokerIndex = (currentBrokerIndex + 1) % BROKERS.length;
+                    connectMQTT();
+                }, 3000);
             };
 
-            mqttClient.onMessageArrived = (msg) => handlePayload(msg);
+            mqttClient.onMessageArrived = (msg) => handleMsg(msg);
 
             mqttClient.connect({
+                useSSL: broker.ssl,
+                timeout: 10,
                 onSuccess: () => {
                     isConnected = true;
-                    updateStatus(true);
+                    updateStatusUI(true, "Online (" + broker.url + ")");
                     mqttClient.subscribe(currentTopic);
-                    publish({ type: 'join' });
-                    addSystemMessage("🔌 UPLINK ESTABLISHED. WELCOME TO NEXUS.");
+                    // Announce
+                    mqttClient.send(new Paho.Message(JSON.stringify({type:'join', nick: myNick}), currentTopic));
                 },
-                onFailure: () => {
-                    updateStatus(false);
-                    setTimeout(initMQTT, 5000);
-                },
-                useSSL: true
+                onFailure: (err) => {
+                    // Failure triggers onConnectionLost essentially, so we just let it rotate
+                    // but we add a specific UI note
+                    updateStatusUI(false, "Failed to reach " + broker.url);
+                }
             });
         }
 
-        function updateStatus(online) {
-            const dot = document.getElementById('status-dot');
-            const txt = document.getElementById('status-text');
+        function updateStatusUI(online, text) {
+            const dot = document.getElementById('status-dot-lg');
+            const txt = document.getElementById('status-text-lg');
+            const mini = document.getElementById('mini-status');
+            const brokerTxt = document.getElementById('broker-text');
+
             if(online) {
-                dot.className = "w-2 h-2 rounded-full bg-cyber-primary shadow-[0_0_10px_#00f2ff]";
-                txt.innerText = "ONLINE";
-                txt.className = "text-cyber-primary font-bold";
+                dot.className = "w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]";
+                txt.innerText = "CONNECTED";
+                txt.className = "text-sm font-bold text-emerald-400";
+                mini.className = "w-1.5 h-1.5 rounded-full bg-emerald-400";
             } else {
-                dot.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
+                dot.className = "w-3 h-3 rounded-full bg-red-500 animate-pulse";
                 txt.innerText = "OFFLINE";
-                txt.className = "text-red-500 font-bold";
+                txt.className = "text-sm font-bold text-red-500";
+                mini.className = "w-1.5 h-1.5 rounded-full bg-red-500";
             }
+            brokerTxt.innerText = text;
         }
 
-        function publish(data) {
-            if(!isConnected) return;
-            const payload = JSON.stringify({ ...data, nick: myNick, id: myId });
-            mqttClient.send(new Paho.Message(payload, currentTopic));
-        }
+        // --- 3. MESSAGING LOGIC ---
 
-        function handlePayload(msg) {
+        function handleMsg(msg) {
             try {
                 const data = JSON.parse(msg.payloadString);
-                if(data.id === myId) return; // Ignore self
+                if(data.id === myId) return;
 
                 if(data.type === 'chat') {
-                    addChatMessage(data.nick, data.text, 'other');
-                    playSound('message');
+                    addMsg(data.nick, data.text, 'other');
                 } else if(data.type === 'join') {
-                    addSystemMessage(`👤 ${data.nick} ENTERED SECTOR`);
+                    addSystemMsg(data.nick + " joined.");
                 } else if(data.type === 'video') {
-                    addSystemMessage(`📺 ${data.nick} STARTED STREAM`);
-                    loadVideo(data.url);
+                    addSystemMsg(data.nick + " is streaming video.");
+                    playVideo(data.url);
                 }
             } catch(e) {}
         }
 
-        // --- 4. USER INTERACTION ---
-
-        function handleSend() {
-            const input = document.getElementById('user-input');
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
             const txt = input.value.trim();
             if(!txt) return;
-
-            playSound('click');
 
             if(txt.startsWith('/ai ')) {
                 handleAI(txt.substring(4));
             } else {
-                addChatMessage(myNick, txt, 'self');
-                publish({ type: 'chat', text: txt });
+                addMsg("You", txt, 'self');
+                mqttClient.send(new Paho.Message(JSON.stringify({type:'chat', nick: myNick, text: txt, id:myId}), currentTopic));
             }
             input.value = '';
         }
 
-        async function handleAI(prompt) {
-            addSystemMessage("🧠 PROCESSING NEURAL QUERY...");
+        // --- 4. UI HELPERS ---
+
+        function addMsg(sender, text, type) {
+            const c = document.getElementById('chat-container');
+            const d = document.createElement('div');
             
-            if(!groqKey) {
-                // Simulation Mode
-                setTimeout(() => {
-                    addChatMessage("AI", "Neural Link Disconnected. Please configure API Key in System Config for advanced processing. Currently running in simulation mode.", "ai");
-                }, 1000);
-                return;
+            if(type === 'system') {
+                d.className = 'msg-system';
+                d.innerText = text;
+            } else {
+                d.className = 'msg-bubble ' + (type === 'self' ? 'msg-self' : 'msg-other');
+                d.innerHTML = `<div class="text-[10px] font-bold mb-1 opacity-70">${sender}</div>${text}`;
             }
-
-            try {
-                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${groqKey}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        model: "llama-3.3-70b-versatile",
-                        messages: [
-                            { role: "system", content: "You are a futuristic AI assistant for the TermOS Nexus. Be concise and cool." },
-                            { role: "user", content: prompt }
-                        ]
-                    })
-                });
-                const data = await res.json();
-                const reply = data.choices[0].message.content;
-                addChatMessage("AI", reply, "ai");
-            } catch(e) {
-                addChatMessage("SYSTEM", "AI ERROR: " + e.message, "system");
-            }
+            c.appendChild(d);
+            c.scrollTop = c.scrollHeight;
         }
 
-        // --- 5. UI HELPERS ---
+        function addSystemMsg(text) {
+            const c = document.getElementById('chat-container');
+            const d = document.createElement('div');
+            d.className = 'msg-system';
+            d.innerText = text;
+            c.appendChild(d);
+            c.scrollTop = c.scrollHeight;
+        }
 
-        function addChatMessage(sender, text, type) {
-            const container = document.getElementById('chat-container');
-            const div = document.createElement('div');
-            div.className = "msg-bubble max-w-[85%] " + (type === 'self' ? 'ml-auto' : 'mr-auto');
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            const ov = document.getElementById('sidebar-overlay');
+            sb.classList.toggle('open');
+            ov.classList.toggle('open');
+        }
+
+        function openRoomModal() {
+            document.getElementById('room-modal').classList.remove('hidden');
+            document.getElementById('new-room').focus();
+        }
+
+        function joinRoom() {
+            const room = document.getElementById('new-room').value.trim();
+            if(!room) return;
+
+            if(isConnected) {
+                mqttClient.unsubscribe(currentTopic);
+                // Announce leave? Optional.
+            }
+
+            currentTopic = "termos/horizon/" + room;
+            document.getElementById('current-room-display').innerText = room.toUpperCase();
             
-            let style = "bg-white/10 text-white border-white/10 rounded-2xl rounded-tr-sm";
-            let header = `<div class="text-[10px] text-gray-400 font-mono mb-1">${sender}</div>`;
-
-            if(type === 'self') {
-                style = "bg-gradient-to-r from-cyber-primary/20 to-cyber-secondary/20 text-white border border-cyber-primary/30 rounded-2xl rounded-tr-sm";
-                header = `<div class="text-[10px] text-cyber-primary font-mono mb-1">YOU</div>`;
-            } else if (type === 'ai') {
-                style = "bg-cyber-primary/10 text-cyan-100 border border-cyber-primary/30 rounded-2xl rounded-tl-sm shadow-[0_0_15px_rgba(0,242,255,0.1)]";
-                header = `<div class="text-[10px] text-cyber-primary font-bold font-mono mb-1">AI KERNEL</div>`;
-            } else if (type === 'other') {
-                style = "bg-white/5 text-gray-200 border border-white/5 rounded-2xl rounded-tl-sm";
-                header = `<div class="text-[10px] text-cyber-secondary font-mono mb-1">${sender}</div>`;
+            if(isConnected) {
+                mqttClient.subscribe(currentTopic);
+                mqttClient.send(new Paho.Message(JSON.stringify({type:'join', nick: myNick}), currentTopic));
+                addSystemMsg("Joined sector: " + room);
             }
 
-            div.innerHTML = `
-                <div class="p-3 border backdrop-blur-sm ${style}">
-                    ${header}
-                    <div class="text-sm leading-relaxed break-words">${escapeHtml(text)}</div>
-                </div>
-            `;
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
+            document.getElementById('room-modal').classList.add('hidden');
         }
 
-        function addSystemMessage(text) {
-            const container = document.getElementById('chat-container');
-            const div = document.createElement('div');
-            div.className = "flex justify-center my-2 animate-slide-up";
-            div.innerHTML = `<span class="text-[10px] uppercase tracking-widest text-gray-500 bg-black/50 px-3 py-1 rounded-full border border-white/5">${text}</span>`;
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
+        function applySettings() {
+            myNick = document.getElementById('settings-nick').value || "Traveler";
+            groqKey = document.getElementById('settings-api').value;
+            localStorage.setItem('termos_nick', myNick);
+            localStorage.setItem('termos_groq', groqKey);
+            toggleSidebar();
+            
+            // Force reconnect with new ID if we want, but usually not necessary
+            addSystemMsg("Settings Saved.");
         }
 
-        function escapeHtml(text) {
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        }
-
-        // --- 6. MEDIA SYNC ---
+        // --- 5. MEDIA SYNC ---
         
-        function broadcastVideo() {
+        function shareVideo() {
             const url = document.getElementById('video-url').value;
             if(!url) return;
-            loadVideo(url);
-            publish({ type: 'video', url: url });
+            playVideo(url);
+            mqttClient.send(new Paho.Message(JSON.stringify({type:'video', url:url, nick:myNick}), currentTopic));
+            addSystemMsg("Broadcasting video...");
         }
 
-        function loadVideo(url) {
-            const vid = document.getElementById('main-video');
-            const overlay = document.getElementById('video-overlay');
-            const frame = document.querySelector('.video-frame');
-            
-            vid.src = url;
-            vid.play().catch(e => console.log("Auto-play prevented"));
-            overlay.style.display = 'none';
-            frame.classList.add('active');
-            
-            document.getElementById('sync-indicator').className = "text-[10px] bg-cyber-primary/20 text-cyber-primary px-2 py-0.5 rounded border border-cyber-primary/30 animate-pulse";
-            document.getElementById('sync-indicator').innerText = "LIVE RX";
+        function playVideo(url) {
+            const v = document.getElementById('main-video');
+            const p = document.getElementById('video-placeholder');
+            v.src = url;
+            v.play();
+            p.style.display = 'none';
+            document.getElementById('sync-badge').className = "text-[10px] px-2 py-0.5 bg-emerald-500 text-white rounded-full animate-pulse";
+            document.getElementById('sync-badge').innerText = "LIVE";
         }
 
         function playAudio(url) {
-            if(currentAudio) currentAudio.pause();
-            currentAudio = new Audio(url);
-            currentAudio.play();
-            addSystemMessage("🎵 TUNED FREQUENCY");
+            new Audio(url).play();
+            addSystemMsg("Playing Radio...");
         }
+
+        // --- 6. AI ---
         
-        function stopAudio() {
-            if(currentAudio) {
-                currentAudio.pause();
-                currentAudio = null;
+        async function handleAI(prompt) {
+            addSystemMsg("Thinking...");
+            if(!groqKey) {
+                setTimeout(() => addMsg("AI", "I'm running in simulation mode because no API key was provided. Please check settings.", 'other'), 1000);
+                return;
+            }
+            try {
+                const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method:"POST",
+                    headers:{"Authorization":"Bearer "+groqKey,"Content-Type":"application/json"},
+                    body:JSON.stringify({
+                        model:"llama-3.3-70b-versatile",
+                        messages:[{role:"system",content:"You are a helpful AI."},{role:"user",content:prompt}]
+                    })
+                });
+                const d = await r.json();
+                addMsg("AI", d.choices[0].message.content, 'other');
+            } catch(e) {
+                addSystemMsg("AI Error: " + e.message);
             }
         }
 
-        // --- 7. MODALS & INIT ---
-
-        function toggleSettings() {
-            const modal = document.getElementById('settings-modal');
-            modal.classList.toggle('hidden');
-            if(!modal.classList.contains('hidden')) {
-                document.getElementById('api-key').value = groqKey;
-                document.getElementById('user-nick').value = myNick;
-            }
-        }
-
-        function saveSettings() {
-            groqKey = document.getElementById('api-key').value.trim();
-            myNick = document.getElementById('user-nick').value.trim() || "Guest";
-            localStorage.setItem('termos_groq', groqKey);
-            localStorage.setItem('termos_nick', myNick);
-            toggleSettings();
-            
-            if(isConnected) {
-                mqttClient.disconnect();
-                initMQTT(); // Reconnect with new identity if needed (logic simplified)
-            } else {
-                initMQTT();
-            }
-        }
-
-        function openRoomModal() { document.getElementById('room-modal').classList.remove('hidden'); }
-        function closeRoomModal() { document.getElementById('room-modal').classList.add('hidden'); }
-
-        function joinRoom() {
-            const name = document.getElementById('new-room-name').value.trim();
-            if(!name) return;
-            
-            if(isConnected && mqttClient.isConnected()) {
-                mqttClient.unsubscribe(currentTopic);
-            }
-            
-            currentTopic = BASE_TOPIC + name;
-            document.getElementById('room-display').innerText = name.toUpperCase();
-            
-            if(isConnected && mqttClient.isConnected()) {
-                mqttClient.subscribe(currentTopic);
-                publish({ type: 'join' });
-                addSystemMessage(`🚀 DOCKED AT SECTOR: ${name.toUpperCase()}`);
-            } else {
-                // Init will subscribe to new topic
-                initMQTT();
-            }
-            closeRoomModal();
-        }
-
-        function toggleMedia() {
-            const deck = document.getElementById('media-deck');
-            deck.classList.toggle('hidden');
-            deck.classList.toggle('flex');
-        }
-
-        // Start
+        // --- INIT ---
         window.onload = () => {
+            myNick = localStorage.getItem('termos_nick') || "Traveler";
             groqKey = localStorage.getItem('termos_groq') || "";
-            myNick = localStorage.getItem('termos_nick') || "Traveler_" + Math.floor(Math.random()*100);
-            initMQTT();
+            
+            document.getElementById('settings-nick').value = myNick;
+            document.getElementById('settings-api').value = groqKey;
+            
+            connectMQTT();
         };
-        
-        document.getElementById('user-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') handleSend(); });
+
+        document.getElementById('chat-input').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') sendMessage();
+        });
 
     </script>
 </body>
