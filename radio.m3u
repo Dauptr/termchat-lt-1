@@ -1,3 +1,9 @@
 #EXTM3U
 #EXTINF:-1,UK Internet Radio 4
 http://uk4.internet-radio.com:8049/
+#EXTINF:-1,Cyberpunk 24/7
+https://streams.ilovemusic.com/iloveradio17.mp3
+#EXTINF:-1,Lofi Hip Hop
+https://streams.ilovemusic.com/iloveradio12.mp3
+#EXTINF:-1,dance radio omline
+https://danceattack.fm/mobile-luna.html
