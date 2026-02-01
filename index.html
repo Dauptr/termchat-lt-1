@@ -2,648 +2,547 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: UNIVERSE GENESIS</title>
-    <meta name="theme-color" content="#050505">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TERMOS: NEXUS CORE</title>
     
-    <!-- EXTERNAL LIBRARIES -->
+    <!-- LIBRARIES -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    
+    <!-- FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CONFIG & CUSTOM STYLES -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            black: '#050508',
+                            dark: '#0a0a12',
+                            primary: '#00f2ff', /* Cyan */
+                            secondary: '#7000ff', /* Purple */
+                            accent: '#ff0055', /* Pink */
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Rajdhani', 'sans-serif'],
+                        mono: ['Orbitron', 'monospace'],
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'slide-up': 'slideUp 0.5s ease-out forwards',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { opacity: 1, boxShadow: '0 0 20px #00f2ff' },
+                            '50%': { opacity: .7, boxShadow: '0 0 5px #00f2ff' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: 0, transform: 'translateY(20px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 
     <style>
-        /* --- VISUAL CORE --- */
-        :root {
-            --glass-bg: rgba(10, 10, 20, 0.65);
-            --glass-border: rgba(100, 200, 255, 0.1);
-            --accent-primary: #a855f7; /* Purple */
-            --accent-secondary: #06b6d4; /* Cyan */
-            --accent-bio: #00ff9d; /* Bio Green */
-            --msg-user-bg: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(79, 70, 229, 0.9));
-            --msg-ai-bg: rgba(15, 23, 42, 0.9);
-            --neon-glow: 0 0 20px rgba(168, 85, 247, 0.4);
-            --aurora-1: rgba(0, 255, 157, 0.15);
-            --aurora-2: rgba(6, 182, 212, 0.15);
-            --aurora-3: rgba(168, 85, 247, 0.15);
-        }
-
         body {
-            background: #000;
-            color: #e2e8f0;
-            font-family: 'Rajdhani', sans-serif;
+            background-color: #000;
+            color: #fff;
             overflow: hidden;
-            margin: 0;
             height: 100vh;
         }
 
-        /* --- UNIVERSE CANVAS --- */
-        #universe-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            pointer-events: none; /* Let clicks pass through */
-        }
-
-        /* --- UI COMPONENTS --- */
-        .font-header { font-family: 'Orbitron', sans-serif; }
-        .font-mono { font-family: 'Fira Code', monospace; }
-
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .glass-panel:hover {
-            border-color: rgba(255, 255, 255, 0.2);
-            box-shadow: var(--neon-glow), inset 0 0 10px rgba(255,255,255,0.05);
-        }
-
-        .bio-button {
-            background: linear-gradient(90deg, rgba(0,255,157,0.1), rgba(6,182,212,0.1));
-            border: 1px solid rgba(0,255,157,0.3);
-            transition: all 0.3s;
-        }
-        .bio-button:hover {
-            background: linear-gradient(90deg, rgba(0,255,157,0.3), rgba(6,182,212,0.3));
-            box-shadow: 0 0 15px rgba(0, 255, 157, 0.4);
-        }
-
-        /* Custom Scrollbar */
+        /* --- CUSTOM SCROLLBAR --- */
         ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 2px; }
-        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 242, 255, 0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 242, 255, 0.6); }
 
-        /* Animations */
-        @keyframes pulse-bio {
-            0%, 100% { opacity: 0.8; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.95); }
+        /* --- GLASSMORPHISM --- */
+        .glass-panel {
+            background: rgba(10, 10, 18, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
-        .animate-pulse-bio { animation: pulse-bio 3s infinite ease-in-out; }
 
-        @keyframes slideUpFade {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* --- NEON GLOW TEXT --- */
+        .text-glow {
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.7), 0 0 20px rgba(0, 242, 255, 0.5);
         }
-        .msg-anim { animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .text-glow-purple {
+            text-shadow: 0 0 10px rgba(112, 0, 255, 0.7);
+        }
 
-        /* Utility Classes */
-        .hidden-vis { display: none !important; opacity: 0; pointer-events: none; }
-        .visible-vis { display: flex !important; opacity: 1; pointer-events: auto; }
-        
-        .avatar-gradient { background: linear-gradient(135deg, #06b6d4, #a855f7); }
-        
-        /* Code Editor */
-        .code-editor {
-            width: 100%;
-            height: 100%;
-            background: #020617;
-            color: #a855f7;
-            font-family: 'Fira Code', monospace;
-            font-size: 14px;
-            border: none;
-            resize: none;
+        /* --- INPUTS --- */
+        .cyber-input {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+        .cyber-input:focus {
             outline: none;
-            padding: 1rem;
+            border-color: #00f2ff;
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
         }
 
-        /* Boot Loader */
-        #boot-screen {
-            position: fixed; inset: 0; background: #000; z-index: 1000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 1s ease;
+        /* --- BUTTONS --- */
+        .cyber-btn {
+            background: linear-gradient(135deg, rgba(0,242,255,0.1), rgba(112,0,255,0.1));
+            border: 1px solid rgba(0, 242, 255, 0.4);
+            color: #00f2ff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
-        .loader-ring {
-            width: 80px; height: 80px; border: 4px solid #333; border-top: 4px solid var(--accent-bio);
-            border-radius: 50%; animation: spin 1s linear infinite;
+        .cyber-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .cyber-btn:hover::before { left: 100%; }
+        .cyber-btn:hover {
+            background: linear-gradient(135deg, rgba(0,242,255,0.3), rgba(112,0,255,0.3));
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+            text-shadow: 0 0 8px #fff;
+        }
 
+        /* --- VIDEO PLAYER --- */
+        .video-frame {
+            border: 1px solid rgba(112, 0, 255, 0.3);
+            box-shadow: 0 0 15px rgba(112, 0, 255, 0.1);
+            position: relative;
+        }
+        .video-frame::after {
+            content: 'LIVE SIGNAL';
+            position: absolute;
+            top: 10px; right: 10px;
+            background: rgba(255, 0, 85, 0.8);
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-weight: bold;
+            animation: pulseGlow 1.5s infinite;
+            display: none;
+        }
+        .video-frame.active::after { display: block; }
+
+        /* --- MESSAGES --- */
+        .msg-bubble {
+            animation: slideUp 0.3s ease-out forwards;
+            position: relative;
+        }
+        .msg-bubble::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: inherit;
+            padding: 2px;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
     </style>
 </head>
-<body class="text-gray-100">
+<body class="antialiased selection:bg-cyber-secondary selection:text-white">
 
-    <!-- VISUALS -->
-    <canvas id="universe-canvas"></canvas>
+    <!-- BACKGROUND CANVAS -->
+    <canvas id="universe" class="fixed inset-0 z-0"></canvas>
 
-    <!-- BOOT SCREEN -->
-    <div id="boot-screen">
-        <div class="loader-ring mb-6 animate-pulse"></div>
-        <h1 class="text-4xl font-header text-white tracking-[0.2em] mb-2">TERMOS <span class="text-[var(--accent-bio)]">GENESIS</span></h1>
-        <div class="mt-4 text-cyan-500 font-mono text-xs flex flex-col items-center">
-            <span id="boot-text">INITIALIZING BIO-ENGINE...</span>
-            <div class="w-48 h-1 bg-gray-800 mt-2 rounded overflow-hidden">
-                <div id="boot-progress" class="h-full bg-[var(--accent-bio)] w-0 transition-all duration-300"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- HEADER -->
-    <header class="fixed top-0 w-full z-50 px-4 py-3 border-b border-white/5 bg-black/40 backdrop-blur-md flex justify-between items-center">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg border border-[var(--accent-bio)] flex items-center justify-center shadow-[0_0_15px_rgba(0,255,157,0.3)] bg-black/50">
-                <svg class="w-6 h-6 text-[var(--accent-bio)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-            </div>
-            <div>
-                <div class="flex items-center gap-2">
-                    <h1 class="font-header font-bold text-lg tracking-wider text-white">TERMOS</h1>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-bio)]/10 text-[var(--accent-bio)] border border-[var(--accent-bio)]/30 font-mono">GENESIS</span>
-                </div>
-                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-mono">
-                    <div id="api-status-dot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                    <span id="status-text">OFFLINE</span>
-                    <span id="room-indicator" class="hidden text-cyan-400">🪐 <span id="current-room">PUBLIC</span></span>
-                </div>
-            </div>
-        </div>
-
-        <div class="flex items-center gap-2">
-            <button onclick="toggleMediaPanel()" class="bio-button px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--accent-bio)] uppercase tracking-wider hidden md:block">Media Deck</button>
-            <button onclick="triggerKernel()" class="bg-purple-900/20 hover:bg-purple-900/40 border border-purple-500/30 px-3 py-1.5 rounded-lg text-xs font-bold text-purple-300 uppercase hidden md:block">Kernel AI</button>
-            <button onclick="toggleAdmin()" class="bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg text-xs font-bold text-gray-300 uppercase hidden md:block">System</button>
-            <div class="flex flex-col items-end text-right">
-                <span class="text-[10px] text-gray-400 font-mono">CREDITS</span>
-                <span id="xp-display" class="text-xs font-bold text-[var(--accent-bio)]">0 XP</span>
-            </div>
-        </div>
-    </header>
-
-    <!-- MAIN CHAT INTERFACE -->
-    <main id="chat-interface" class="fixed inset-0 z-10 pt-20 pb-24 px-4 flex flex-col max-w-4xl mx-auto w-full">
-        <div id="chat-container" class="flex-1 overflow-y-auto space-y-4 scroll-smooth pr-2 pb-4">
-            <!-- Messages will appear here -->
-        </div>
-    </main>
-
-    <!-- INPUT AREA -->
-    <div class="fixed bottom-0 w-full z-30 p-4 bg-gradient-to-t from-black via-black/90 to-transparent">
-        <div class="max-w-4xl mx-auto glass-panel rounded-2xl p-2 flex items-center gap-2 border border-[var(--accent-bio)]/30 shadow-[0_0_30px_rgba(0,0,0,0.5)]">
-            <button onclick="attachFile()" class="p-3 text-gray-400 hover:text-white transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-            </button>
-            <input type="text" id="user-input" placeholder="System Command: /ai, /join [room], /evolve..." 
-                   class="flex-1 bg-transparent border-none outline-none text-white px-4 py-3 text-sm font-light placeholder-gray-500 font-mono">
-            <button onclick="handleInput()" class="bg-gradient-to-r from-[var(--accent-bio)] to-cyan-600 hover:opacity-90 text-black px-6 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(0,255,157,0.4)] transition-all">
-                Transmit
-            </button>
-        </div>
-    </div>
-
-    <!-- MODALS & PANELS -->
-
-    <!-- ADMIN / CODE EDITOR -->
-    <div id="admin-panel" class="fixed inset-0 z-50 bg-black/90 hidden-vis flex-col">
-        <div class="h-full flex flex-col p-4">
-            <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
-                <h2 class="font-header text-xl text-white flex items-center gap-2">
-                    <span class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span> SYSTEM CONSOLE
-                </h2>
-                <div class="flex gap-2">
-                    <button onclick="applyCode()" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded text-xs font-bold">APPLY CODE</button>
-                    <button onclick="toggleAdmin()" class="text-gray-400 hover:text-white px-4 py-2">✖</button>
-                </div>
-            </div>
-            <textarea id="code-editor" class="code-editor flex-1 rounded-lg border border-white/10" spellcheck="false"></textarea>
-            <div class="mt-2 text-center text-[10px] text-gray-500 font-mono">
-                Editing DOM Directly. Changes take effect immediately.
-            </div>
-        </div>
-    </div>
-
-    <!-- MEDIA DECK -->
-    <div id="media-panel" class="fixed bottom-24 right-4 w-80 md:w-96 glass-panel rounded-2xl z-40 hidden-vis flex-col overflow-hidden border border-[var(--accent-secondary)]/30">
-        <div class="flex justify-between items-center p-4 border-b border-white/10 bg-black/40">
-            <h3 class="text-sm font-bold text-white tracking-widest">MEDIA DECK</h3>
-            <button onclick="toggleMediaPanel()" class="text-gray-400 hover:text-white">✖</button>
-        </div>
-        <div class="p-4 space-y-4">
-            <!-- Video -->
-            <div class="aspect-video bg-black rounded-lg border border-white/10 overflow-hidden relative group">
-                <video id="main-video" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" controls></video>
-                <div id="video-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs font-mono pointer-events-none">
-                    [ NO SIGNAL ]
-                </div>
-            </div>
-            <!-- Radio -->
-            <div class="space-y-2">
-                <div class="text-[10px] text-gray-400 uppercase tracking-widest">Frequencies</div>
-                <div onclick="playRadio('https://streams.ilovemusic.com/iloveradio17.mp3')" class="cursor-pointer p-3 rounded bg-white/5 hover:bg-white/10 border border-white/5 flex justify-between items-center group">
-                    <span class="text-sm font-bold text-cyan-300 group-hover:text-cyan-100">Cyberpunk FM</span>
-                    <div class="w-2 h-2 rounded-full bg-gray-600 group-hover:bg-cyan-400"></div>
-                </div>
-                <div onclick="playRadio('https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3')" class="cursor-pointer p-3 rounded bg-white/5 hover:bg-white/10 border border-white/5 flex justify-between items-center group">
-                    <span class="text-sm font-bold text-purple-300 group-hover:text-purple-100">Deep Space Lofi</span>
-                    <div class="w-2 h-2 rounded-full bg-gray-600 group-hover:bg-purple-400"></div>
-                </div>
-            </div>
-            <!-- Input -->
-            <div class="flex gap-2">
-                <input type="text" id="video-url" placeholder="Paste Stream URL (.mp4/.m3u8)" class="flex-1 bg-black/50 border border-white/10 rounded px-3 py-2 text-xs text-white focus:border-cyan-500 outline-none">
-                <button onclick="playVideoInput()" class="bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 px-3 rounded text-xs font-bold border border-cyan-500/30">BROADCAST</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- JOIN ROOM MODAL -->
-    <div id="join-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden-vis flex items-center justify-center p-4">
-        <div class="glass-panel p-8 rounded-2xl max-w-sm w-full border border-[var(--accent-primary)]/50 shadow-[0_0_50px_rgba(168,85,247,0.2)] text-center">
-            <h3 class="text-xl font-header text-white mb-2">ENTER FREQUENCY</h3>
-            <p class="text-xs text-gray-400 mb-6 font-mono">Establish secure link to private sector.</p>
-            <input type="text" id="room-name-input" placeholder="SECTOR NAME" class="w-full bg-black/50 border border-[var(--accent-primary)]/30 rounded-xl p-4 text-center text-white font-mono mb-6 focus:outline-none focus:border-[var(--accent-primary)]">
-            <div class="flex gap-3">
-                <button onclick="joinRoom()" class="flex-1 bg-[var(--accent-primary)] hover:bg-purple-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-900/40">INITIALIZE</button>
-                <button onclick="document.getElementById('join-modal').classList.replace('visible-vis','hidden-vis')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl">ABORT</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- JAVASCRIPT ENGINE -->
-    <script>
-        // --- 1. UNIVERSE ENGINE (VISUALS) ---
-        const canvas = document.getElementById('universe-canvas');
-        const ctx = canvas.getContext('2d');
+    <!-- MAIN APP CONTAINER -->
+    <div class="relative z-10 h-full flex flex-col p-4 md:p-6 max-w-7xl mx-auto w-full">
         
+        <!-- HEADER -->
+        <header class="glass-panel w-full rounded-2xl p-4 flex justify-between items-center mb-6 animate-slide-up" style="animation-delay: 0.1s;">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyber-secondary to-cyber-accent flex items-center justify-center shadow-lg shadow-cyber-secondary/30">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-mono font-black text-white tracking-widest text-glow">TERMOS <span class="text-cyber-primary text-sm align-top">NEXUS</span></h1>
+                    <div class="flex items-center gap-2 text-xs font-sans text-gray-400 tracking-wider">
+                        <span id="status-dot" class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_red]"></span>
+                        <span id="status-text">OFFLINE</span>
+                        <span class="text-gray-600">|</span>
+                        <span id="room-display" class="text-cyber-primary">LOBBY</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="toggleSettings()" class="p-2 rounded-lg hover:bg-white/10 text-gray-300 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                </button>
+                <button onclick="toggleMedia()" class="hidden md:flex cyber-btn px-4 py-2 rounded-lg font-bold text-sm items-center gap-2">
+                    <span>📺</span> DECK
+                </button>
+            </div>
+        </header>
+
+        <!-- CONTENT GRID -->
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
+            
+            <!-- CHAT COLUMN (Left, Larger) -->
+            <div class="lg:col-span-8 flex flex-col glass-panel rounded-2xl overflow-hidden animate-slide-up" style="animation-delay: 0.2s;">
+                <!-- Messages Area -->
+                <div id="chat-container" class="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth">
+                    <div class="text-center text-gray-500 text-xs font-mono tracking-widest opacity-50">--- INITIALIZING LOGS ---</div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="p-4 border-t border-white/5 bg-black/20 backdrop-blur-md">
+                    <div class="flex gap-3">
+                        <button onclick="openRoomModal()" class="cyber-btn rounded-xl px-3 font-bold">🔒</button>
+                        <input type="text" id="user-input" placeholder="Execute Command or /ai Prompt..." class="cyber-input flex-1 rounded-xl px-5 py-3 text-sm focus:ring-0" autocomplete="off">
+                        <button onclick="handleSend()" class="cyber-btn rounded-xl px-6 font-bold bg-gradient-to-r from-cyber-primary/20 to-cyber-secondary/20">SEND</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MEDIA COLUMN (Right, Smaller) -->
+            <div id="media-deck" class="lg:col-span-4 flex flex-col gap-4 animate-slide-up" style="animation-delay: 0.3s;">
+                
+                <!-- VIDEO MODULE -->
+                <div class="glass-panel rounded-2xl p-4 flex flex-col gap-3">
+                    <div class="flex justify-between items-center mb-1">
+                        <h3 class="text-xs font-mono text-cyber-secondary font-bold tracking-widest">VISUAL FEED</h3>
+                        <div id="sync-indicator" class="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/30">STANDBY</div>
+                    </div>
+                    
+                    <div class="video-frame rounded-lg aspect-video bg-black overflow-hidden relative group">
+                        <video id="main-video" class="w-full h-full object-cover" controls playsinline></video>
+                        <div id="video-overlay" class="absolute inset-0 flex items-center justify-center bg-black/90 text-gray-500 text-xs font-mono">
+                            [ AWAITING STREAM ]
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <input type="text" id="video-url" placeholder="Paste Stream URL (.mp4/.m3u8)" class="cyber-input w-full rounded-lg px-3 py-2 text-xs">
+                        <button onclick="broadcastVideo()" class="bg-cyber-secondary hover:bg-purple-500 text-white px-3 rounded-lg text-xs font-bold transition-colors">BROADCAST</button>
+                    </div>
+                </div>
+
+                <!-- AUDIO MODULE -->
+                <div class="glass-panel rounded-2xl p-4 flex flex-col gap-3 flex-1">
+                    <h3 class="text-xs font-mono text-cyber-primary font-bold tracking-widest">AUDIO FREQUENCIES</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="playAudio('https://streams.ilovemusic.com/iloveradio17.mp3')" class="bg-white/5 hover:bg-cyber-primary/20 border border-white/10 rounded-lg p-3 text-xs text-center transition-all hover:border-cyber-primary">
+                            <span class="block text-cyber-primary font-bold mb-1">CYBER</span>
+                            <span class="text-[10px] text-gray-400">Synthwave</span>
+                        </button>
+                        <button onclick="playAudio('https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3')" class="bg-white/5 hover:bg-cyber-primary/20 border border-white/10 rounded-lg p-3 text-xs text-center transition-all hover:border-cyber-primary">
+                            <span class="block text-purple-400 font-bold mb-1">LO-FI</span>
+                            <span class="text-[10px] text-gray-400">Chill</span>
+                        </button>
+                        <button onclick="playAudio('https://streams.ilovemusic.com/iloveradio109.mp3')" class="bg-white/5 hover:bg-cyber-primary/20 border border-white/10 rounded-lg p-3 text-xs text-center transition-all hover:border-cyber-primary">
+                            <span class="block text-pink-400 font-bold mb-1">POP</span>
+                            <span class="text-[10px] text-gray-400">Top 40</span>
+                        </button>
+                        <button onclick="stopAudio()" class="bg-red-500/10 hover:bg-red-500/30 border border-red-500/30 rounded-lg p-3 text-xs text-center transition-all text-red-400">
+                            <span class="block font-bold">STOP</span>
+                            <span class="text-[10px] opacity-70">Mute</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <!-- Settings -->
+    <div id="settings-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md p-6 rounded-2xl border border-cyber-primary/30 shadow-[0_0_50px_rgba(0,242,255,0.1)]">
+            <h2 class="text-xl font-mono font-bold text-white mb-6 border-b border-white/10 pb-2">SYSTEM CONFIG</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-cyber-primary font-bold tracking-wider">GROQ API KEY</label>
+                    <input type="password" id="api-key" class="cyber-input w-full mt-1 rounded-lg p-3 text-sm" placeholder="gsk_...">
+                    <p class="text-[10px] text-gray-500 mt-1">Leave empty for Neural Simulation Mode.</p>
+                </div>
+                <div>
+                    <label class="text-xs text-cyber-primary font-bold tracking-wider">OPERATOR ID</label>
+                    <input type="text" id="user-nick" class="cyber-input w-full mt-1 rounded-lg p-3 text-sm" placeholder="Enter Name">
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-8">
+                <button onclick="saveSettings()" class="flex-1 cyber-btn py-3 rounded-lg font-bold bg-gradient-to-r from-cyber-primary to-cyber-secondary">INITIALIZE</button>
+                <button onclick="toggleSettings()" class="px-6 py-3 rounded-lg border border-white/20 hover:bg-white/10 text-gray-300 font-bold">ABORT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Join Room -->
+    <div id="room-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-sm p-8 rounded-2xl border border-cyber-secondary/50 shadow-[0_0_50px_rgba(112,0,255,0.2)] text-center">
+            <div class="w-16 h-16 rounded-full bg-cyber-secondary/20 border border-cyber-secondary flex items-center justify-center mx-auto mb-4 animate-pulse-glow">
+                <svg class="w-8 h-8 text-cyber-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            </div>
+            <h2 class="text-2xl font-mono font-bold text-white mb-2">SECURE UPLINK</h2>
+            <p class="text-xs text-gray-400 mb-6 font-mono">Enter sector frequency to establish connection.</p>
+            
+            <input type="text" id="new-room-name" class="cyber-input w-full text-center text-lg mb-6 rounded-xl p-4 tracking-widest uppercase" placeholder="SECTOR NAME">
+            
+            <div class="flex gap-3">
+                <button onclick="joinRoom()" class="flex-1 cyber-btn py-3 rounded-lg font-bold">CONNECT</button>
+                <button onclick="closeRoomModal()" class="px-6 py-3 rounded-lg border border-white/20 hover:bg-white/10 text-gray-300 font-bold">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIC ENGINE -->
+    <script>
+        // --- 1. VISUAL ENGINE (NEW AGE) ---
+        const canvas = document.getElementById('universe');
+        const ctx = canvas.getContext('2d');
         let width, height;
         let stars = [];
-        let planets = [];
-        let organicNodes = []; // The "Microorganism" feel
-        let mouse = { x: 0, y: 0 };
-        let time = 0;
+        let nebulaClouds = [];
+
+        function initVisuals() {
+            resize();
+            window.addEventListener('resize', resize);
+            
+            // Stars
+            for(let i=0; i<600; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    z: Math.random() * 2, // Depth
+                    size: Math.random() * 2
+                });
+            }
+            
+            // Nebula (Soft Gradient Clouds)
+            for(let i=0; i<5; i++) {
+                nebulaClouds.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 0.2,
+                    vy: (Math.random() - 0.5) * 0.2,
+                    r: Math.random() * 400 + 200,
+                    color: Math.random() > 0.5 ? 'rgba(112,0,255,0.05)' : 'rgba(0,242,255,0.05)'
+                });
+            }
+            animate();
+        }
 
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
-            initStars();
-            initPlanets();
         }
 
-        function initStars() {
-            stars = [];
-            for(let i=0; i<800; i++) {
-                stars.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    z: Math.random() * width,
-                    o: Math.random() // opacity offset
-                });
-            }
-        }
-
-        function initPlanets() {
-            // Generate background floating planets
-            planets = [
-                { x: width*0.8, y: height*0.2, r: 60, color: '#4f46e5', ring: true },
-                { x: width*0.1, y: height*0.7, r: 120, color: '#be185d', ring: false },
-                { x: width*0.5, y: height*0.1, r: 30, color: '#06b6d4', ring: true }
-            ];
-        }
-
-        // Aurora/Noise Function
-        function getAuroraColor(x, y, t) {
-            // Create flowing bands of color
-            const v1 = Math.sin(x * 0.002 + t * 0.5);
-            const v2 = Math.cos(y * 0.003 - t * 0.2);
-            const v3 = Math.sin((x+y) * 0.001 + t * 0.8);
-            
-            const mix = (v1 + v2 + v3) / 3;
-            
-            if (mix > 0.5) return 'rgba(0, 255, 157, 0.05)'; // Bio Green
-            if (mix > 0.2) return 'rgba(6, 182, 212, 0.05)'; // Cyan
-            return 'rgba(168, 85, 247, 0.05)'; // Purple
-        }
-
-        function draw() {
-            time += 0.005;
-            
-            // 1. Deep Space Background + Aurora
-            // Create a dynamic gradient based on aurora math
-            const gradient = ctx.createLinearGradient(0, 0, width, height);
-            gradient.addColorStop(0, '#020205');
-            gradient.addColorStop(0.5, '#050a14');
-            gradient.addColorStop(1, '#020205');
-            ctx.fillStyle = gradient;
+        function animate() {
+            ctx.fillStyle = '#020205'; // Very dark bg
             ctx.fillRect(0, 0, width, height);
 
-            // 2. Draw Aurora Clouds (Simulated with large overlapping circles or paths)
-            // For performance in 2D, we use large blurred gradients moving in sine waves
-            ctx.globalCompositeOperation = 'screen';
-            
-            // Green Wave
-            const gY = height/2 + Math.sin(time) * 100;
-            const gGrad = ctx.createRadialGradient(width/2, gY, 0, width/2, gY, width);
-            gGrad.addColorStop(0, 'rgba(0, 255, 157, 0.1)');
-            gGrad.addColorStop(1, 'transparent');
-            ctx.fillStyle = gGrad;
-            ctx.fillRect(0,0,width,height);
-
-            // Purple Wave
-            const pY = height/2 + Math.cos(time * 0.8) * 150;
-            const pGrad = ctx.createRadialGradient(width/2, pY, 0, width/2, pY, width);
-            pGrad.addColorStop(0, 'rgba(168, 85, 247, 0.08)');
-            pGrad.addColorStop(1, 'transparent');
-            ctx.fillStyle = pGrad;
-            ctx.fillRect(0,0,width,height);
-
-            ctx.globalCompositeOperation = 'source-over';
-
-            // 3. Draw Planets (Parallax)
-            planets.forEach(p => {
-                const parallaxX = (mouse.x - width/2) * 0.02 * (p.r/50);
-                const parallaxY = (mouse.y - height/2) * 0.02 * (p.r/50);
+            // Draw Nebulae
+            nebulaClouds.forEach(cloud => {
+                cloud.x += cloud.vx;
+                cloud.y += cloud.vy;
                 
-                ctx.beginPath();
-                ctx.arc(p.x + parallaxX, p.y + parallaxY, p.r, 0, Math.PI * 2);
-                ctx.fillStyle = p.color;
-                ctx.shadowBlur = 40;
-                ctx.shadowColor = p.color;
-                ctx.fill();
-                ctx.shadowBlur = 0;
+                if(cloud.x < -cloud.r) cloud.x = width + cloud.r;
+                if(cloud.x > width + cloud.r) cloud.x = -cloud.r;
+                if(cloud.y < -cloud.r) cloud.y = height + cloud.r;
+                if(cloud.y > height + cloud.r) cloud.y = -cloud.r;
 
-                // Ring
-                if(p.ring) {
-                    ctx.beginPath();
-                    ctx.ellipse(p.x + parallaxX, p.y + parallaxY, p.r * 1.8, p.r * 0.4, Math.PI / 8, 0, Math.PI * 2);
-                    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-                    ctx.lineWidth = 10;
-                    ctx.stroke();
-                }
+                const g = ctx.createRadialGradient(cloud.x, cloud.y, 0, cloud.x, cloud.y, cloud.r);
+                g.addColorStop(0, cloud.color);
+                g.addColorStop(1, 'transparent');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, cloud.r, 0, Math.PI * 2);
+                ctx.fill();
             });
 
-            // 4. Organic "Microorganism" Growth (Interactive Particles)
-            // Particles that float towards the mouse like spores/energy
-            ctx.fillStyle = '#00ff9d';
-            for(let i=0; i<organicNodes.length; i++) {
-                const p = organicNodes[i];
-                const dx = mouse.x - p.x;
-                const dy = mouse.y - p.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                
-                // Move towards mouse gently
-                p.x += dx * 0.001;
-                p.y += dy * 0.001;
-                
-                // Wiggle
-                p.x += Math.sin(time * 5 + p.y * 0.05) * 0.5;
-                p.y += Math.cos(time * 3 + p.x * 0.05) * 0.5;
-
-                ctx.globalAlpha = Math.max(0, 1 - dist/500); // Fade out near mouse
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
-                ctx.fill();
-            }
-            ctx.globalAlpha = 1;
-
-            // 5. Starfield (Warp speed effect)
+            // Draw Stars (Parallax)
             ctx.fillStyle = '#FFF';
             stars.forEach(star => {
-                star.z -= 2; // Speed
-                if(star.z <= 0) {
-                    star.z = width;
-                    star.x = Math.random() * width;
-                    star.y = Math.random() * height;
-                }
+                star.x -= star.z * 0.2; // Move left based on depth
+                if(star.x < 0) star.x = width;
                 
-                const k = 128.0 / star.z;
-                const px = star.x * k + width / 2;
-                const py = star.y * k + height / 2;
-                
-                if(px >= 0 && px <= width && py >= 0 && py <= height) {
-                    const size = (1 - star.z / width) * 2.5;
-                    const shade = parseInt((1 - star.z / width) * 255);
-                    ctx.fillStyle = `rgb(${shade},${shade},${shade})`;
-                    ctx.beginPath();
-                    ctx.arc(px, py, size, 0, Math.PI * 2);
-                    ctx.fill();
-                }
+                const alpha = Math.random() * 0.5 + 0.3;
+                ctx.globalAlpha = alpha;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
             });
+            ctx.globalAlpha = 1;
 
-            requestAnimationFrame(draw);
+            requestAnimationFrame(animate);
         }
-
-        // --- 2. LOGIC CORE (State & MQTT) ---
-        const MQTT_BROKER = "wss://broker.emqx.io:8084/mqtt";
-        const PUBLIC_TOPIC = "termos/genesis/public";
-        let mqttClient = null;
-        let clientId = "User_" + Math.floor(Math.random() * 100000);
-        let currentRoom = PUBLIC_TOPIC;
-        let username = localStorage.getItem('termos_nick') || "Traveler_" + Math.floor(Math.random() * 99);
-        let groqKey = localStorage.getItem('termos_groq') || "";
-        let userXP = parseInt(localStorage.getItem('termos_xp') || "0");
         
-        // Init Organic Nodes
-        for(let i=0; i<50; i++) {
-            organicNodes.push({
-                x: Math.random() * window.innerWidth,
-                y: Math.random() * window.innerHeight,
-                size: Math.random() * 2 + 1
-            });
-        }
+        initVisuals();
 
-        // --- 3. UI FUNCTIONS ---
-        
-        // Boot Sequence
-        window.onload = () => {
-            resize();
-            draw();
-            window.addEventListener('resize', resize);
-            window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        // --- 2. AUDIO ENGINE (Web Audio API - No external files) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let currentAudio = null;
 
-            // Fake Boot Progress
-            let progress = 0;
-            const bar = document.getElementById('boot-progress');
-            const txt = document.getElementById('boot-text');
-            const interval = setInterval(() => {
-                progress += Math.random() * 5;
-                if(progress > 100) progress = 100;
-                bar.style.width = progress + '%';
-                
-                if(progress > 30) txt.innerText = "LOADING NEURAL MAPS...";
-                if(progress > 70) txt.innerText = "CONNECTING TO SATELLITE...";
-
-                if(progress === 100) {
-                    clearInterval(interval);
-                    setTimeout(() => {
-                        document.getElementById('boot-screen').style.opacity = '0';
-                        setTimeout(() => document.getElementById('boot-screen').remove(), 1000);
-                        startApp();
-                    }, 500);
-                }
-            }, 50);
-        };
-
-        function startApp() {
-            updateStatus(false);
-            connectMQTT();
-            document.getElementById('xp-display').innerText = userXP + " XP";
+        function playSound(type) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
             
-            // Check for API Key
-            if(!groqKey) {
-                setTimeout(() => addSystemMessage("⚠️ SYSTEM: Neural link incomplete. /setkey [groq_key] to enable AI."), 2000);
-            } else {
-                updateStatus(true);
+            const now = audioCtx.currentTime;
+            
+            if(type === 'hover') {
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                gain.gain.setValueAtTime(0.02, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if(type === 'click') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(800, now);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } else if(type === 'message') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
             }
         }
 
-        function connectMQTT() {
-            if(typeof Paho === 'undefined') return;
-            mqttClient = new Paho.MQTT.Client(MQTT_BROKER, clientId);
-            
-            mqttClient.onConnectionLost = (r) => {
+        // --- 3. LOGIC CORE (MQTT + AI) ---
+        const MQTT_HOST = "broker.emqx.io";
+        const MQTT_PORT = 8084; // WSS
+        const BASE_TOPIC = "termos/nexus/";
+        
+        let mqttClient;
+        let myId = "user_" + Math.floor(Math.random() * 10000);
+        let currentTopic = BASE_TOPIC + "lobby";
+        let myNick = "Guest";
+        let groqKey = "";
+        let isConnected = false;
+
+        function initMQTT() {
+            mqttClient = new Paho.Client(MQTT_HOST, MQTT_PORT, myId);
+
+            mqttClient.onConnectionLost = (responseObject) => {
                 updateStatus(false);
-                addSystemMessage("⚠️ CONNECTION LOST. RETRYING...");
-                setTimeout(connectMQTT, 5000);
+                if (responseObject.errorCode !== 0) {
+                    addSystemMessage("⚠️ CONNECTION LOST. RETRYING...");
+                    setTimeout(initMQTT, 5000);
+                }
             };
-            
-            mqttClient.onMessageArrived = (msg) => {
-                try {
-                    const data = JSON.parse(msg.payloadString);
-                    if(msg.destinationName === currentRoom && data.id !== clientId) {
-                        addChatMessage(data.nick, data.text, 'other');
-                    }
-                } catch(e) {}
-            };
+
+            mqttClient.onMessageArrived = (msg) => handlePayload(msg);
 
             mqttClient.connect({
                 onSuccess: () => {
+                    isConnected = true;
                     updateStatus(true);
-                    mqttClient.subscribe(currentRoom, {qos: 0});
-                    addSystemMessage("📡 UPLINK ESTABLISHED. WELCOME TO GENESIS.");
+                    mqttClient.subscribe(currentTopic);
+                    publish({ type: 'join' });
+                    addSystemMessage("🔌 UPLINK ESTABLISHED. WELCOME TO NEXUS.");
                 },
                 onFailure: () => {
                     updateStatus(false);
-                    setTimeout(connectMQTT, 5000);
-                }
+                    setTimeout(initMQTT, 5000);
+                },
+                useSSL: true
             });
         }
 
         function updateStatus(online) {
-            const dot = document.getElementById('api-status-dot');
+            const dot = document.getElementById('status-dot');
             const txt = document.getElementById('status-text');
             if(online) {
-                dot.className = "w-2 h-2 rounded-full bg-[var(--accent-bio)] shadow-[0_0_8px_#00ff9d]";
+                dot.className = "w-2 h-2 rounded-full bg-cyber-primary shadow-[0_0_10px_#00f2ff]";
                 txt.innerText = "ONLINE";
+                txt.className = "text-cyber-primary font-bold";
             } else {
                 dot.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
                 txt.innerText = "OFFLINE";
+                txt.className = "text-red-500 font-bold";
             }
         }
 
-        // --- 4. INTERACTION LOGIC ---
+        function publish(data) {
+            if(!isConnected) return;
+            const payload = JSON.stringify({ ...data, nick: myNick, id: myId });
+            mqttClient.send(new Paho.Message(payload, currentTopic));
+        }
 
-        function handleInput() {
+        function handlePayload(msg) {
+            try {
+                const data = JSON.parse(msg.payloadString);
+                if(data.id === myId) return; // Ignore self
+
+                if(data.type === 'chat') {
+                    addChatMessage(data.nick, data.text, 'other');
+                    playSound('message');
+                } else if(data.type === 'join') {
+                    addSystemMessage(`👤 ${data.nick} ENTERED SECTOR`);
+                } else if(data.type === 'video') {
+                    addSystemMessage(`📺 ${data.nick} STARTED STREAM`);
+                    loadVideo(data.url);
+                }
+            } catch(e) {}
+        }
+
+        // --- 4. USER INTERACTION ---
+
+        function handleSend() {
             const input = document.getElementById('user-input');
-            const text = input.value.trim();
-            if(!text) return;
+            const txt = input.value.trim();
+            if(!txt) return;
 
-            // Commands
-            if(text.startsWith('/')) {
-                processCommand(text);
+            playSound('click');
+
+            if(txt.startsWith('/ai ')) {
+                handleAI(txt.substring(4));
             } else {
-                // Chat
-                addChatMessage("You", text, 'self');
-                broadcast(text);
-                addXP(1);
+                addChatMessage(myNick, txt, 'self');
+                publish({ type: 'chat', text: txt });
             }
-
             input.value = '';
         }
 
-        function processCommand(cmd) {
-            const parts = cmd.split(' ');
-            const action = parts[0].toLowerCase();
-
-            switch(action) {
-                case '/clear':
-                    document.getElementById('chat-container').innerHTML = '';
-                    break;
-                case '/help':
-                    addSystemMessage("COMMANDS: /ai [prompt], /join [room], /setkey [key], /clear, /evolve [idea]");
-                    break;
-                case '/join':
-                    document.getElementById('join-modal').classList.replace('hidden-vis','visible-vis');
-                    document.getElementById('room-name-input').focus();
-                    break;
-                case '/setkey':
-                    const key = parts[1];
-                    if(key) {
-                        groqKey = key;
-                        localStorage.setItem('termos_groq', key);
-                        updateStatus(true);
-                        addSystemMessage("✅ NEURAL KEY UPDATED.");
-                    } else {
-                        addSystemMessage("❌ USAGE: /setkey [your_groq_api_key]");
-                    }
-                    break;
-                case '/ai':
-                case '/kernel':
-                    const prompt = text.substring(action.length).trim();
-                    if(!prompt) return addSystemMessage("❌ USAGE: /ai tell me about the universe");
-                    triggerAI(prompt);
-                    break;
-                case '/evolve':
-                    const ePrompt = text.substring(8).trim();
-                    if(!ePrompt) return addSystemMessage("❌ USAGE: /evolve change background to red");
-                    triggerAI(ePrompt, true); // true = code mode
-                    break;
-                case '/admin':
-                    toggleAdmin();
-                    break;
-                default:
-                    addSystemMessage("❌ UNKNOWN COMMAND");
-            }
-        }
-
-        function broadcast(text) {
-            if(!mqttClient || !mqttClient.isConnected()) return;
-            const msg = {
-                id: clientId,
-                nick: username,
-                text: text,
-                timestamp: Date.now()
-            };
-            mqttClient.send(new Paho.MQTT.Message(JSON.stringify(msg)));
-        }
-
-        function joinRoom() {
-            const name = document.getElementById('room-name-input').value.trim();
-            if(!name) return;
+        async function handleAI(prompt) {
+            addSystemMessage("🧠 PROCESSING NEURAL QUERY...");
             
-            if(mqttClient && mqttClient.isConnected()) {
-                mqttClient.unsubscribe(currentRoom);
-                currentRoom = "termos/genesis/rooms/" + name;
-                mqttClient.subscribe(currentRoom);
-                
-                document.getElementById('room-indicator').classList.remove('hidden');
-                document.getElementById('current-room').innerText = name;
-                
-                document.getElementById('join-modal').classList.replace('visible-vis','hidden-vis');
-                addSystemMessage(`🪐 ENTERED SECTOR: ${name.toUpperCase()}`);
-                broadcast("has entered the sector.");
-            }
-        }
-
-        // --- 5. AI ENGINE (Groq) ---
-
-        async function triggerAI(prompt, isCode = false) {
             if(!groqKey) {
-                addSystemMessage("❌ AI OFFLINE. SET KEY WITH /setkey");
+                // Simulation Mode
+                setTimeout(() => {
+                    addChatMessage("AI", "Neural Link Disconnected. Please configure API Key in System Config for advanced processing. Currently running in simulation mode.", "ai");
+                }, 1000);
                 return;
             }
 
-            const loadingId = "ai-" + Date.now();
-            addSystemMessage(`🧠 SYNTHESIZING: "${prompt}"...`, loadingId);
-
             try {
-                const systemPrompt = isCode 
-                    ? "You are a frontend engineer. Return ONLY raw HTML/CSS/JS code to modify the page. No markdown. Keep it in one block."
-                    : "You are TermOS Genesis AI. Answer briefly in a sci-fi/cyberpunk style.";
-
                 const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -653,145 +552,165 @@
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            { role: "system", content: systemPrompt },
+                            { role: "system", content: "You are a futuristic AI assistant for the TermOS Nexus. Be concise and cool." },
                             { role: "user", content: prompt }
                         ]
                     })
                 });
-
                 const data = await res.json();
-                
-                // Remove loading message
-                const loader = document.getElementById(loadingId);
-                if(loader) loader.remove();
-
-                if(data.error) throw new Error(data.error.message);
-
                 const reply = data.choices[0].message.content;
-
-                if(isCode) {
-                    // Execute Code
-                    addChatMessage("System", "Applying Genetic Mutation...", "self");
-                    try {
-                        const func = new Function(reply);
-                        func();
-                        addSystemMessage("✅ MUTATION APPLIED");
-                    } catch(e) {
-                        addSystemMessage("❌ MUTATION FAILED: " + e.message);
-                    }
-                } else {
-                    // Text Reply
-                    addChatMessage("AI KERNEL", reply, 'ai');
-                }
-
-            } catch (e) {
-                const loader = document.getElementById(loadingId);
-                if(loader) loader.remove();
-                addSystemMessage("❌ AI ERROR: " + e.message);
+                addChatMessage("AI", reply, "ai");
+            } catch(e) {
+                addChatMessage("SYSTEM", "AI ERROR: " + e.message, "system");
             }
         }
 
-        // --- 6. DOM HELPERS ---
+        // --- 5. UI HELPERS ---
 
         function addChatMessage(sender, text, type) {
             const container = document.getElementById('chat-container');
             const div = document.createElement('div');
-            div.className = "msg-anim max-w-[85%] mb-4 " + (type === 'self' ? 'ml-auto' : 'mr-auto');
+            div.className = "msg-bubble max-w-[85%] " + (type === 'self' ? 'ml-auto' : 'mr-auto');
             
-            let bgClass = type === 'self' ? "bg-gradient-to-br from-[var(--accent-primary)] to-indigo-600" 
-                          : type === 'ai' ? "bg-slate-800/90 border border-cyan-500/30 text-cyan-100" 
-                          : "bg-slate-800/60 border border-white/5";
-            
-            let alignClass = type === 'self' ? "items-end" : "items-start";
-            let avatar = type === 'ai' ? '🧠' : (type === 'self' ? '👤' : '👽');
+            let style = "bg-white/10 text-white border-white/10 rounded-2xl rounded-tr-sm";
+            let header = `<div class="text-[10px] text-gray-400 font-mono mb-1">${sender}</div>`;
+
+            if(type === 'self') {
+                style = "bg-gradient-to-r from-cyber-primary/20 to-cyber-secondary/20 text-white border border-cyber-primary/30 rounded-2xl rounded-tr-sm";
+                header = `<div class="text-[10px] text-cyber-primary font-mono mb-1">YOU</div>`;
+            } else if (type === 'ai') {
+                style = "bg-cyber-primary/10 text-cyan-100 border border-cyber-primary/30 rounded-2xl rounded-tl-sm shadow-[0_0_15px_rgba(0,242,255,0.1)]";
+                header = `<div class="text-[10px] text-cyber-primary font-bold font-mono mb-1">AI KERNEL</div>`;
+            } else if (type === 'other') {
+                style = "bg-white/5 text-gray-200 border border-white/5 rounded-2xl rounded-tl-sm";
+                header = `<div class="text-[10px] text-cyber-secondary font-mono mb-1">${sender}</div>`;
+            }
 
             div.innerHTML = `
-                <div class="flex ${alignClass} gap-3">
-                    <div class="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-xs border border-white/10 shrink-0 font-bold">${avatar}</div>
-                    <div class="${bgClass} p-3 rounded-2xl ${type === 'self' ? 'rounded-tr-none' : 'rounded-tl-none'} shadow-lg backdrop-blur-md text-sm leading-relaxed break-words">
-                        <div class="text-[10px] opacity-60 font-mono mb-1">${sender}</div>
-                        ${escapeHtml(text)}
-                    </div>
+                <div class="p-3 border backdrop-blur-sm ${style}">
+                    ${header}
+                    <div class="text-sm leading-relaxed break-words">${escapeHtml(text)}</div>
                 </div>
             `;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
         }
 
-        function addSystemMessage(text, id = null) {
+        function addSystemMessage(text) {
             const container = document.getElementById('chat-container');
             const div = document.createElement('div');
-            if(id) div.id = id;
-            div.className = "msg-anim flex justify-center my-2";
-            div.innerHTML = `<span class="text-[10px] uppercase tracking-widest text-[var(--accent-bio)] bg-black/40 px-3 py-1 rounded-full border border-[var(--accent-bio)]/30 shadow-[0_0_10px_rgba(0,255,157,0.2)]">${text}</span>`;
+            div.className = "flex justify-center my-2 animate-slide-up";
+            div.innerHTML = `<span class="text-[10px] uppercase tracking-widest text-gray-500 bg-black/50 px-3 py-1 rounded-full border border-white/5">${text}</span>`;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
         }
 
         function escapeHtml(text) {
-            if(!text) return "";
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
 
-        function addXP(amount) {
-            userXP += amount;
-            localStorage.setItem('termos_xp', userXP);
-            document.getElementById('xp-display').innerText = userXP + " XP";
-        }
-
-        // --- 7. MEDIA & ADMIN ---
-
-        function toggleAdmin() {
-            const panel = document.getElementById('admin-panel');
-            const ta = document.getElementById('code-editor');
-            
-            if(panel.classList.contains('hidden-vis')) {
-                panel.classList.replace('hidden-vis', 'visible-vis');
-                ta.value = document.documentElement.outerHTML;
-            } else {
-                panel.classList.replace('visible-vis', 'hidden-vis');
-            }
-        }
-
-        function applyCode() {
-            const code = document.getElementById('code-editor').value;
-            if(confirm("⚠️ SYSTEM OVERWRITE: This will rewrite reality. Continue?")) {
-                document.open();
-                document.write(code);
-                document.close();
-            }
-        }
-
-        function toggleMediaPanel() {
-            const p = document.getElementById('media-panel');
-            p.classList.toggle('hidden-vis');
-            p.classList.toggle('visible-vis');
-        }
-
-        function playRadio(url) {
-            const audio = new Audio(url);
-            audio.play();
-            addSystemMessage("📻 TUNING FREQUENCY...");
-        }
-
-        function playVideoInput() {
+        // --- 6. MEDIA SYNC ---
+        
+        function broadcastVideo() {
             const url = document.getElementById('video-url').value;
+            if(!url) return;
+            loadVideo(url);
+            publish({ type: 'video', url: url });
+        }
+
+        function loadVideo(url) {
             const vid = document.getElementById('main-video');
-            const placeholder = document.getElementById('video-placeholder');
+            const overlay = document.getElementById('video-overlay');
+            const frame = document.querySelector('.video-frame');
             
-            if(url) {
-                vid.src = url;
-                vid.classList.remove('opacity-80');
-                placeholder.classList.add('hidden-vis');
-                addSystemMessage("📺 SIGNAL ACQUIRED");
-                broadcast("is watching a transmission.");
+            vid.src = url;
+            vid.play().catch(e => console.log("Auto-play prevented"));
+            overlay.style.display = 'none';
+            frame.classList.add('active');
+            
+            document.getElementById('sync-indicator').className = "text-[10px] bg-cyber-primary/20 text-cyber-primary px-2 py-0.5 rounded border border-cyber-primary/30 animate-pulse";
+            document.getElementById('sync-indicator').innerText = "LIVE RX";
+        }
+
+        function playAudio(url) {
+            if(currentAudio) currentAudio.pause();
+            currentAudio = new Audio(url);
+            currentAudio.play();
+            addSystemMessage("🎵 TUNED FREQUENCY");
+        }
+        
+        function stopAudio() {
+            if(currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
             }
         }
 
-        // --- 8. LISTENERS ---
-        document.getElementById('user-input').addEventListener('keypress', (e) => {
-            if(e.key === 'Enter') handleInput();
-        });
+        // --- 7. MODALS & INIT ---
+
+        function toggleSettings() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.toggle('hidden');
+            if(!modal.classList.contains('hidden')) {
+                document.getElementById('api-key').value = groqKey;
+                document.getElementById('user-nick').value = myNick;
+            }
+        }
+
+        function saveSettings() {
+            groqKey = document.getElementById('api-key').value.trim();
+            myNick = document.getElementById('user-nick').value.trim() || "Guest";
+            localStorage.setItem('termos_groq', groqKey);
+            localStorage.setItem('termos_nick', myNick);
+            toggleSettings();
+            
+            if(isConnected) {
+                mqttClient.disconnect();
+                initMQTT(); // Reconnect with new identity if needed (logic simplified)
+            } else {
+                initMQTT();
+            }
+        }
+
+        function openRoomModal() { document.getElementById('room-modal').classList.remove('hidden'); }
+        function closeRoomModal() { document.getElementById('room-modal').classList.add('hidden'); }
+
+        function joinRoom() {
+            const name = document.getElementById('new-room-name').value.trim();
+            if(!name) return;
+            
+            if(isConnected && mqttClient.isConnected()) {
+                mqttClient.unsubscribe(currentTopic);
+            }
+            
+            currentTopic = BASE_TOPIC + name;
+            document.getElementById('room-display').innerText = name.toUpperCase();
+            
+            if(isConnected && mqttClient.isConnected()) {
+                mqttClient.subscribe(currentTopic);
+                publish({ type: 'join' });
+                addSystemMessage(`🚀 DOCKED AT SECTOR: ${name.toUpperCase()}`);
+            } else {
+                // Init will subscribe to new topic
+                initMQTT();
+            }
+            closeRoomModal();
+        }
+
+        function toggleMedia() {
+            const deck = document.getElementById('media-deck');
+            deck.classList.toggle('hidden');
+            deck.classList.toggle('flex');
+        }
+
+        // Start
+        window.onload = () => {
+            groqKey = localStorage.getItem('termos_groq') || "";
+            myNick = localStorage.getItem('termos_nick') || "Traveler_" + Math.floor(Math.random()*100);
+            initMQTT();
+        };
+        
+        document.getElementById('user-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') handleSend(); });
 
     </script>
 </body>
