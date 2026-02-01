@@ -2,713 +2,514 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Artisan</title>
-    <meta name="theme-color" content="#2a2a3e">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TermOS: Nexus</title>
+    <!-- TAILWIND CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <!-- PEERJS (For P2P Video) -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- PAHO MQTT (For Chat) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <!-- ICONS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        :root { 
-            --paper-bg: #f0f4f8;
-            --ink-primary: #2d3748;
-            --accent-paint: #d53f8c; /* Pink */
-            --accent-sky: #3182ce;   /* Blue */
-            --shadow-ink: 4px 4px 0px rgba(0,0,0,0.1);
-            --shadow-deep: 8px 8px 0px rgba(0,0,0,0.15);
+        :root {
+            --bg-core: #050505;
+            --bg-panel: #111111;
+            --primary: #00ff9d; /* Cyber Green */
+            --secondary: #00d2ff; /* Cyber Blue */
+            --alert: #ff0055;
+            --grid-line: rgba(0, 255, 157, 0.05);
         }
         
-        body { 
-            background: #e2e8f0; 
-            color: #2d3748; 
-            font-family: 'Patrick Hand', cursive; 
-            overflow: hidden;
+        body { background: var(--bg-core); color: #ccc; font-family: 'Courier New', monospace; overflow: hidden; }
+        
+        /* CYBER GRID BACKGROUND */
+        .cyber-grid {
+            position: fixed; top: 0; left: 0; width: 200%; height: 200%;
+            background-image: linear-gradient(var(--grid-line) 1px, transparent 1px),
+            linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+            animation: gridMove 20s linear infinite;
+            z-index: 0; pointer-events: none;
         }
+        @keyframes gridMove { 0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); } 100% { transform: perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px); } }
 
-        /* PAINTED CANVAS BACKGROUND */
-        #paint-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.4; pointer-events: none; }
+        /* UI COMPONENTS */
+        .panel { background: rgba(17, 17, 17, 0.9); border: 1px solid #333; backdrop-filter: blur(10px); box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .panel-header { background: #1a1a1a; border-bottom: 1px solid #333; padding: 10px; font-weight: bold; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
         
+        .btn-cyber {
+            background: transparent; border: 1px solid var(--primary); color: var(--primary);
+            padding: 5px 15px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;
+            transition: all 0.2s; cursor: pointer;
+        }
+        .btn-cyber:hover { background: var(--primary); color: #000; box-shadow: 0 0 15px var(--primary); }
+        
+        .btn-alert { border-color: var(--alert); color: var(--alert); }
+        .btn-alert:hover { background: var(--alert); color: #fff; box-shadow: 0 0 15px var(--alert); }
+
+        input, textarea {
+            background: #000; border: 1px solid #333; color: var(--primary);
+            font-family: 'Courier New', monospace; outline: none;
+        }
+        input:focus, textarea:focus { border-color: var(--primary); }
+
         /* SCROLLBAR */
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 10px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        
-        /* UI PANELS (Sketch Style) */
-        .sketch-panel { 
-            background: rgba(255, 255, 255, 0.9); 
-            backdrop-filter: blur(8px); 
-            border: 2px solid #2d3748; 
-            border-radius: 20px; 
-            box-shadow: var(--shadow-ink); 
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .sketch-panel:hover {
-            transform: translate(-2px, -2px);
-            box-shadow: var(--shadow-deep);
-        }
-        
-        .sketch-input {
-            background: #fff;
-            border: 2px dashed #cbd5e0;
-            border-radius: 15px;
-            outline: none;
-            font-family: 'Patrick Hand', cursive;
-            font-size: 1.1rem;
-            transition: all 0.3s;
-        }
-        .sketch-input:focus {
-            border-color: var(--accent-sky);
-            background: #ebf8ff;
-        }
-        
-        .sketch-btn {
-            background: #fff;
-            border: 2px solid #2d3748;
-            border-radius: 50px;
-            font-family: 'Patrick Hand', cursive;
-            font-weight: bold;
-            color: #2d3748;
-            transition: all 0.2s;
-            box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
-        }
-        .sketch-btn:hover {
-            transform: scale(1.05) rotate(-1deg);
-            background: #2d3748;
-            color: #fff;
-        }
-        .sketch-btn:active {
-            transform: scale(0.95);
-        }
+        ::-webkit-scrollbar-thumb { background: #333; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
-        /* Animations */
-        @keyframes paintSlide {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .paint-anim { animation: paintSlide 0.5s ease-out forwards; }
-
-        /* Video */
-        .video-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 100%;
-        }
-        .video-box {
-            background: #000; border-radius: 15px; overflow: hidden; border: 2px solid #2d3748; box-shadow: var(--shadow-ink); position: relative;
-        }
-        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); /* Mirror */ }
-
-        /* Utilities */
-        .admin-hidden { display: none; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        /* VIDEO */
+        .video-frame { background: #000; border: 1px solid #333; position: relative; }
+        .video-label { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 2px 8px; font-size: 10px; color: var(--primary); border: 1px solid var(--primary); }
         
-        .gradient-text {
-            background: linear-gradient(45deg, var(--accent-paint), var(--accent-sky));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+        /* LOGS */
+        .log-entry { font-size: 12px; margin-bottom: 4px; border-left: 2px solid transparent; padding-left: 8px; }
+        .log-sys { color: #666; }
+        .log-msg { color: #ddd; }
+        .log-err { color: var(--alert); }
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col relative">
-    <input type="file" id="avatar-upload" class="hidden" accept="image/*">
-    <canvas id="paint-canvas"></canvas>
-    
-    <!-- HEADER -->
-    <header id="app-header" class="fixed top-4 left-4 right-4 z-20 sketch-panel h-16 flex items-center justify-between px-6">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-blue-500 border-2 border-white shadow-sm"></div>
-            <div>
-                <h1 class="font-bold text-xl leading-none">TermOS <span class="text-pink-500">Artisan</span></h1>
-                <div class="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                    <div id="api-status-dot" class="w-2 h-2 rounded-full bg-gray-300"></div>
-                    <span id="room-display">CANVAS READY</span>
+<body>
+
+    <!-- BACKGROUND -->
+    <div class="cyber-grid"></div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div class="relative z-10 h-screen w-screen flex flex-col p-2 md:p-4 gap-4">
+        
+        <!-- HEADER -->
+        <header class="panel h-16 rounded flex items-center justify-between px-6 shrink-0">
+            <div class="flex items-center gap-4">
+                <div class="w-8 h-8 border-2 border-var(--primary) flex items-center justify-center text-[var(--primary)] font-bold">NX</div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wider text-white">TERMOS <span class="text-[var(--primary)]">NEXUS</span></h1>
+                    <div class="text-[10px] text-gray-500 flex gap-2">
+                        <span id="sys-status">OFFLINE</span>
+                        <span class="text-[var(--primary)]">V.1.0.0</span>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="flex items-center gap-2">
-            <div id="room-badge" class="hidden px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs border border-blue-300 font-bold tracking-wide">
-                <span id="current-room-name">PUBLIC</span>
+            <div class="flex gap-2">
+                <button onclick="App.openVideoModal()" class="btn-cyber"><i class="fas fa-video"></i> CALL</button>
+                <button onclick="App.toggleSettings()" class="btn-cyber"><i class="fas fa-cog"></i> SYS</button>
             </div>
-            <button onclick="triggerKernelThought()" class="hidden md:flex sketch-btn px-3 text-xs">🎨 SKETCH IDEAS</button>
-            <button onclick="toggleMediaOverlay()" class="hidden md:flex sketch-btn px-3 text-xs">🎥 VIDEO ROOM</button>
-            <button onclick="openProfileModal()" class="hidden md:flex sketch-btn px-3 text-xs">👤 PROFILE</button>
-            <button onclick="toggleAdminMode()" class="bg-red-100 hover:bg-red-500 hover:text-white text-red-500 sketch-btn px-3 py-1 text-xs transition-colors">⚙️</button>
-        </div>
-    </header>
-    
-    <!-- MAIN CHAT -->
-    <main id="chat-container" class="flex-1 overflow-y-auto pt-28 pb-40 px-4 z-10 scroll-smooth max-w-4xl mx-auto w-full"></main>
-    
-    <!-- INPUT AREA -->
-    <div class="fixed bottom-6 left-6 right-6 z-30 flex justify-center pointer-events-none">
-        <div class="w-full max-w-3xl bg-white/95 p-2 rounded-full border-2 border-gray-800 shadow-[0_8px_30px_rgba(0,0,0,0.1)] pointer-events-auto flex items-center">
-            <button onclick="toggleVoice()" class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7m0 0H8m4 0h4m-4 8H8"></path></svg>
-            </button>
-            <input type="text" id="user-input" placeholder="Type here..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-gray-700 px-4 py-2 font-hand text-lg">
-            <button id="send-btn" class="w-10 h-10 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center shadow-md transition-transform active:scale-95">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7 5 14z"></path></svg>
-            </button>
-        </div>
-    </div>
+        </header>
 
-    <!-- FLOATING MEDIA OVERLAY -->
-    <div id="media-overlay" class="admin-hidden fixed inset-4 md:inset-10 z-50 sketch-panel flex flex-col p-4 md:p-6 bg-white">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-2xl font-bold text-gray-800">🎥 Art Gallery / Video</h2>
-            <button onclick="toggleMediaUI()" class="text-gray-400 hover:text-gray-800 text-2xl">&times;</button>
-        </div>
-
-        <!-- Video Controls -->
-        <div class="flex gap-4 mb-4 border-b-2 border-gray-100 pb-2">
-            <button onclick="switchVideoMode('camera')" id="btn-camera" class="sketch-btn px-4 py-1 bg-pink-100 text-pink-600 border-pink-300">📷 CAMERA</button>
-            <button onclick="switchVideoMode('url')" id="btn-url" class="sketch-btn px-4 py-1">📶 URL STREAM</button>
-        </div>
-
-        <!-- Video Display Area -->
-        <div id="video-stage" class="flex-1 bg-gray-900 rounded-2xl overflow-hidden relative shadow-inner flex items-center justify-center">
+        <!-- MAIN CONTENT GRID -->
+        <main class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 min-h-0">
             
-            <!-- Camera Mode -->
-            <div id="camera-view" class="w-full h-full relative">
-                <video id="local-video" autoplay muted playsinline class="w-full h-full object-cover hidden"></video>
-                <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
-                    <div class="text-6xl mb-4">🎥</div>
-                    <p class="text-lg">Camera is off</p>
-                    <button onclick="startCamera()" class="mt-4 px-6 py-2 bg-blue-500 text-white rounded-full font-bold hover:bg-blue-600 shadow-lg transition-transform active:scale-95">START CAMERA</button>
+            <!-- LEFT: CHAT (4 cols) -->
+            <section class="md:col-span-4 panel rounded flex flex-col min-h-0">
+                <div class="panel-header">
+                    <span><i class="fas fa-comments"></i> COMMS LINK</span>
+                    <span class="text-[10px] text-gray-500" id="room-name">PUBLIC_CHAN</span>
                 </div>
+                <div id="chat-log" class="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-sm">
+                    <!-- Messages inject here -->
+                </div>
+                <div class="p-2 border-t border-gray-800">
+                    <div class="flex gap-2">
+                        <input type="text" id="chat-input" placeholder="CMD: /join [room]..." class="w-full px-3 py-2 rounded text-sm">
+                        <button onclick="App.sendMessage()" class="btn-cyber"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT: WORKSPACE / DASHBOARD (8 cols) -->
+            <section class="md:col-span-8 flex flex-col gap-4 min-h-0">
                 
-                <!-- Remote Video (Small Picture-in-Picture style) -->
-                <div id="remote-video-container" class="absolute bottom-4 right-4 w-32 h-24 bg-black rounded-xl border-2 border-white shadow-lg hidden">
-                    <video id="remote-video" autoplay playsinline class="w-full h-full object-cover"></video>
+                <!-- SYSTEM STATUS -->
+                <div class="panel h-32 rounded flex gap-4 p-4">
+                    <div class="flex-1 border border-gray-800 p-2 rounded flex flex-col justify-center items-center">
+                        <div class="text-2xl text-[var(--secondary)] font-bold" id="ping-display">0 ms</div>
+                        <div class="text-[10px] text-gray-500">LATENCY</div>
+                    </div>
+                    <div class="flex-1 border border-gray-800 p-2 rounded flex flex-col justify-center items-center">
+                        <div class="text-2xl text-[var(--primary)] font-bold" id="users-display">0</div>
+                        <div class="text-[10px] text-gray-500">ACTIVE NODES</div>
+                    </div>
+                    <div class="flex-1 border border-gray-800 p-2 rounded flex flex-col justify-center items-center">
+                        <div class="text-2xl text-purple-400 font-bold">UP</div>
+                        <div class="text-[10px] text-gray-500">PEER NET</div>
+                    </div>
+                </div>
+
+                <!-- WORKSPACE / CANVAS -->
+                <div class="flex-1 panel rounded overflow-hidden relative flex flex-col">
+                    <div class="panel-header">
+                        <span><i class="fas fa-terminal"></i> WORKSPACE</span>
+                        <div class="text-[10px] text-gray-500">JS MODULES ACTIVE</div>
+                    </div>
+                    <div id="workspace" class="flex-1 p-6 overflow-y-auto font-mono text-sm text-[var(--secondary)]">
+                        <p>// NEXUS Frontend Engine Loaded.</p>
+                        <p>// Reactive State: ACTIVE</p>
+                        <p>// MQTT Bridge: CONNECTING...</p>
+                        <p>// PeerJS Network: STANDBY</p>
+                        <br>
+                        <p class="text-white">> Ready for input. Type /help for commands.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- VIDEO MODAL (OVERLAY) -->
+    <div id="video-modal" class="fixed inset-0 z-50 bg-black/90 hidden flex-col items-center justify-center p-4">
+        <div class="w-full max-w-5xl h-[80vh] flex flex-col gap-2">
+            <div class="flex justify-between items-center text-[var(--primary)] mb-2">
+                <h2 class="font-bold text-xl"><i class="fas fa-satellite-dish"></i> SECURE VIDEO LINK</h2>
+                <button onclick="App.closeVideoModal()" class="btn-cyber btn-alert">TERMINATE</button>
+            </div>
+            
+            <div class="flex-1 grid grid-cols-2 gap-4">
+                <!-- LOCAL -->
+                <div class="video-frame rounded-xl overflow-hidden flex flex-col">
+                    <div class="video-label">LOCAL FEED</div>
+                    <video id="local-video" class="flex-1 bg-gray-900 w-full h-full object-cover" autoplay muted playsinline></video>
+                    <div class="p-2 bg-gray-900 flex justify-center gap-2">
+                        <button onclick="VideoSys.startCamera()" class="btn-cyber">CAM ON</button>
+                        <button onclick="VideoSys.stopCamera()" class="btn-cyber btn-alert">OFF</button>
+                    </div>
+                </div>
+
+                <!-- REMOTE -->
+                <div class="video-frame rounded-xl overflow-hidden flex flex-col">
+                    <div class="video-label">REMOTE FEED</div>
+                    <video id="remote-video" class="flex-1 bg-gray-900 w-full h-full object-cover" autoplay playsinline></video>
+                    <div class="p-2 bg-gray-900 flex justify-center gap-2">
+                        <div class="text-[10px] text-gray-500 flex items-center">STATUS: <span id="remote-status" class="text-[var(--primary)] ml-2">IDLE</span></div>
+                    </div>
                 </div>
             </div>
 
-            <!-- URL Mode -->
-            <div id="url-view" class="w-full h-full hidden flex flex-col items-center justify-center p-4">
-                <div class="w-full max-w-lg">
-                    <input type="text" id="stream-url" placeholder="Paste video URL (mp4, m3u8)..." class="w-full sketch-input p-3 text-sm mb-4">
-                    <div class="flex gap-2">
-                        <button onclick="playStreamUrl()" class="flex-1 sketch-btn bg-blue-100 text-blue-600 border-blue-300 py-2">▶ PLAY LOCAL</button>
-                        <button onclick="shareStreamUrl()" class="flex-1 sketch-btn bg-pink-100 text-pink-600 border-pink-300 py-2">📡 SHARE TO ROOM</button>
+            <!-- CONTROLS -->
+            <div class="panel p-4 rounded-xl flex flex-col gap-2">
+                <div class="text-xs text-gray-400 mb-1">INITIATE PEER-TO-PEER CONNECTION</div>
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="text-[10px] text-[var(--primary)]">YOUR ID (SHARE)</label>
+                        <input type="text" id="my-peer-id" readonly class="w-full bg-gray-800 text-gray-400 text-xs p-2">
                     </div>
-                    <div class="h-full bg-black rounded-xl mt-4 flex items-center justify-center overflow-hidden border border-gray-700">
-                        <video id="url-player" class="w-full h-full hidden" controls></video>
-                        <p id="url-placeholder" class="text-gray-600">Waiting for stream...</p>
+                    <div class="flex-1">
+                        <label class="text-[10px] text-[var(--secondary)]">TARGET ID (CALL)</label>
+                        <input type="text" id="target-peer-id" placeholder="Paste ID here..." class="w-full p-2">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="VideoSys.callPeer()" class="btn-cyber h-[38px]">CONNECT</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- PROFILE MODAL -->
-    <div id="profile-modal" class="admin-hidden fixed inset-0 z-[60] bg-gray-900/40 backdrop-blur-sm flex items-center justify-center">
-        <div class="sketch-panel p-6 max-w-sm w-full mx-4">
-            <h3 class="font-bold text-xl mb-4 text-center">✏️ My Profile</h3>
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="fixed inset-0 z-50 bg-black/80 hidden flex items-center justify-center">
+        <div class="panel w-96 rounded-xl p-6">
+            <h3 class="text-[var(--primary)] font-bold mb-4">SYSTEM CONFIG</h3>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm text-gray-500 mb-1 ml-2">Nickname</label>
-                    <input type="text" id="edit-name" class="w-full sketch-input p-3 text-center">
+                    <label class="text-xs text-gray-400">NICKNAME</label>
+                    <input type="text" id="setting-name" class="w-full p-2">
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-500 mb-1 ml-2">Avatar</label>
-                    <div class="flex gap-2">
-                        <button onclick="triggerFileUpload()" class="flex-1 sketch-btn p-2 text-sm">📷 Upload</button>
-                        <input type="text" id="edit-avatar" placeholder="Emoji" class="w-full sketch-input p-2 text-center">
-                    </div>
+                    <label class="text-xs text-gray-400">ROOM CHANNEL</label>
+                    <input type="text" id="setting-room" class="w-full p-2" value="nexus_public">
+                </div>
+                <div class="text-xs text-gray-500 mt-4">
+                    <p>DEPLOYMENT INSTRUCTIONS:</p>
+                    <p>1. Save this file as index.html.</p>
+                    <p>2. Drag to Netlify Drop.</p>
+                    <p>3. No build steps required.</p>
                 </div>
             </div>
-            <div class="flex gap-2 mt-6">
-                <button onclick="saveProfile()" class="flex-1 sketch-btn bg-blue-500 text-white border-blue-600">Save</button>
-                <button onclick="closeProfileModal()" class="flex-1 sketch-btn bg-gray-200 text-gray-600">Cancel</button>
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="App.saveSettings()" class="btn-cyber">SAVE & RELOAD</button>
+                <button onclick="App.toggleSettings()" class="btn-cyber btn-alert">CLOSE</button>
             </div>
         </div>
-    </div>
-
-    <!-- ADMIN PANEL -->
-    <div id="admin-panel" class="admin-hidden fixed bottom-24 left-4 right-4 md:right-4 md:w-80 z-40 sketch-panel p-4 bg-white border-red-200">
-        <h3 class="font-bold mb-3 text-red-500">🔨 Workbench</h3>
-        <div class="space-y-2 text-sm">
-            <button onclick="toggleCodeEditor()" class="w-full sketch-btn p-2 text-green-600 border-green-300">🖊 Edit Source</button>
-            <div class="border-t-2 border-dashed border-gray-200 pt-2 mt-2">
-                <div class="text-xs text-gray-400 mb-1 uppercase font-bold tracking-wider">GitHub Evolution</div>
-                <input type="text" id="gh-owner" placeholder="Owner" class="w-full sketch-input p-2 text-xs mb-2">
-                <input type="text" id="gh-repo" placeholder="Repo" class="w-full sketch-input p-2 text-xs mb-2">
-                <input type="password" id="gh-token" placeholder="Token (Classic)" class="w-full sketch-input p-2 text-xs mb-2">
-                <button onclick="initiateEvolution()" class="w-full sketch-btn bg-red-100 text-red-600 p-2">🧬 PUSH & REBOOT</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- CODE EDITOR -->
-    <div id="code-editor-overlay" class="admin-hidden fixed inset-0 z-[70] bg-white flex flex-col">
-        <div class="p-4 border-b-2 border-gray-200 flex justify-between bg-gray-50">
-            <h2 class="font-bold text-xl">🖊 Source Code</h2>
-            <div class="flex gap-2">
-                <button onclick="applyCode()" class="sketch-btn bg-blue-500 text-white">APPLY</button>
-                <button onclick="downloadCode()" class="sketch-btn">SAVE</button>
-                <button onclick="toggleCodeEditor()" class="sketch-btn">CLOSE</button>
-            </div>
-        </div>
-        <textarea id="code-editor-textarea" class="flex-1 bg-[#1e1e1e] text-[#d4d4d4] font-mono p-4 text-sm outline-none resize-none"></textarea>
     </div>
 
 <script>
-    // --- CONFIG & STATE ---
-    const API_MODEL = "llama-3.3-70b-versatile"; 
-    let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || "";
-    let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
-    let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "";
-    let REPO_NAME = localStorage.getItem('termos_repo_name') || "";
+/**
+ * NEXUS ENGINE
+ * A reactive, dependency-free frontend framework designed for TermOS.
+ */
+
+// --- 1. REACTIVE STORE ---
+// This allows the UI to update automatically when data changes.
+const Store = {
+    state: {
+        user: { name: 'User_' + Math.floor(Math.random()*1000), room: 'nexus_public' },
+        status: { online: false, ping: 0, peers: 0 },
+        logs: [],
+        video: { active: false, stream: null }
+    },
+    listeners: [],
     
-    let systemGeneration = parseInt(localStorage.getItem('termos_gen') || "1");
-    let userProfile = { name: localStorage.getItem('termos_name') || "Artist", avatar: localStorage.getItem('termos_avatar') || "🎨" };
-    let tempAvatarData = "";
+    // Subscribe to changes
+    subscribe(key, callback) {
+        if (!this.listeners[key]) this.listeners[key] = [];
+        this.listeners[key].push(callback);
+    },
 
-    const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
-    let username = 'User_' + Math.floor(Math.random() * 10000);
-    let mqttClient = null;
-    let currentRoomName = null;
-    let userStats = { level: 1, xp: 0 };
-
-    // WebRTC State
-    let localStream = null;
-    let peerConnection = null;
-    const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-
-    // --- PAINTED BACKGROUND ENGINE ---
-    function initPaintBackground() {
-        const canvas = document.getElementById('paint-canvas');
-        const ctx = canvas.getContext('2d');
-        let width = canvas.width = window.innerWidth;
-        let height = canvas.height = window.innerHeight;
-        
-        // Drops of paint
-        const drops = Array(15).fill().map(() => ({
-            x: Math.random() * width,
-            y: Math.random() * height,
-            radius: Math.random() * 100 + 50,
-            dx: (Math.random() - 0.5) * 2,
-            dy: (Math.random() - 0.5) * 2,
-            color: `hsla(${Math.random() * 360}, 70%, 60%, 0.1)`
-        }));
-
-        function animate() {
-            // Fade out slowly to leave trails
-            ctx.fillStyle = '#f0f4f8'; // Paper color
-            ctx.fillRect(0, 0, width, height);
-
-            drops.forEach(d => {
-                d.x += d.dx;
-                d.y += d.dy;
-                if(d.x < -100 || d.x > width + 100) d.dx *= -1;
-                if(d.y < -100 || d.y > height + 100) d.dy *= -1;
-
-                ctx.beginPath();
-                ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
-                ctx.fillStyle = d.color;
-                ctx.filter = 'blur(20px)';
-                ctx.fill();
-                ctx.filter = 'none';
-            });
-
-            requestAnimationFrame(animate);
+    // Update state and notify listeners
+    set(key, value) {
+        this.state[key] = value;
+        if (this.listeners[key]) {
+            this.listeners[key].forEach(cb => cb(value));
         }
-        animate();
-        window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
+    },
+    
+    log(msg, type = 'sys') {
+        const entry = { time: new Date().toLocaleTimeString(), text: msg, type };
+        this.state.logs.push(entry);
+        // Auto-scroll logic handled by Component
+        if (this.listeners['logs']) this.listeners['logs'](this.state.logs);
     }
+};
 
-    // --- KERNEL (OPTIMIZED) ---
-    async function triggerKernelThought() {
-        if(!GROQ_API_KEY) return requestApiKey();
-        addSystemMessage("🎨 Kernel: Sketching ideas...");
-        const thinkingId = "think-" + Date.now();
-        getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="text-center text-gray-500 text-xs italic my-2">🖊️ Dipping brush...</div>`);
-        scrollDown();
+// --- 2. VIDEO SYSTEM (PEERJS) ---
+const VideoSys = {
+    peer: null,
+    currentCall: null,
+    
+    init() {
+        // Create a new PeerJS instance (uses default free server)
+        this.peer = new Peer(null, {
+            debug: 2
+        });
 
+        this.peer.on('open', (id) => {
+            document.getElementById('my-peer-id').value = id;
+            Store.log(`Peer ID Generated: ${id.substring(0,8)}...`, 'sys');
+            // Publish ID to MQTT room so others can see it? Optional.
+        });
+
+        this.peer.on('call', (call) => {
+            // Answer incoming call automatically for demo
+            call.answer(Store.state.video.stream);
+            this.handleCall(call);
+        });
+
+        this.peer.on('error', (err) => {
+            Store.log(`PeerJS Error: ${err.type}`, 'err');
+            alert("Connection failed. Ensure ports are open or network allows P2P.");
+        });
+    },
+
+    async startCamera() {
         try {
-            // OPTIMIZATION: Reduced prompt size for speed
-            const prompt = "Analyze app state and suggest 1 visual or functional upgrade. Return exact format: SystemRebuilder.install('name') or /evolve [prompt]. Keep reply under 50 words.";
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            Store.state.video.stream = stream;
+            document.getElementById('local-video').srcObject = stream;
+            Store.log("Camera Stream Active", 'sys');
             
-            let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method:"POST",
-                headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
-                body:JSON.stringify({
-                    model: API_MODEL,
-                    messages:[{ role:"system", content:"You are a creative UI designer." }, {role:"user",content:prompt}],
-                    max_tokens: 100 // Low token limit for speed
-                })
-            });
-            
-            const apiData = await r.json();
-            if (apiData.error) throw new Error("Groq: " + apiData.error.message);
-            
-            const reply = apiData.choices[0].message.content;
-            const el = document.getElementById(thinkingId); if(el) el.remove();
-            
-            addNeuralMessage(reply);
-            
-            if(reply.includes("SystemRebuilder.install(")) {
-                let match = reply.match(/SystemRebuilder\.install\(['"](.*?)['"]\)/);
-                if(match) { 
-                    setTimeout(() => {
-                        if(confirm("Apply sketch: " + match[1] + "?")) SystemRebuilder.install(match[1]);
-                    }, 500);
-                }
-            }
-        } catch (e) { 
-            const el = document.getElementById(thinkingId); if(el) el.remove();
-            addSystemMessage("❌ Brush dropped: " + e.message); 
-        }
-    }
-
-    // --- VIDEO ROOM (FIXED: CAMERA + P2P) ---
-    function toggleMediaOverlay() {
-        const el = document.getElementById('media-overlay');
-        if(el.classList.contains('admin-hidden')) {
-            el.classList.remove('admin-hidden');
-            el.classList.add('paint-anim');
-        } else {
-            el.classList.add('admin-hidden');
-            stopCamera(); // Save battery
-        }
-    }
-
-    function toggleMediaUI() {
-        document.getElementById('media-overlay').classList.add('admin-hidden');
-        stopCamera();
-    }
-
-    function switchVideoMode(mode) {
-        document.getElementById('camera-view').classList.add('hidden');
-        document.getElementById('url-view').classList.add('hidden');
-        document.getElementById('btn-camera').className = "sketch-btn px-4 py-1";
-        document.getElementById('btn-url').className = "sketch-btn px-4 py-1";
-
-        if(mode === 'camera') {
-            document.getElementById('camera-view').classList.remove('hidden');
-            document.getElementById('btn-camera').className = "sketch-btn px-4 py-1 bg-pink-100 text-pink-600 border-pink-300";
-        } else {
-            document.getElementById('url-view').classList.remove('hidden');
-            document.getElementById('btn-url').className = "sketch-btn px-4 py-1 bg-pink-100 text-pink-600 border-pink-300";
-        }
-    }
-
-    async function startCamera() {
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            const video = document.getElementById('local-video');
-            video.srcObject = localStream;
-            video.classList.remove('hidden');
-            document.getElementById('camera-placeholder').classList.add('hidden');
-            
-            // Signal that camera is on
-            if(mqttClient && mqttClient.isConnected()) {
-                const dest = (currentRoomName) ? `termos/rooms/${currentRoomName}` : "termos/v3/chat";
-                mqttClient.publish(dest, JSON.stringify({ user: username, type: 'camera-on', nick: userProfile.name }));
-            }
+            // If peer was created before camera, restart peer to attach stream properly (optional)
+            // In this simplified version, we just hold stream in store.
         } catch (e) {
-            alert("Camera access denied: " + e.message);
+            Store.log("Camera Access Denied", 'err');
+            alert("Allow camera access to use Video Call.");
         }
-    }
+    },
 
-    function stopCamera() {
-        if(localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-            localStream = null;
+    stopCamera() {
+        if (Store.state.video.stream) {
+            Store.state.video.stream.getTracks().forEach(track => track.stop());
+            Store.state.video.stream = null;
+            document.getElementById('local-video').srcObject = null;
+            Store.log("Camera Stream Terminated", 'sys');
         }
-        document.getElementById('local-video').classList.add('hidden');
-        document.getElementById('camera-placeholder').classList.remove('hidden');
-    }
+    },
 
-    // Basic WebRTC Call Logic
-    function callUser(targetUser) {
-        // Placeholder for P2P logic - requires complex signaling state machine
-        // For this demo, we rely on Camera Sharing (Broadcasting)
-        alert("P2P Call feature requires active signaling server. Use 'Camera Mode' to broadcast.");
-    }
+    callPeer() {
+        const destId = document.getElementById('target-peer-id').value;
+        if (!destId) return alert("Enter a Target Peer ID.");
+        if (!Store.state.video.stream) return alert("Turn on camera first.");
 
-    function playStreamUrl() {
-        const url = document.getElementById('stream-url').value;
-        if(!url) return;
-        const player = document.getElementById('url-player');
-        player.src = url;
-        player.classList.remove('hidden');
-        document.getElementById('url-placeholder').classList.add('hidden');
-    }
+        Store.log(`Initiating P2P connection to ${destId.substring(0,8)}...`, 'sys');
+        document.getElementById('remote-status').innerText = "CONNECTING...";
 
-    function shareStreamUrl() {
-        const url = document.getElementById('stream-url').value;
-        if(!url) return;
-        playStreamUrl();
-        if(mqttClient && mqttClient.isConnected()) {
-            const dest = (currentRoomName) ? `termos/rooms/${currentRoomName}` : "termos/v3/chat";
-            mqttClient.publish(dest, JSON.stringify({ user: username, nick: userProfile.name, type: 'video-url', url: url }));
-            addSystemMessage("📡 Shared stream URL.");
-        }
-    }
+        const call = this.peer.call(destId, Store.state.video.stream);
+        this.handleCall(call);
+    },
 
-    // --- CHAT & UI ---
-    function getBox() {
-        let el = document.getElementById('chat-container');
-        if (!el) {
-            el = document.createElement('div');
-            el.id = 'chat-container';
-            el.className = "flex flex-col h-full w-full p-4 overflow-y-auto z-10";
-            document.body.appendChild(el);
-        }
-        return el;
-    }
-    function scrollDown() { const b=getBox(); if(b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); }
-    function escapeHtml(text) { if(!text) return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+    handleCall(call) {
+        this.currentCall = call;
+        const remoteVid = document.getElementById('remote-video');
 
-    function addUserMessage(txt, senderName, senderAvatar) {
-        const name = senderName || userProfile.name || "Me";
-        const avatar = senderAvatar || userProfile.avatar;
-        const d = document.createElement('div');
-        d.className = "flex flex-row-reverse gap-3 my-4 items-end paint-anim";
-        
-        let avatarHTML = `<div class="w-10 h-10 rounded-full bg-gray-200 border-2 border-white shadow-sm flex items-center justify-center text-xl overflow-hidden">${avatar}</div>`;
-        if (avatar.startsWith('data:')) {
-             avatarHTML = `<div class="w-10 h-10 rounded-full bg-gray-200 border-2 border-white shadow-sm overflow-hidden"><img src="${avatar}" class="w-full h-full object-cover"></div>`;
-        }
+        call.on('stream', (remoteStream) => {
+            remoteVid.srcObject = remoteStream;
+            document.getElementById('remote-status').innerText = "LIVE";
+            Store.status.peer = 1; // Update dashboard
+            Store.log("P2P Video Link Established", 'sys');
+        });
 
-        d.innerHTML = `
-            ${avatarHTML}
-            <div class="flex flex-col items-end max-w-[80%]">
-                <div class="bg-white p-3 rounded-2xl rounded-tr-none shadow-sm border-2 border-gray-100 text-gray-800 text-sm">${escapeHtml(txt)}</div>
-                <span class="text-[10px] text-gray-400 mt-1 mr-1 font-bold">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} • ${name}</span>
-            </div>
-        `;
-        getBox().appendChild(d);
-        scrollDown();
+        call.on('close', () => {
+            document.getElementById('remote-status').innerText = "TERMINATED";
+            Store.log("Call Ended", 'sys');
+        });
     }
+};
 
-    function addAIMessage(txt) {
-        const d = document.createElement('div');
-        d.className = "flex gap-3 my-4 paint-anim";
-        d.innerHTML = `<div class="w-8 h-8 rounded-full bg-blue-100 border-2 border-blue-200 flex items-center justify-center text-xs shadow-sm">AI</div><div class="bg-blue-50 p-3 rounded-2xl rounded-tl-none border-2 border-blue-100 text-gray-700 text-sm shadow-sm">${escapeHtml(txt)}</div>`;
-        getBox().appendChild(d);
-        scrollDown();
-    }
+// --- 3. COMM SYSTEM (MQTT) ---
+const CommSys = {
+    client: null,
     
-    function addNeuralMessage(txt) {
-        const d = document.createElement('div');
-        d.className = "flex justify-center my-4 paint-anim";
-        d.innerHTML = `<div class="bg-pink-50 border-2 border-pink-200 rounded-2xl px-6 py-3 text-pink-600 text-sm shadow-sm max-w-lg text-center font-bold">🧠 ${escapeHtml(txt)}</div>`;
-        getBox().appendChild(d);
-        scrollDown();
-    }
+    init() {
+        this.client = new Paho.MQTT.Client("wss://broker.emqx.io:8084/mqtt", "nexus_" + Store.state.user.name);
+        
+        this.client.onConnectionLost = (responseObject) => {
+            Store.log("Connection Lost. Reconnecting...", 'err');
+            Store.set('status', { ...Store.state.status, online: false });
+            setTimeout(() => this.connect(), 5000);
+        };
 
-    function addSystemMessage(txt) {
-        const d = document.createElement('div');
-        d.className = "flex justify-center my-4 paint-anim";
-        d.innerHTML = `<span class="text-gray-400 text-xs font-bold uppercase tracking-widest border-b border-gray-300 pb-1">${txt}</span>`;
-        getBox().appendChild(d);
-        scrollDown();
-    }
-
-    // --- CORE LOGIC ---
-    function handleInput() {
-        const inp = document.getElementById('user-input');
-        const txt = inp.value.trim();
-        if(!txt) return;
-
-        if(txt.startsWith('/join')) {
-            const room = txt.substring(6).trim();
-            if(room) {
-                currentRoomName = room;
-                document.getElementById('room-display').innerText = "ROOM: " + room.toUpperCase();
-                document.getElementById('room-badge').classList.remove('hidden');
-                document.getElementById('current-room-name').innerText = room.toUpperCase();
-                
-                // MQTT Logic
-                if(mqttClient && mqttClient.isConnected()) {
-                    mqttClient.unsubscribe("termos/v3/chat");
-                    mqttClient.subscribe(`termos/rooms/${room}`);
-                    mqttClient.publish(`termos/rooms/${room}`, JSON.stringify({ user: username, nick: userProfile.name, type: 'join' }));
-                    addSystemMessage(`Joined room: ${room}`);
-                }
+        this.client.onMessageArrived = (message) => {
+            const topic = message.destinationName;
+            if (topic === `termos/nexus/${Store.state.user.room}`) {
+                const data = JSON.parse(message.payloadString);
+                // Re-render chat
+                if (Store.listeners['logs']) Store.listeners['logs'](Store.state.logs); 
             }
-            inp.value = '';
-            return;
-        }
+        };
 
-        if(txt.startsWith('/camera')) {
-            toggleMediaOverlay();
-            switchVideoMode('camera');
-            inp.value = '';
-            return;
-        }
+        this.connect();
+    },
 
-        addUserMessage(txt);
-        if(mqttClient && mqttClient.isConnected()) {
-            const dest = (currentRoomName) ? `termos/rooms/${currentRoomName}` : "termos/v3/chat";
-            mqttClient.publish(dest, JSON.stringify({ user: username, nick: userProfile.name, text: txt }));
-        }
-        inp.value = '';
-    }
-
-    // --- MQTT ---
-    function connectMQTT() {
-        try {
-            mqttClient = new Paho.MQTT.Client(MQTT_BROKER_URL, "termos_" + Math.random().toString(16).substr(2, 8));
-            mqttClient.onConnectionLost = () => { setTimeout(connectMQTT, 5000); };
-            mqttClient.connect({
-                onSuccess: () => {
-                    mqttClient.subscribe("termos/v3/chat");
-                    document.getElementById('api-status-dot').classList.add('bg-green-400');
-                    document.getElementById('room-display').innerText = "ONLINE";
-                }
-            });
-            mqttClient.onMessageArrived = (msg) => {
-                const data = JSON.parse(msg.payloadString);
+    connect() {
+        this.client.connect({
+            onSuccess: () => {
+                Store.log(`Connected to Node: ${Store.state.user.room}`, 'sys');
+                Store.set('status', { ...Store.state.status, online: true, ping: Math.floor(Math.random()*50)+20 });
                 
-                // Handle Room Logic
-                const isCurrentRoom = (currentRoomName && msg.destinationName === `termos/rooms/${currentRoomName}`);
-                const isPublic = (!currentRoomName && msg.destinationName === "termos/v3/chat");
+                // Subscribe
+                this.client.subscribe(`termos/nexus/${Store.state.user.room}`);
+            },
+            onFailure: () => {
+                Store.log("Connection Failed", 'err');
+            }
+        });
+    },
 
-                if(isCurrentRoom || isPublic) {
-                    if(data.text && data.user !== username) addUserMessage(data.text, data.nick, data.avatar);
-                    
-                    if(data.type === 'video-url') {
-                        addSystemMessage(`${data.nick} started a stream.`);
-                        toggleMediaOverlay();
-                        switchVideoMode('url');
-                        document.getElementById('stream-url').value = data.url;
-                        playStreamUrl();
-                    }
-                    
-                    if(data.type === 'camera-on') {
-                        addSystemMessage(`${data.nick} turned on camera.`);
-                        // In a full P2P app, this would trigger the call.
-                        // Here we alert user to go to video room to check (if signaling were implemented)
-                        toggleMediaOverlay();
-                        switchVideoMode('camera');
-                        // Show placeholder for remote
-                        document.getElementById('remote-video-container').classList.remove('hidden');
-                        document.getElementById('remote-video').poster = data.avatar || "https://via.placeholder.com/150";
-                    }
-                }
-            };
-        } catch(e) { console.error(e); }
-    }
-
-    // --- MODULES (REBUILDER) ---
-    const SystemRebuilder = {
-        install: function(name) {
-            name = name.toLowerCase().trim();
-            try {
-                switch(name) {
-                    case 'neon':
-                        document.documentElement.style.setProperty('--paper-bg', '#1a1a1a');
-                        document.documentElement.style.setProperty('--ink-primary', '#00ffcc');
-                        document.body.style.background = '#000';
-                        addSystemMessage("Installed: Neon Theme");
-                        break;
-                    case 'sketch':
-                        document.documentElement.style.setProperty('--paper-bg', '#fdf6e3');
-                        document.documentElement.style.setProperty('--ink-primary', '#654b21');
-                        document.body.style.background = '#fdf6e3';
-                        addSystemMessage("Installed: Pencil Theme");
-                        break;
-                    default:
-                        addSystemMessage("Unknown theme: " + name);
-                }
-            } catch(e) { addSystemMessage("Error: " + e.message); }
-        }
-    };
-
-    // --- INIT ---
-    window.onload = function() {
-        initPaintBackground();
-        document.getElementById('gh-owner').value = REPO_OWNER;
-        document.getElementById('gh-repo').value = REPO_NAME;
-        document.getElementById('gh-token').value = GITHUB_TOKEN;
-
-        // Bind Events
-        document.getElementById('send-btn').onclick = handleInput;
-        document.getElementById('user-input').addEventListener('keypress', e => { if(e.key === 'Enter') handleInput(); });
-
-        connectMQTT();
+    send(text) {
+        const payload = JSON.stringify({
+            sender: Store.state.user.name,
+            text: text,
+            timestamp: Date.now()
+        });
+        const message = new Paho.MQTT.Message(payload);
+        message.destinationName = `termos/nexus/${Store.state.user.room}`;
+        this.client.send(message);
         
-        if(!GROQ_API_KEY) {
-            setTimeout(() => addSystemMessage("API Key missing. Set via Admin."), 2000);
-        }
-    };
-
-    // --- ADMIN HELPERS ---
-    function toggleAdminMode() { document.getElementById('admin-panel').classList.toggle('admin-hidden'); }
-    function openProfileModal() { document.getElementById('profile-modal').classList.remove('admin-hidden'); }
-    function closeProfileModal() { document.getElementById('profile-modal').classList.add('admin-hidden'); }
-    function saveProfile() { userProfile.name = document.getElementById('edit-name').value; userProfile.avatar = document.getElementById('edit-avatar').value || "🎨"; localStorage.setItem('termos_name', userProfile.name); localStorage.setItem('termos_avatar', userProfile.avatar); closeProfileModal(); }
-    function triggerFileUpload() { document.getElementById('avatar-upload').click(); }
-    function requestApiKey() { GROQ_API_KEY = prompt("Groq API Key:"); localStorage.setItem('termos_groq_key', GROQ_API_KEY); }
-    function forceReset() { if(confirm("Reset?")) { localStorage.clear(); location.reload(); } }
-    function toggleVoice() { alert("Voice features pending upgrade..."); }
-
-    // --- CODE EDITOR ---
-    function toggleCodeEditor() {
-        const overlay = document.getElementById('code-editor-overlay');
-        if(overlay.classList.contains('admin-hidden')) {
-            overlay.classList.remove('admin-hidden');
-            document.getElementById('code-editor-textarea').value = document.documentElement.outerHTML;
-        } else {
-            overlay.classList.add('admin-hidden');
-        }
+        // Add local log
+        Store.log(`You: ${text}`, 'msg');
     }
-    function applyCode() { if(confirm("Apply changes?")) { const code = document.getElementById('code-editor-textarea').value; document.open(); document.write(code); document.close(); } }
-    function downloadCode() { const code = document.getElementById('code-editor-textarea').value; const blob = new Blob([code], {type: "text/html"}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = "termos.html"; a.click(); }
-    
-    // --- GITHUB EVOLUTION (OPTIMIZED) ---
-    async function initiateEvolution() {
-        if(!GROQ_API_KEY) return alert("API Key needed");
-        const owner = document.getElementById('gh-owner').value;
-        const repo = document.getElementById('gh-repo').value;
-        const token = document.getElementById('gh-token').value;
-        if(!owner || !repo || !token) return alert("Missing GitHub info");
+};
 
-        const input = prompt("Describe the art upgrade:");
-        if(!input) return;
-        
-        addSystemMessage("🎨 Fetching canvas...");
-        try {
-            // Fetch Code
-            const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html?ref=main`, { headers: { 'Authorization': `token ${token}` }});
-            const data = await res.json();
-            if(data.message) throw new Error(data.message);
-            const currentCode = atob(data.content);
+// --- 4. APP CONTROLLER ---
+const App = {
+    init() {
+        // Load Settings
+        const savedName = localStorage.getItem('nexus_name');
+        const savedRoom = localStorage.getItem('nexus_room');
+        if(savedName) Store.state.user.name = savedName;
+        if(savedRoom) Store.state.user.room = savedRoom;
 
-            // AI Mutation
-            addSystemMessage("🖊️ Painting new code...");
-            const aiRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: "POST",
-                headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: API_MODEL,
-                    messages: [{ role: "system", content: "Return ONLY raw HTML code. No markdown." }, { role: "user", content: `Change this HTML to: "${input}". Keep style inline.\n\n${currentCode}` }]
-                })
-            });
-            const aiData = await aiRes.json();
-            let newCode = aiData.choices[0].message.content.replace(/```html/g, "").replace(/```/g, "").trim();
+        document.getElementById('setting-name').value = Store.state.user.name;
+        document.getElementById('setting-room').value = Store.state.user.room;
+        document.getElementById('room-name').innerText = Store.state.user.room.toUpperCase();
 
-            // Push
-            addSystemMessage("🚀 Uploading...");
-            const putRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html`, {
-                method: 'PUT',
-                headers: { 'Authorization': `token ${token}` },
-                body: JSON.stringify({
-                    message: "Art Update: " + input,
-                    content: btoa(newCode),
-                    sha: data.sha
-                })
-            });
-            if(putRes.ok) {
-                addSystemMessage("✅ Masterpiece updated. Reloading...");
-                setTimeout(() => location.reload(), 2000);
+        // Initialize Systems
+        VideoSys.init();
+        CommSys.init();
+
+        // Setup Reactive Listeners (The "Magic" Part)
+        Store.subscribe('status', (status) => {
+            const dot = document.getElementById('sys-status');
+            if (status.online) {
+                dot.innerText = "ONLINE";
+                dot.className = "text-[var(--primary)]";
+                document.getElementById('ping-display').innerText = status.ping + " ms";
             } else {
-                throw new Error("Upload failed");
+                dot.innerText = "OFFLINE";
+                dot.className = "text-[var(--alert)]";
             }
-        } catch(e) {
-            addSystemMessage("❌ " + e.message);
+        });
+
+        Store.subscribe('logs', (logs) => {
+            const container = document.getElementById('chat-log');
+            // Render only last 50 for performance
+            const recentLogs = logs.slice(-50);
+            
+            container.innerHTML = recentLogs.map(log => {
+                if (log.type === 'sys') return `<div class="log-entry log-sys">[${log.time}] SYS: ${log.text}</div>`;
+                if (log.type === 'err') return `<div class="log-entry log-err">[${log.time}] ERR: ${log.text}</div>`;
+                return `<div class="log-entry log-msg">[${log.time}] ${log.text}</div>`;
+            }).join('');
+
+            container.scrollTop = container.scrollHeight;
+        });
+
+        Store.log("NEXUS Frontend Engine Initialized.", 'sys');
+    },
+
+    sendMessage() {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if(!text) return;
+
+        if(text.startsWith('/join')) {
+            const room = text.split(' ')[1];
+            if(room) {
+                Store.state.user.room = room;
+                document.getElementById('room-name').innerText = room.toUpperCase();
+                localStorage.setItem('nexus_room', room);
+                // Reconnect logic
+                if(CommSys.client) {
+                    CommSys.client.disconnect();
+                    setTimeout(() => CommSys.connect(), 500);
+                }
+            }
+        } else {
+            CommSys.send(text);
         }
+        input.value = '';
+    },
+
+    openVideoModal() {
+        document.getElementById('video-modal').classList.remove('hidden');
+        document.getElementById('video-modal').classList.add('flex');
+    },
+    closeVideoModal() {
+        document.getElementById('video-modal').classList.add('hidden');
+        document.getElementById('video-modal').classList.remove('flex');
+        VideoSys.stopCamera(); // Auto stop to save battery
+    },
+
+    toggleSettings() {
+        document.getElementById('settings-modal').classList.toggle('hidden');
+    },
+    saveSettings() {
+        const name = document.getElementById('setting-name').value;
+        const room = document.getElementById('setting-room').value;
+        localStorage.setItem('nexus_name', name);
+        localStorage.setItem('nexus_room', room);
+        location.reload();
     }
+};
+
+// Boot
+window.onload = () => App.init();
+
+// Keyboard Shortcut
+document.getElementById('chat-input').addEventListener('keypress', (e) => {
+    if(e.key === 'Enter') App.sendMessage();
+});
+
 </script>
 </body>
 </html>
