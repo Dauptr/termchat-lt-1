@@ -3,551 +3,796 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Sin City</title>
-    <meta name="theme-color" content="#0f0c29">
+    <title>TermOS: UNIVERSE GENESIS</title>
+    <meta name="theme-color" content="#050505">
     
-    <!-- RESOURCES -->
+    <!-- EXTERNAL LIBRARIES -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-    
+
     <style>
-        /* --- SINCITY THEME VARIABLES --- */
-        :root { 
-            --bg-deep: #050510;       /* Void Black */
-            --neon-pink: #ff00ff;     /* Synthwave Pink */
-            --neon-cyan: #00f3ff;     /* Cyber Cyan */
-            --neon-purple: #bc13fe;    /* Vaporwave Purple */
-            --glass-bg: rgba(20, 20, 35, 0.6); 
-            --glass-border: rgba(255, 0, 255, 0.1);
-            --msg-user-bg: linear-gradient(135deg, #c026d3 0%, #701a75 100%); /* Cyber Pink Gradient */
+        /* --- VISUAL CORE --- */
+        :root {
+            --glass-bg: rgba(10, 10, 20, 0.65);
+            --glass-border: rgba(100, 200, 255, 0.1);
+            --accent-primary: #a855f7; /* Purple */
+            --accent-secondary: #06b6d4; /* Cyan */
+            --accent-bio: #00ff9d; /* Bio Green */
+            --msg-user-bg: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(79, 70, 229, 0.9));
+            --msg-ai-bg: rgba(15, 23, 42, 0.9);
+            --neon-glow: 0 0 20px rgba(168, 85, 247, 0.4);
+            --aurora-1: rgba(0, 255, 157, 0.15);
+            --aurora-2: rgba(6, 182, 212, 0.15);
+            --aurora-3: rgba(168, 85, 247, 0.15);
         }
-        
-        body { 
-            background: var(--bg-deep); 
-            color: #e2e8f0; 
-            font-family: 'Share Tech Mono', monospace; 
-            overflow: hidden; 
+
+        body {
+            background: #000;
+            color: #e2e8f0;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
             margin: 0;
+            height: 100vh;
         }
 
-        /* RETRO SCANLINE - OPTIMIZED CSS ONLY */
-        .scanlines {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(255, 0, 0, 0.06));
-            background-size: 100% 2px, 2px 100%;
-            pointer-events: none; z-index: 50;
+        /* --- UNIVERSE CANVAS --- */
+        #universe-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none; /* Let clicks pass through */
         }
 
-        /* HIGH PERFORMANCE CANVAS */
-        #main-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
-        
-        /* UI COMPONENTS */
-        .glass-panel { 
-            background: var(--glass-bg); 
-            backdrop-filter: blur(12px); 
-            -webkit-backdrop-filter: blur(12px); 
-            border: 1px solid var(--glass-border); 
-            box-shadow: 0 0 15px rgba(255, 0, 255, 0.05); 
-        }
-        
-        .font-header { font-family: 'Orbitron', sans-serif; text-shadow: 0 0 10px var(--neon-purple); }
-        
-        /* AVATAR GRADIENTS */
-        .avatar-gradient-ai { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); }
-        .avatar-gradient-neural { background: linear-gradient(135deg, var(--neon-pink), var(--neon-cyan)); }
-        
-        /* INPUT STYLES */
-        .input-glow:focus-within { 
-            box-shadow: 0 0 20px var(--neon-purple); 
-            border-color: var(--neon-cyan); 
+        /* --- UI COMPONENTS --- */
+        .font-header { font-family: 'Orbitron', sans-serif; }
+        .font-mono { font-family: 'Fira Code', monospace; }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* SCROLLBAR */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: var(--neon-pink); border-radius: 3px; }
-        ::-webkit-scrollbar-track { background: #000; }
-
-        /* UTILITIES */
-        .admin-hidden { display: none; opacity: 0; }
-        .admin-visible { display: flex; opacity: 1; }
-        
-        /* ANIMATIONS */
-        @keyframes slideUpFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .msg-anim { animation: slideUpFade 0.2s ease-out forwards; }
-        
-        .neural-msg { 
-            background: linear-gradient(135deg, rgba(188,19,254,0.1), rgba(255,0,255,0.1)); 
-            border: 1px solid var(--neon-cyan); 
-            box-shadow: 0 0 10px var(--neon-cyan);
+        .glass-panel:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: var(--neon-glow), inset 0 0 10px rgba(255,255,255,0.05);
         }
 
-        /* LOADER */
+        .bio-button {
+            background: linear-gradient(90deg, rgba(0,255,157,0.1), rgba(6,182,212,0.1));
+            border: 1px solid rgba(0,255,157,0.3);
+            transition: all 0.3s;
+        }
+        .bio-button:hover {
+            background: linear-gradient(90deg, rgba(0,255,157,0.3), rgba(6,182,212,0.3));
+            box-shadow: 0 0 15px rgba(0, 255, 157, 0.4);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 2px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        /* Animations */
+        @keyframes pulse-bio {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.95); }
+        }
+        .animate-pulse-bio { animation: pulse-bio 3s infinite ease-in-out; }
+
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .msg-anim { animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* Utility Classes */
+        .hidden-vis { display: none !important; opacity: 0; pointer-events: none; }
+        .visible-vis { display: flex !important; opacity: 1; pointer-events: auto; }
+        
+        .avatar-gradient { background: linear-gradient(135deg, #06b6d4, #a855f7); }
+        
+        /* Code Editor */
+        .code-editor {
+            width: 100%;
+            height: 100%;
+            background: #020617;
+            color: #a855f7;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            border: none;
+            resize: none;
+            outline: none;
+            padding: 1rem;
+        }
+
+        /* Boot Loader */
         #boot-screen {
-            position: fixed; inset: 0; background: #000; z-index: 999; 
+            position: fixed; inset: 0; background: #000; z-index: 1000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 1s ease;
         }
-        .loader-text { 
-            color: var(--neon-pink); 
-            font-size: 2rem; 
-            text-shadow: 0 0 10px var(--neon-pink); 
-            animation: pulse 1s infinite alternate;
+        .loader-ring {
+            width: 80px; height: 80px; border: 4px solid #333; border-top: 4px solid var(--accent-bio);
+            border-radius: 50%; animation: spin 1s linear infinite;
         }
-        @keyframes pulse { from { opacity: 0.7; } to { opacity: 1; } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col relative">
-    <!-- VISUAL ENGINE -->
-    <div class="scanlines"></div>
-    <canvas id="main-canvas"></canvas>
-    
+<body class="text-gray-100">
+
+    <!-- VISUALS -->
+    <canvas id="universe-canvas"></canvas>
+
     <!-- BOOT SCREEN -->
     <div id="boot-screen">
-        <div class="loader-text font-header">SINCITY // LOADING...</div>
-        <div class="text-xs text-purple-400 mt-2 font-mono tracking-widest">INITIALIZING GRAPHICS ENGINE...</div>
+        <div class="loader-ring mb-6 animate-pulse"></div>
+        <h1 class="text-4xl font-header text-white tracking-[0.2em] mb-2">TERMOS <span class="text-[var(--accent-bio)]">GENESIS</span></h1>
+        <div class="mt-4 text-cyan-500 font-mono text-xs flex flex-col items-center">
+            <span id="boot-text">INITIALIZING BIO-ENGINE...</span>
+            <div class="w-48 h-1 bg-gray-800 mt-2 rounded overflow-hidden">
+                <div id="boot-progress" class="h-full bg-[var(--accent-bio)] w-0 transition-all duration-300"></div>
+            </div>
+        </div>
     </div>
 
-    <!-- MAIN INTERFACE -->
-    <header class="fixed top-0 left-0 right-0 z-20 glass-panel border-b border-white/5 h-16 flex items-center justify-between px-4 lg:px-8">
+    <!-- HEADER -->
+    <header class="fixed top-0 w-full z-50 px-4 py-3 border-b border-white/5 bg-black/40 backdrop-blur-md flex justify-between items-center">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-[0_0_15px_rgba(255,0,255,255,0.3)]">
-                <span class="text-white text-xl">🌆</span>
+            <div class="w-10 h-10 rounded-lg border border-[var(--accent-bio)] flex items-center justify-center shadow-[0_0_15px_rgba(0,255,157,0.3)] bg-black/50">
+                <svg class="w-6 h-6 text-[var(--accent-bio)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
             </div>
             <div>
-                <h1 class="font-header font-bold text-xl tracking-widest text-white">TERMOS <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 text-transparent">SINCITY</span></h1>
-                <div class="flex items-center gap-2 text-xs text-gray-400 font-mono">
-                    <div id="status-dot" class="w-2 h-2 rounded-full bg-red-500"></div>
-                    <span id="room-display">OFFLINE</span>
-                    <span class="text-[10px] text-pink-400 border border-pink-500/30 px-1 rounded bg-pink-900/20">UNIVERSE</span>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-header font-bold text-lg tracking-wider text-white">TERMOS</h1>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-bio)]/10 text-[var(--accent-bio)] border border-[var(--accent-bio)]/30 font-mono">GENESIS</span>
+                </div>
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-mono">
+                    <div id="api-status-dot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                    <span id="status-text">OFFLINE</span>
+                    <span id="room-indicator" class="hidden text-cyan-400">🪐 <span id="current-room">PUBLIC</span></span>
                 </div>
             </div>
         </div>
+
         <div class="flex items-center gap-2">
-            <button onclick="Termai.think()" class="hidden md:flex bg-purple-900/30 hover:bg-purple-800 text-purple-300 text-[10px] font-mono px-3 py-1 rounded border border-purple-500/30">🧠 THINK</button>
-            <button onclick="toggleCodeEditor()" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-300 text-[10px] font-mono px-3 py-1 rounded border border-white/10">🖋 CODE</button>
-            <button onclick="toggleAdminMode()" class="bg-black/40 hover:bg-pink-900/40 border border-white/10 hover:border-pink-500 text-pink-400 px-3 py-1.5 rounded-full text-xs font-bold transition-all">🔑 KEYS</button>
+            <button onclick="toggleMediaPanel()" class="bio-button px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--accent-bio)] uppercase tracking-wider hidden md:block">Media Deck</button>
+            <button onclick="triggerKernel()" class="bg-purple-900/20 hover:bg-purple-900/40 border border-purple-500/30 px-3 py-1.5 rounded-lg text-xs font-bold text-purple-300 uppercase hidden md:block">Kernel AI</button>
+            <button onclick="toggleAdmin()" class="bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg text-xs font-bold text-gray-300 uppercase hidden md:block">System</button>
+            <div class="flex flex-col items-end text-right">
+                <span class="text-[10px] text-gray-400 font-mono">CREDITS</span>
+                <span id="xp-display" class="text-xs font-bold text-[var(--accent-bio)]">0 XP</span>
+            </div>
         </div>
     </header>
-    
-    <!-- CHAT -->
-    <main id="chat-container" class="flex-1 overflow-y-auto pt-24 pb-32 px-4 z-10 scroll-smooth max-w-4xl mx-auto w-full"></main>
-    
-    <!-- INPUT -->
-    <div class="fixed bottom-0 left-0 w-full z-30 glass-panel border-t border-white/10 pb-6 pt-4 px-4">
-        <div class="max-w-4xl mx-auto">
-            <div class="flex items-end gap-2 bg-black/60 rounded-2xl p-2 border border-white/5 input-glow transition-all">
-                <input type="text" id="user-input" placeholder="Enter command or chat..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-sm font-mono">
-                <button onclick="handleInput()" class="p-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg transform active:scale-95 shrink-0 font-bold">
-                    SEND
-                </button>
-            </div>
+
+    <!-- MAIN CHAT INTERFACE -->
+    <main id="chat-interface" class="fixed inset-0 z-10 pt-20 pb-24 px-4 flex flex-col max-w-4xl mx-auto w-full">
+        <div id="chat-container" class="flex-1 overflow-y-auto space-y-4 scroll-smooth pr-2 pb-4">
+            <!-- Messages will appear here -->
+        </div>
+    </main>
+
+    <!-- INPUT AREA -->
+    <div class="fixed bottom-0 w-full z-30 p-4 bg-gradient-to-t from-black via-black/90 to-transparent">
+        <div class="max-w-4xl mx-auto glass-panel rounded-2xl p-2 flex items-center gap-2 border border-[var(--accent-bio)]/30 shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+            <button onclick="attachFile()" class="p-3 text-gray-400 hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+            </button>
+            <input type="text" id="user-input" placeholder="System Command: /ai, /join [room], /evolve..." 
+                   class="flex-1 bg-transparent border-none outline-none text-white px-4 py-3 text-sm font-light placeholder-gray-500 font-mono">
+            <button onclick="handleInput()" class="bg-gradient-to-r from-[var(--accent-bio)] to-cyan-600 hover:opacity-90 text-black px-6 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(0,255,157,0.4)] transition-all">
+                Transmit
+            </button>
         </div>
     </div>
 
-    <!-- MODALS -->
-    <!-- ADMIN / KEYS -->
-    <div id="admin-panel" class="admin-hidden fixed bottom-24 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border-pink-500/30">
-        <h3 class="text-pink-400 font-header font-bold mb-3">🔑 NEURAL KEYS</h3>
-        <div class="space-y-3">
-            <div>
-                <label class="block text-[10px] font-bold text-purple-400 mb-1">GROQ API KEY (Required)</label>
-                <input type="password" id="cfg-groq" class="w-full bg-black/40 border border-white/10 rounded p-2 text-white focus:border-purple-500 outline-none text-xs font-mono" placeholder="gsk_...">
-            </div>
-            
-            <div class="border-t border-white/10 pt-2 mt-2">
-                <h4 class="text-gray-400 text-[10px] font-bold font-mono">GITHUB CREDENTIALS</h4>
-                <div class="space-y-2 mt-2">
-                    <input type="text" id="gh-owner" placeholder="Owner" class="w-full bg-black/40 border border-white/10 rounded p-2 text-white outline-none text-xs font-mono" value="ingrptr-lt">
-                    <input type="text" id="gh-repo" placeholder="Repo" class="w-full bg-black/40 border border-white/10 rounded p-2 text-white outline-none text-xs font-mono" value="termchat-lt">
-                    <input type="password" id="gh-token" placeholder="Token" class="w-full bg-black/40 border border-white/10 rounded p-2 text-white outline-none text-xs font-mono">
+    <!-- MODALS & PANELS -->
+
+    <!-- ADMIN / CODE EDITOR -->
+    <div id="admin-panel" class="fixed inset-0 z-50 bg-black/90 hidden-vis flex-col">
+        <div class="h-full flex flex-col p-4">
+            <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
+                <h2 class="font-header text-xl text-white flex items-center gap-2">
+                    <span class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span> SYSTEM CONSOLE
+                </h2>
+                <div class="flex gap-2">
+                    <button onclick="applyCode()" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded text-xs font-bold">APPLY CODE</button>
+                    <button onclick="toggleAdmin()" class="text-gray-400 hover:text-white px-4 py-2">✖</button>
                 </div>
             </div>
-
-            <button onclick="saveConfig()" class="w-full bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold py-2 rounded-lg shadow-lg">SAVE & CONNECT</button>
-            <button onclick="initiateEvolution()" class="w-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2 rounded-lg shadow-lg mt-2">🧬 PUSH TO GITHUB</button>
-        </div>
-    </div>
-
-    <!-- CODE EDITOR -->
-    <div id="code-editor-overlay" class="fixed inset-0 z-[70] bg-[#0f0c29] flex flex-col admin-hidden">
-        <div class="editor-header p-4 border-b border-white/10 flex justify-between items-center bg-black">
-            <h2 class="text-white font-bold font-header text-xl">SYSTEM EDITOR</h2>
-            <div class="flex gap-2">
-                <button onclick="applyCode()" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded font-mono text-xs font-bold">APPLY</button>
-                <button onclick="toggleCodeEditor()" class="text-gray-400 hover:text-white px-4 py-2 rounded font-mono text-xs">✖</button>
+            <textarea id="code-editor" class="code-editor flex-1 rounded-lg border border-white/10" spellcheck="false"></textarea>
+            <div class="mt-2 text-center text-[10px] text-gray-500 font-mono">
+                Editing DOM Directly. Changes take effect immediately.
             </div>
         </div>
-        <textarea id="code-editor-textarea" class="flex-1 bg-[#050510] text-purple-400 font-mono text-sm p-4 border-none resize-none outline-none" spellcheck="false"></textarea>
     </div>
 
-<script>
-    // --- VISUAL ENGINE (OPTIMIZED FOR NO LAG) ---
-    const Visuals = {
-        canvas: null,
-        ctx: null,
-        width: 0,
-        height: 0,
-        mode: 'sincity', // 'sincity' | 'matrix' | 'universe'
-        
-        // PARTICLES
-        stars: [],
-        gridOffset: 0,
-        matrixDrops: [],
-        
-        init: function() {
-            this.canvas = document.getElementById('main-canvas');
-            this.ctx = this.canvas.getContext('2d');
-            this.resize();
-            window.addEventListener('resize', () => this.resize());
-            
-            // Initialize objects
-            this.initStars();
-            this.initMatrix();
-            
-            this.startLoop();
-        },
+    <!-- MEDIA DECK -->
+    <div id="media-panel" class="fixed bottom-24 right-4 w-80 md:w-96 glass-panel rounded-2xl z-40 hidden-vis flex-col overflow-hidden border border-[var(--accent-secondary)]/30">
+        <div class="flex justify-between items-center p-4 border-b border-white/10 bg-black/40">
+            <h3 class="text-sm font-bold text-white tracking-widest">MEDIA DECK</h3>
+            <button onclick="toggleMediaPanel()" class="text-gray-400 hover:text-white">✖</button>
+        </div>
+        <div class="p-4 space-y-4">
+            <!-- Video -->
+            <div class="aspect-video bg-black rounded-lg border border-white/10 overflow-hidden relative group">
+                <video id="main-video" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" controls></video>
+                <div id="video-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs font-mono pointer-events-none">
+                    [ NO SIGNAL ]
+                </div>
+            </div>
+            <!-- Radio -->
+            <div class="space-y-2">
+                <div class="text-[10px] text-gray-400 uppercase tracking-widest">Frequencies</div>
+                <div onclick="playRadio('https://streams.ilovemusic.com/iloveradio17.mp3')" class="cursor-pointer p-3 rounded bg-white/5 hover:bg-white/10 border border-white/5 flex justify-between items-center group">
+                    <span class="text-sm font-bold text-cyan-300 group-hover:text-cyan-100">Cyberpunk FM</span>
+                    <div class="w-2 h-2 rounded-full bg-gray-600 group-hover:bg-cyan-400"></div>
+                </div>
+                <div onclick="playRadio('https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3')" class="cursor-pointer p-3 rounded bg-white/5 hover:bg-white/10 border border-white/5 flex justify-between items-center group">
+                    <span class="text-sm font-bold text-purple-300 group-hover:text-purple-100">Deep Space Lofi</span>
+                    <div class="w-2 h-2 rounded-full bg-gray-600 group-hover:bg-purple-400"></div>
+                </div>
+            </div>
+            <!-- Input -->
+            <div class="flex gap-2">
+                <input type="text" id="video-url" placeholder="Paste Stream URL (.mp4/.m3u8)" class="flex-1 bg-black/50 border border-white/10 rounded px-3 py-2 text-xs text-white focus:border-cyan-500 outline-none">
+                <button onclick="playVideoInput()" class="bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 px-3 rounded text-xs font-bold border border-cyan-500/30">BROADCAST</button>
+            </div>
+        </div>
+    </div>
 
-        resize: function() {
-            this.width = this.canvas.width = window.innerWidth;
-            this.height = this.canvas.height = window.innerHeight;
-            // Re-init matrix drops on resize
-            const fontSize = 14;
-            const columns = Math.floor(this.width / fontSize);
-            this.matrixDrops = Array(columns).fill(1);
-        },
+    <!-- JOIN ROOM MODAL -->
+    <div id="join-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden-vis flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-2xl max-w-sm w-full border border-[var(--accent-primary)]/50 shadow-[0_0_50px_rgba(168,85,247,0.2)] text-center">
+            <h3 class="text-xl font-header text-white mb-2">ENTER FREQUENCY</h3>
+            <p class="text-xs text-gray-400 mb-6 font-mono">Establish secure link to private sector.</p>
+            <input type="text" id="room-name-input" placeholder="SECTOR NAME" class="w-full bg-black/50 border border-[var(--accent-primary)]/30 rounded-xl p-4 text-center text-white font-mono mb-6 focus:outline-none focus:border-[var(--accent-primary)]">
+            <div class="flex gap-3">
+                <button onclick="joinRoom()" class="flex-1 bg-[var(--accent-primary)] hover:bg-purple-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-900/40">INITIALIZE</button>
+                <button onclick="document.getElementById('join-modal').classList.replace('visible-vis','hidden-vis')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl">ABORT</button>
+            </div>
+        </div>
+    </div>
 
-        initStars: function() {
-            this.stars = [];
-            for(let i=0; i<150; i++) {
-                this.stars.push({
-                    x: Math.random() * this.width,
-                    y: Math.random() * this.height,
-                    z: Math.random() * 2, // Depth
-                    size: Math.random() * 1.5
+    <!-- JAVASCRIPT ENGINE -->
+    <script>
+        // --- 1. UNIVERSE ENGINE (VISUALS) ---
+        const canvas = document.getElementById('universe-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let stars = [];
+        let planets = [];
+        let organicNodes = []; // The "Microorganism" feel
+        let mouse = { x: 0, y: 0 };
+        let time = 0;
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initStars();
+            initPlanets();
+        }
+
+        function initStars() {
+            stars = [];
+            for(let i=0; i<800; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    z: Math.random() * width,
+                    o: Math.random() // opacity offset
                 });
             }
-        },
-
-        initMatrix: function() {
-            // Re-populated in resize
-        },
-
-        // --- RENDER LOOP (THE HEART) ---
-        startLoop: function() {
-            const draw = () => {
-                // 1. FADE EFFECT (Instead of clearRect) - Creates trails, looks cooler + faster
-                this.ctx.fillStyle = 'rgba(5, 5, 10, 0.15)'; // Very dark purple trail
-                this.ctx.fillRect(0, 0, this.width, this.height);
-                
-                // 2. RENDER LAYERS
-                this.drawUniverse();  // Stars
-                this.drawSincity();  // Grid & Sun
-                this.drawMatrix();  // Rain
-                
-                requestAnimationFrame(draw);
-            };
-            requestAnimationFrame(draw);
-        },
-
-        // LAYER 1: UNIVERSE
-        drawUniverse: function() {
-            this.ctx.fillStyle = '#fff';
-            this.stars.forEach(star => {
-                // Parallax movement
-                star.x -= star.z * 0.2; 
-                if(star.x < 0) star.x = this.width;
-                
-                const alpha = star.z / 2;
-                this.ctx.globalAlpha = alpha;
-                this.ctx.beginPath();
-                this.ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-                this.ctx.fill();
-            });
-            this.ctx.globalAlpha = 1.0;
-        },
-
-        // LAYER 2: SINCITY (The "City")
-        drawSincity: function() {
-            const w = this.width;
-            const h = this.height;
-            const horizon = h * 0.6; // Horizon line
-
-            // A. RETRO SUN
-            const sunGradient = this.ctx.createLinearGradient(0, 0, 0, 1);
-            sunGradient.addColorStop(0, '#ff00ff'); // Pink
-            sunGradient.addColorStop(1, '#ffff00'); // Yellow
-            
-            this.ctx.fillStyle = sunGradient;
-            this.ctx.beginPath();
-            this.ctx.arc(w * 0.5, horizon, 100, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            // Sun Glow
-            const glow = this.ctx.createRadialGradient(w*0.5, horizon, 0, 100, 0, 200);
-            glow.addColorStop(0, 'rgba(255, 0, 255, 0.4)');
-            glow.addColorStop(1, 'rgba(255, 0, 255, 0)');
-            this.ctx.fillStyle = glow;
-            this.ctx.fillRect(0, horizon - 100, w, 200);
-
-            // B. PERSPECTIVE GRID (Moving)
-            this.gridOffset = (this.gridOffset + 0.5) % 40; // Speed
-            
-            this.ctx.strokeStyle = 'rgba(255, 0, 255, 0.2)'; // White/Pink grid
-            this.ctx.lineWidth = 1;
-            
-            // Floor
-            this.ctx.beginPath();
-            this.ctx.moveTo(0, h);
-            this.ctx.lineTo(w, h);
-            this.ctx.stroke();
-
-            // Vertical Lines (Perspective)
-            for (let i = 0; i < w; i += 40) {
-                let x = (i + this.gridOffset) % w;
-                this.ctx.beginPath();
-                // Simple perspective hack
-                this.ctx.moveTo(x, h);
-                this.ctx.lineTo((x - w/2) * 3 + w/2, h + 100);
-                this.ctx.stroke();
-            }
-            
-            // Horizontal Lines
-            for (let i = h; i < h + 100; i+= 20) {
-                this.ctx.beginPath();
-                this.ctx.moveTo(0, i);
-                this.ctx.lineTo(w, i);
-                this.ctx.stroke();
-            }
-        },
-
-        // LAYER 3: MATRIX RAIN
-        drawMatrix: function() {
-            const fontSize = 14;
-            const columns = Math.floor(this.width / fontSize);
-            const letters = '01XYZ';
-            
-            // Ensure drops array size matches columns
-            if(this.matrixDrops.length !== columns) this.resize();
-            
-            this.ctx.fillStyle = (this.mode === 'sincity') ? '#ff00ff' : '#00ff00'; // Pink in City, Green in Matrix
-            
-            for(let i=0; i<drops.length; i++) {
-                const text = letters[Math.floor(Math.random() * letters.length)];
-                this.ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-                
-                // Reset drop
-                if(drops[i] * fontSize > this.height && Math.random() > 0.975) {
-                    drops[i] = 0;
-                }
-                drops[i]++;
-            }
-        },
-        
-        // Toggle Mode for performance
-        setMode: function(modeName) {
-            this.mode = modeName;
-            addSystemMessage(`VISUAL ENGINE: ${modeName.toUpperCase()}`);
         }
-    };
 
-    // --- SYSTEM LOGIC (TERMAI) ---
-    const Termai = {
-        key: '',
-        url: 'https://api.groq.com/openai/v1/chat/completions',
-        model: 'llama-3.3-70b-versatile',
+        function initPlanets() {
+            // Generate background floating planets
+            planets = [
+                { x: width*0.8, y: height*0.2, r: 60, color: '#4f46e5', ring: true },
+                { x: width*0.1, y: height*0.7, r: 120, color: '#be185d', ring: false },
+                { x: width*0.5, y: height*0.1, r: 30, color: '#06b6d4', ring: true }
+            ];
+        }
 
-        init: function() {
-            this.key = localStorage.getItem('termos_key_groq') || "";
-            this.updateStatus();
-        },
-        updateStatus: function() {
-            const dot = document.getElementById('status-dot');
-            const txt = document.getElementById('room-display');
-            if(this.key) {
-                dot.className = "w-2 h-2 rounded-full bg-pink-400 shadow-[0_0_10px_#ff00ff]";
-                txt.innerText = "ONLINE (GROQ)";
+        // Aurora/Noise Function
+        function getAuroraColor(x, y, t) {
+            // Create flowing bands of color
+            const v1 = Math.sin(x * 0.002 + t * 0.5);
+            const v2 = Math.cos(y * 0.003 - t * 0.2);
+            const v3 = Math.sin((x+y) * 0.001 + t * 0.8);
+            
+            const mix = (v1 + v2 + v3) / 3;
+            
+            if (mix > 0.5) return 'rgba(0, 255, 157, 0.05)'; // Bio Green
+            if (mix > 0.2) return 'rgba(6, 182, 212, 0.05)'; // Cyan
+            return 'rgba(168, 85, 247, 0.05)'; // Purple
+        }
+
+        function draw() {
+            time += 0.005;
+            
+            // 1. Deep Space Background + Aurora
+            // Create a dynamic gradient based on aurora math
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            gradient.addColorStop(0, '#020205');
+            gradient.addColorStop(0.5, '#050a14');
+            gradient.addColorStop(1, '#020205');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            // 2. Draw Aurora Clouds (Simulated with large overlapping circles or paths)
+            // For performance in 2D, we use large blurred gradients moving in sine waves
+            ctx.globalCompositeOperation = 'screen';
+            
+            // Green Wave
+            const gY = height/2 + Math.sin(time) * 100;
+            const gGrad = ctx.createRadialGradient(width/2, gY, 0, width/2, gY, width);
+            gGrad.addColorStop(0, 'rgba(0, 255, 157, 0.1)');
+            gGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = gGrad;
+            ctx.fillRect(0,0,width,height);
+
+            // Purple Wave
+            const pY = height/2 + Math.cos(time * 0.8) * 150;
+            const pGrad = ctx.createRadialGradient(width/2, pY, 0, width/2, pY, width);
+            pGrad.addColorStop(0, 'rgba(168, 85, 247, 0.08)');
+            pGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = pGrad;
+            ctx.fillRect(0,0,width,height);
+
+            ctx.globalCompositeOperation = 'source-over';
+
+            // 3. Draw Planets (Parallax)
+            planets.forEach(p => {
+                const parallaxX = (mouse.x - width/2) * 0.02 * (p.r/50);
+                const parallaxY = (mouse.y - height/2) * 0.02 * (p.r/50);
+                
+                ctx.beginPath();
+                ctx.arc(p.x + parallaxX, p.y + parallaxY, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.shadowBlur = 40;
+                ctx.shadowColor = p.color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Ring
+                if(p.ring) {
+                    ctx.beginPath();
+                    ctx.ellipse(p.x + parallaxX, p.y + parallaxY, p.r * 1.8, p.r * 0.4, Math.PI / 8, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                    ctx.lineWidth = 10;
+                    ctx.stroke();
+                }
+            });
+
+            // 4. Organic "Microorganism" Growth (Interactive Particles)
+            // Particles that float towards the mouse like spores/energy
+            ctx.fillStyle = '#00ff9d';
+            for(let i=0; i<organicNodes.length; i++) {
+                const p = organicNodes[i];
+                const dx = mouse.x - p.x;
+                const dy = mouse.y - p.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                // Move towards mouse gently
+                p.x += dx * 0.001;
+                p.y += dy * 0.001;
+                
+                // Wiggle
+                p.x += Math.sin(time * 5 + p.y * 0.05) * 0.5;
+                p.y += Math.cos(time * 3 + p.x * 0.05) * 0.5;
+
+                ctx.globalAlpha = Math.max(0, 1 - dist/500); // Fade out near mouse
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // 5. Starfield (Warp speed effect)
+            ctx.fillStyle = '#FFF';
+            stars.forEach(star => {
+                star.z -= 2; // Speed
+                if(star.z <= 0) {
+                    star.z = width;
+                    star.x = Math.random() * width;
+                    star.y = Math.random() * height;
+                }
+                
+                const k = 128.0 / star.z;
+                const px = star.x * k + width / 2;
+                const py = star.y * k + height / 2;
+                
+                if(px >= 0 && px <= width && py >= 0 && py <= height) {
+                    const size = (1 - star.z / width) * 2.5;
+                    const shade = parseInt((1 - star.z / width) * 255);
+                    ctx.fillStyle = `rgb(${shade},${shade},${shade})`;
+                    ctx.beginPath();
+                    ctx.arc(px, py, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            requestAnimationFrame(draw);
+        }
+
+        // --- 2. LOGIC CORE (State & MQTT) ---
+        const MQTT_BROKER = "wss://broker.emqx.io:8084/mqtt";
+        const PUBLIC_TOPIC = "termos/genesis/public";
+        let mqttClient = null;
+        let clientId = "User_" + Math.floor(Math.random() * 100000);
+        let currentRoom = PUBLIC_TOPIC;
+        let username = localStorage.getItem('termos_nick') || "Traveler_" + Math.floor(Math.random() * 99);
+        let groqKey = localStorage.getItem('termos_groq') || "";
+        let userXP = parseInt(localStorage.getItem('termos_xp') || "0");
+        
+        // Init Organic Nodes
+        for(let i=0; i<50; i++) {
+            organicNodes.push({
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+                size: Math.random() * 2 + 1
+            });
+        }
+
+        // --- 3. UI FUNCTIONS ---
+        
+        // Boot Sequence
+        window.onload = () => {
+            resize();
+            draw();
+            window.addEventListener('resize', resize);
+            window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+            // Fake Boot Progress
+            let progress = 0;
+            const bar = document.getElementById('boot-progress');
+            const txt = document.getElementById('boot-text');
+            const interval = setInterval(() => {
+                progress += Math.random() * 5;
+                if(progress > 100) progress = 100;
+                bar.style.width = progress + '%';
+                
+                if(progress > 30) txt.innerText = "LOADING NEURAL MAPS...";
+                if(progress > 70) txt.innerText = "CONNECTING TO SATELLITE...";
+
+                if(progress === 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        document.getElementById('boot-screen').style.opacity = '0';
+                        setTimeout(() => document.getElementById('boot-screen').remove(), 1000);
+                        startApp();
+                    }, 500);
+                }
+            }, 50);
+        };
+
+        function startApp() {
+            updateStatus(false);
+            connectMQTT();
+            document.getElementById('xp-display').innerText = userXP + " XP";
+            
+            // Check for API Key
+            if(!groqKey) {
+                setTimeout(() => addSystemMessage("⚠️ SYSTEM: Neural link incomplete. /setkey [groq_key] to enable AI."), 2000);
+            } else {
+                updateStatus(true);
+            }
+        }
+
+        function connectMQTT() {
+            if(typeof Paho === 'undefined') return;
+            mqttClient = new Paho.MQTT.Client(MQTT_BROKER, clientId);
+            
+            mqttClient.onConnectionLost = (r) => {
+                updateStatus(false);
+                addSystemMessage("⚠️ CONNECTION LOST. RETRYING...");
+                setTimeout(connectMQTT, 5000);
+            };
+            
+            mqttClient.onMessageArrived = (msg) => {
+                try {
+                    const data = JSON.parse(msg.payloadString);
+                    if(msg.destinationName === currentRoom && data.id !== clientId) {
+                        addChatMessage(data.nick, data.text, 'other');
+                    }
+                } catch(e) {}
+            };
+
+            mqttClient.connect({
+                onSuccess: () => {
+                    updateStatus(true);
+                    mqttClient.subscribe(currentRoom, {qos: 0});
+                    addSystemMessage("📡 UPLINK ESTABLISHED. WELCOME TO GENESIS.");
+                },
+                onFailure: () => {
+                    updateStatus(false);
+                    setTimeout(connectMQTT, 5000);
+                }
+            });
+        }
+
+        function updateStatus(online) {
+            const dot = document.getElementById('api-status-dot');
+            const txt = document.getElementById('status-text');
+            if(online) {
+                dot.className = "w-2 h-2 rounded-full bg-[var(--accent-bio)] shadow-[0_0_8px_#00ff9d]";
+                txt.innerText = "ONLINE";
             } else {
                 dot.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
                 txt.innerText = "OFFLINE";
             }
-        },
-        ask: async function(prompt) {
-            if(!this.key) { toggleAdminMode(); return null; }
-            
-            const response = await fetch(this.url, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${this.key}`, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    model: this.model,
-                    messages: [
-                        { role: "system", content: "You are an AI assistant in a cyberpunk Sin City OS. Be cool and concise." },
-                        { role: "user", content: prompt }
-                    ]
-                })
-            });
-            const data = await response.json();
-            if(data.error) throw new Error(data.error.message);
-            return data.choices[0].message.content;
-        },
-        think: async function() {
-            addSystemMessage("NEURAL SCAN...");
-            const response = await this.ask("Analyze user state and suggest a visual upgrade (command: /sys install ...)");
-            addNeuralMessage(response);
         }
-    };
 
-    // --- APP STATE ---
-    let userProfile = { name: "User", avatar: "👤" };
-    
-    // --- BOOT ---
-    window.addEventListener('load', () => {
-        setTimeout(() => {
-            document.getElementById('boot-screen').style.opacity = '0';
-            setTimeout(() => document.getElementById('boot-screen').remove(), 1000);
-            
-            Visuals.init(); // Start Graphics Engine
-            Termai.init();
-            
-            if(!Termai.key) setTimeout(() => toggleAdminMode(), 1000);
-        }, 1000);
-    });
+        // --- 4. INTERACTION LOGIC ---
 
-    // --- DOM HELPERS ---
-    function getBox() { return document.getElementById('chat-container'); }
-    function scrollDown() { const b=getBox(); if(b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); }
-    function escapeHtml(t) { if(!t) return ""; return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
-    function addSystemMessage(txt) {
-        const box = getBox();
-        const d = document.createElement('div');
-        d.className = "flex justify-center my-4 msg-anim";
-        d.innerHTML = `<span class="px-3 py-1 rounded-full text-[10px] font-bold text-purple-300 bg-purple-900/30 border border-purple-500/30">${txt}</span>`;
-        box.appendChild(d);
-        scrollDown();
-    }
-    function addNeuralMessage(txt) {
-        const box = getBox();
-        const d = document.createElement('div');
-        d.className = "flex gap-3 my-4 msg-anim";
-        d.innerHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-neural shrink-0 flex items-center justify-center"><span class="text-xs font-bold text-white">🧠</span></div><div class="flex-1"><div class="neural-msg rounded-2xl rounded-tl-none p-3 text-sm text-gray-200">${escapeHtml(txt)}</div></div>`;
-        box.appendChild(d);
-        scrollDown();
-    }
-    function addUserMessage(txt) {
-        const box = getBox();
-        const d = document.createElement('div');
-        d.className = "flex flex-row-reverse gap-3 my-4 msg-anim";
-        d.innerHTML = `
-            <div class="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-xl shrink-0">${userProfile.avatar}</div>
-            <div class="flex-1 max-w-[80%]">
-                <div class="rounded-2xl rounded-tr-none p-3 shadow-lg text-white text-sm" style="background: var(--msg-user-bg);">${escapeHtml(txt)}</div>
-                <div class="text-[10px] text-gray-500 text-right mt-1 font-mono">${new Date().toLocaleTimeString()} • ${userProfile.name}</div>
-            </div>
-        `;
-        box.appendChild(d);
-        scrollDown();
-    }
+        function handleInput() {
+            const input = document.getElementById('user-input');
+            const text = input.value.trim();
+            if(!text) return;
 
-    // --- INPUT HANDLER ---
-    async function handleInput() {
-        const inp = document.getElementById('user-input');
-        let txt = inp.value.trim();
-        if(!txt) return;
-        
-        if(txt.startsWith('/ai ')) {
-            const res = await Termai.ask(txt.substring(4));
-            if(res) addNeuralMessage(res);
-        } else if(txt.startsWith('/think')) {
-            Termai.think();
-        } else if(txt === '/matrix') {
-            Visuals.setMode('matrix');
-        } else if(txt === '/sincity') {
-            Visuals.setMode('sincity');
-        } else if(txt === '/universe') {
-            Visuals.setMode('universe');
-        } else {
-            addUserMessage(txt);
-        }
-        inp.value = '';
-    }
-
-    document.getElementById('user-input').addEventListener('keypress', (e) => { if(e.key==='Enter') handleInput(); });
-
-    // --- UI TOGGLES ---
-    function toggleAdminMode() { const p = document.getElementById('admin-panel'); if(p.classList.contains('admin-hidden')) p.classList.remove('admin-hidden'); else p.classList.add('admin-hidden'); }
-    function toggleCodeEditor() {
-        const el = document.getElementById('code-editor-overlay');
-        if(el.classList.contains('admin-hidden')) {
-            document.getElementById('code-editor-textarea').value = document.documentElement.outerHTML;
-            el.classList.remove('admin-hidden');
-        } else {
-            el.classList.add('admin-hidden');
-        }
-    }
-    function applyCode() { if(confirm("Inject code?")) { document.open(); document.write(document.getElementById('code-editor-textarea').value); document.close(); } }
-    function saveConfig() {
-        Termai.key = document.getElementById('cfg-groq').value.trim();
-        localStorage.setItem('termos_key_groq', Termai.key);
-        Termai.updateStatus();
-        toggleAdminMode();
-        addSystemMessage("SYSTEM UPDATED");
-    }
-
-    // --- EVOLUTION (GITHUB PUSH) ---
-    async function initiateEvolution() {
-        if(!Termai.key) return addSystemMessage("MISSING GROQ KEY");
-        
-        const owner = document.getElementById('gh-owner').value.trim();
-        const repo = document.getElementById('gh-repo').value.trim();
-        const token = document.getElementById('gh-token').value.trim();
-        
-        if(!token || !owner || !repo) return addSystemMessage("MISSING GITHUB CREDS");
-
-        addSystemMessage("CLONING REPOSITORY...");
-        
-        try {
-            // 1. Get Current File
-            const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html`, {
-                headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
-            });
-            const data = await res.json();
-            
-            // 2. AI Mutation
-            addSystemMessage("AI MUTATING SOURCE CODE...");
-            const aiRes = await fetch(Termai.url, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${Termai.key}`, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    model: Termai.model,
-                    messages: [{ role: "system", content: "Return ONLY raw HTML code." }, { role: "user", content: "Upgrade visuals to High Performance Sin City theme." }]
-                })
-            });
-            const aiData = await aiRes.json();
-            let newCode = aiData.choices[0].message.content;
-            // Clean markdown
-            newCode = newCode.replace(/```html/g, "").replace(/```/g, "").trim();
-            
-            // 3. Push to GitHub
-            addSystemMessage("UPLOADING EVOLUTION...");
-            const putRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html`, {
-                method: 'PUT',
-                headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: "Evolution via TermOS",
-                    content: btoa(unescape(encodeURIComponent(newCode))),
-                    sha: data.sha
-                })
-            });
-
-            if(putRes.ok) {
-                addSystemMessage("✅ SUCCESS! SITE REBOOTING...");
-                setTimeout(() => location.reload(), 3000);
+            // Commands
+            if(text.startsWith('/')) {
+                processCommand(text);
             } else {
-                throw new Error("Write Failed");
+                // Chat
+                addChatMessage("You", text, 'self');
+                broadcast(text);
+                addXP(1);
             }
-        } catch(e) {
-            addSystemMessage("❌ ERROR: " + e.message);
+
+            input.value = '';
         }
-    }
-</script>
+
+        function processCommand(cmd) {
+            const parts = cmd.split(' ');
+            const action = parts[0].toLowerCase();
+
+            switch(action) {
+                case '/clear':
+                    document.getElementById('chat-container').innerHTML = '';
+                    break;
+                case '/help':
+                    addSystemMessage("COMMANDS: /ai [prompt], /join [room], /setkey [key], /clear, /evolve [idea]");
+                    break;
+                case '/join':
+                    document.getElementById('join-modal').classList.replace('hidden-vis','visible-vis');
+                    document.getElementById('room-name-input').focus();
+                    break;
+                case '/setkey':
+                    const key = parts[1];
+                    if(key) {
+                        groqKey = key;
+                        localStorage.setItem('termos_groq', key);
+                        updateStatus(true);
+                        addSystemMessage("✅ NEURAL KEY UPDATED.");
+                    } else {
+                        addSystemMessage("❌ USAGE: /setkey [your_groq_api_key]");
+                    }
+                    break;
+                case '/ai':
+                case '/kernel':
+                    const prompt = text.substring(action.length).trim();
+                    if(!prompt) return addSystemMessage("❌ USAGE: /ai tell me about the universe");
+                    triggerAI(prompt);
+                    break;
+                case '/evolve':
+                    const ePrompt = text.substring(8).trim();
+                    if(!ePrompt) return addSystemMessage("❌ USAGE: /evolve change background to red");
+                    triggerAI(ePrompt, true); // true = code mode
+                    break;
+                case '/admin':
+                    toggleAdmin();
+                    break;
+                default:
+                    addSystemMessage("❌ UNKNOWN COMMAND");
+            }
+        }
+
+        function broadcast(text) {
+            if(!mqttClient || !mqttClient.isConnected()) return;
+            const msg = {
+                id: clientId,
+                nick: username,
+                text: text,
+                timestamp: Date.now()
+            };
+            mqttClient.send(new Paho.MQTT.Message(JSON.stringify(msg)));
+        }
+
+        function joinRoom() {
+            const name = document.getElementById('room-name-input').value.trim();
+            if(!name) return;
+            
+            if(mqttClient && mqttClient.isConnected()) {
+                mqttClient.unsubscribe(currentRoom);
+                currentRoom = "termos/genesis/rooms/" + name;
+                mqttClient.subscribe(currentRoom);
+                
+                document.getElementById('room-indicator').classList.remove('hidden');
+                document.getElementById('current-room').innerText = name;
+                
+                document.getElementById('join-modal').classList.replace('visible-vis','hidden-vis');
+                addSystemMessage(`🪐 ENTERED SECTOR: ${name.toUpperCase()}`);
+                broadcast("has entered the sector.");
+            }
+        }
+
+        // --- 5. AI ENGINE (Groq) ---
+
+        async function triggerAI(prompt, isCode = false) {
+            if(!groqKey) {
+                addSystemMessage("❌ AI OFFLINE. SET KEY WITH /setkey");
+                return;
+            }
+
+            const loadingId = "ai-" + Date.now();
+            addSystemMessage(`🧠 SYNTHESIZING: "${prompt}"...`, loadingId);
+
+            try {
+                const systemPrompt = isCode 
+                    ? "You are a frontend engineer. Return ONLY raw HTML/CSS/JS code to modify the page. No markdown. Keep it in one block."
+                    : "You are TermOS Genesis AI. Answer briefly in a sci-fi/cyberpunk style.";
+
+                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${groqKey}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: "llama-3.3-70b-versatile",
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user", content: prompt }
+                        ]
+                    })
+                });
+
+                const data = await res.json();
+                
+                // Remove loading message
+                const loader = document.getElementById(loadingId);
+                if(loader) loader.remove();
+
+                if(data.error) throw new Error(data.error.message);
+
+                const reply = data.choices[0].message.content;
+
+                if(isCode) {
+                    // Execute Code
+                    addChatMessage("System", "Applying Genetic Mutation...", "self");
+                    try {
+                        const func = new Function(reply);
+                        func();
+                        addSystemMessage("✅ MUTATION APPLIED");
+                    } catch(e) {
+                        addSystemMessage("❌ MUTATION FAILED: " + e.message);
+                    }
+                } else {
+                    // Text Reply
+                    addChatMessage("AI KERNEL", reply, 'ai');
+                }
+
+            } catch (e) {
+                const loader = document.getElementById(loadingId);
+                if(loader) loader.remove();
+                addSystemMessage("❌ AI ERROR: " + e.message);
+            }
+        }
+
+        // --- 6. DOM HELPERS ---
+
+        function addChatMessage(sender, text, type) {
+            const container = document.getElementById('chat-container');
+            const div = document.createElement('div');
+            div.className = "msg-anim max-w-[85%] mb-4 " + (type === 'self' ? 'ml-auto' : 'mr-auto');
+            
+            let bgClass = type === 'self' ? "bg-gradient-to-br from-[var(--accent-primary)] to-indigo-600" 
+                          : type === 'ai' ? "bg-slate-800/90 border border-cyan-500/30 text-cyan-100" 
+                          : "bg-slate-800/60 border border-white/5";
+            
+            let alignClass = type === 'self' ? "items-end" : "items-start";
+            let avatar = type === 'ai' ? '🧠' : (type === 'self' ? '👤' : '👽');
+
+            div.innerHTML = `
+                <div class="flex ${alignClass} gap-3">
+                    <div class="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-xs border border-white/10 shrink-0 font-bold">${avatar}</div>
+                    <div class="${bgClass} p-3 rounded-2xl ${type === 'self' ? 'rounded-tr-none' : 'rounded-tl-none'} shadow-lg backdrop-blur-md text-sm leading-relaxed break-words">
+                        <div class="text-[10px] opacity-60 font-mono mb-1">${sender}</div>
+                        ${escapeHtml(text)}
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function addSystemMessage(text, id = null) {
+            const container = document.getElementById('chat-container');
+            const div = document.createElement('div');
+            if(id) div.id = id;
+            div.className = "msg-anim flex justify-center my-2";
+            div.innerHTML = `<span class="text-[10px] uppercase tracking-widest text-[var(--accent-bio)] bg-black/40 px-3 py-1 rounded-full border border-[var(--accent-bio)]/30 shadow-[0_0_10px_rgba(0,255,157,0.2)]">${text}</span>`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            if(!text) return "";
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function addXP(amount) {
+            userXP += amount;
+            localStorage.setItem('termos_xp', userXP);
+            document.getElementById('xp-display').innerText = userXP + " XP";
+        }
+
+        // --- 7. MEDIA & ADMIN ---
+
+        function toggleAdmin() {
+            const panel = document.getElementById('admin-panel');
+            const ta = document.getElementById('code-editor');
+            
+            if(panel.classList.contains('hidden-vis')) {
+                panel.classList.replace('hidden-vis', 'visible-vis');
+                ta.value = document.documentElement.outerHTML;
+            } else {
+                panel.classList.replace('visible-vis', 'hidden-vis');
+            }
+        }
+
+        function applyCode() {
+            const code = document.getElementById('code-editor').value;
+            if(confirm("⚠️ SYSTEM OVERWRITE: This will rewrite reality. Continue?")) {
+                document.open();
+                document.write(code);
+                document.close();
+            }
+        }
+
+        function toggleMediaPanel() {
+            const p = document.getElementById('media-panel');
+            p.classList.toggle('hidden-vis');
+            p.classList.toggle('visible-vis');
+        }
+
+        function playRadio(url) {
+            const audio = new Audio(url);
+            audio.play();
+            addSystemMessage("📻 TUNING FREQUENCY...");
+        }
+
+        function playVideoInput() {
+            const url = document.getElementById('video-url').value;
+            const vid = document.getElementById('main-video');
+            const placeholder = document.getElementById('video-placeholder');
+            
+            if(url) {
+                vid.src = url;
+                vid.classList.remove('opacity-80');
+                placeholder.classList.add('hidden-vis');
+                addSystemMessage("📺 SIGNAL ACQUIRED");
+                broadcast("is watching a transmission.");
+            }
+        }
+
+        // --- 8. LISTENERS ---
+        document.getElementById('user-input').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') handleInput();
+        });
+
+    </script>
 </body>
 </html>
