@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TermOS: Nexus</title>
+    <title>TermOS: Nexus Evolution</title>
     <!-- TAILWIND CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PEERJS (For P2P Video) -->
+    <!-- PEERJS (P2P) -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <!-- PAHO MQTT (For Chat) -->
+    <!-- MQTT (Paho) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <!-- ICONS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -16,16 +16,16 @@
     <style>
         :root {
             --bg-core: #050505;
-            --bg-panel: #111111;
-            --primary: #00ff9d; /* Cyber Green */
-            --secondary: #00d2ff; /* Cyber Blue */
-            --alert: #ff0055;
+            --bg-panel: rgba(20, 20, 20, 0.95);
+            --primary: #00ff9d; /* Green */
+            --secondary: #00d2ff; /* Blue */
+            --accent: #ff0055; /* Red */
             --grid-line: rgba(0, 255, 157, 0.05);
         }
         
         body { background: var(--bg-core); color: #ccc; font-family: 'Courier New', monospace; overflow: hidden; }
         
-        /* CYBER GRID BACKGROUND */
+        /* CYBER GRID */
         .cyber-grid {
             position: fixed; top: 0; left: 0; width: 200%; height: 200%;
             background-image: linear-gradient(var(--grid-line) 1px, transparent 1px),
@@ -35,11 +35,19 @@
             animation: gridMove 20s linear infinite;
             z-index: 0; pointer-events: none;
         }
-        @keyframes gridMove { 0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); } 100% { transform: perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px); } }
+        @keyframes gridMove { 
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); } 
+            100% { transform: perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px); } 
+        }
 
         /* UI COMPONENTS */
-        .panel { background: rgba(17, 17, 17, 0.9); border: 1px solid #333; backdrop-filter: blur(10px); box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .panel-header { background: #1a1a1a; border-bottom: 1px solid #333; padding: 10px; font-weight: bold; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
+        .panel { 
+            background: var(--bg-panel); 
+            border: 1px solid #333; 
+            backdrop-filter: blur(10px); 
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); 
+            transition: all 0.3s;
+        }
         
         .btn-cyber {
             background: transparent; border: 1px solid var(--primary); color: var(--primary);
@@ -47,30 +55,18 @@
             transition: all 0.2s; cursor: pointer;
         }
         .btn-cyber:hover { background: var(--primary); color: #000; box-shadow: 0 0 15px var(--primary); }
-        
-        .btn-alert { border-color: var(--alert); color: var(--alert); }
-        .btn-alert:hover { background: var(--alert); color: #fff; box-shadow: 0 0 15px var(--alert); }
 
-        input, textarea {
+        .input-cyber {
             background: #000; border: 1px solid #333; color: var(--primary);
-            font-family: 'Courier New', monospace; outline: none;
+            font-family: 'Courier New', monospace; outline: none; width: 100%;
         }
-        input:focus, textarea:focus { border-color: var(--primary); }
+        .input-cyber:focus { border-color: var(--secondary); }
 
-        /* SCROLLBAR */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #333; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
-
-        /* VIDEO */
-        .video-frame { background: #000; border: 1px solid #333; position: relative; }
-        .video-label { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 2px 8px; font-size: 10px; color: var(--primary); border: 1px solid var(--primary); }
-        
         /* LOGS */
         .log-entry { font-size: 12px; margin-bottom: 4px; border-left: 2px solid transparent; padding-left: 8px; }
         .log-sys { color: #666; }
         .log-msg { color: #ddd; }
-        .log-err { color: var(--alert); }
+        .log-ai { color: var(--secondary); font-weight: bold; border-left-color: var(--secondary); }
     </style>
 </head>
 <body>
@@ -78,128 +74,118 @@
     <!-- BACKGROUND -->
     <div class="cyber-grid"></div>
 
-    <!-- MAIN APP CONTAINER -->
+    <!-- MAIN APP -->
     <div class="relative z-10 h-screen w-screen flex flex-col p-2 md:p-4 gap-4">
         
         <!-- HEADER -->
         <header class="panel h-16 rounded flex items-center justify-between px-6 shrink-0">
             <div class="flex items-center gap-4">
-                <div class="w-8 h-8 border-2 border-var(--primary) flex items-center justify-center text-[var(--primary)] font-bold">NX</div>
+                <div class="w-8 h-8 bg-var(--primary) flex items-center justify-center text-[var(--primary)] font-bold border border-[var(--primary)]">NX</div>
                 <div>
                     <h1 class="text-xl font-bold tracking-wider text-white">TERMOS <span class="text-[var(--primary)]">NEXUS</span></h1>
                     <div class="text-[10px] text-gray-500 flex gap-2">
                         <span id="sys-status">OFFLINE</span>
-                        <span class="text-[var(--primary)]">V.1.0.0</span>
+                        <span class="text-[var(--secondary)]">AI: CONNECTED</span>
                     </div>
                 </div>
             </div>
             <div class="flex gap-2">
-                <button onclick="App.openVideoModal()" class="btn-cyber"><i class="fas fa-video"></i> CALL</button>
-                <button onclick="App.toggleSettings()" class="btn-cyber"><i class="fas fa-cog"></i> SYS</button>
+                <button onclick="App.toggleVideo()" class="btn-cyber"><i class="fas fa-video"></i></button>
+                <button onclick="App.toggleSettings()" class="btn-cyber"><i class="fas fa-cog"></i></button>
             </div>
         </header>
 
-        <!-- MAIN CONTENT GRID -->
+        <!-- CONTENT -->
         <main class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 min-h-0">
             
-            <!-- LEFT: CHAT (4 cols) -->
+            <!-- CHAT -->
             <section class="md:col-span-4 panel rounded flex flex-col min-h-0">
-                <div class="panel-header">
-                    <span><i class="fas fa-comments"></i> COMMS LINK</span>
-                    <span class="text-[10px] text-gray-500" id="room-name">PUBLIC_CHAN</span>
-                </div>
+                <div class="p-3 border-b border-gray-800 text-[var(--secondary)] font-bold text-xs">COMMS LINK</div>
                 <div id="chat-log" class="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-sm">
-                    <!-- Messages inject here -->
+                    <div class="log-entry log-sys">> System Initialized. Waiting for connection...</div>
                 </div>
                 <div class="p-2 border-t border-gray-800">
                     <div class="flex gap-2">
-                        <input type="text" id="chat-input" placeholder="CMD: /join [room]..." class="w-full px-3 py-2 rounded text-sm">
+                        <input type="text" id="chat-input" placeholder="Type /ai [prompt] for AI..." class="input-cyber px-3 py-2 rounded text-sm">
                         <button onclick="App.sendMessage()" class="btn-cyber"><i class="fas fa-paper-plane"></i></button>
                     </div>
                 </div>
             </section>
 
-            <!-- RIGHT: WORKSPACE / DASHBOARD (8 cols) -->
+            <!-- WORKSPACE -->
             <section class="md:col-span-8 flex flex-col gap-4 min-h-0">
-                
-                <!-- SYSTEM STATUS -->
-                <div class="panel h-32 rounded flex gap-4 p-4">
-                    <div class="flex-1 border border-gray-800 p-2 rounded flex flex-col justify-center items-center">
-                        <div class="text-2xl text-[var(--secondary)] font-bold" id="ping-display">0 ms</div>
+                <!-- STATUS DASHBOARD -->
+                <div class="panel h-24 rounded flex gap-4 p-4">
+                    <div class="flex-1 bg-gray-900/50 p-2 rounded text-center border border-gray-800">
+                        <div class="text-2xl text-[var(--secondary)] font-bold" id="ping-val">--</div>
                         <div class="text-[10px] text-gray-500">LATENCY</div>
                     </div>
-                    <div class="flex-1 border border-gray-800 p-2 rounded flex flex-col justify-center items-center">
-                        <div class="text-2xl text-[var(--primary)] font-bold" id="users-display">0</div>
-                        <div class="text-[10px] text-gray-500">ACTIVE NODES</div>
+                    <div class="flex-1 bg-gray-900/50 p-2 rounded text-center border border-gray-800">
+                        <div class="text-2xl text-[var(--primary)] font-bold">READY</div>
+                        <div class="text-[10px] text-gray-500">SYSTEM STATE</div>
                     </div>
-                    <div class="flex-1 border border-gray-800 p-2 rounded flex flex-col justify-center items-center">
-                        <div class="text-2xl text-purple-400 font-bold">UP</div>
-                        <div class="text-[10px] text-gray-500">PEER NET</div>
+                    <div class="flex-1 bg-gray-900/50 p-2 rounded text-center border border-gray-800">
+                        <div class="text-2xl text-purple-400 font-bold">PEERJS</div>
+                        <div class="text-[10px] text-gray-500">VIDEO ENGINE</div>
                     </div>
                 </div>
 
-                <!-- WORKSPACE / CANVAS -->
+                <!-- VISUALIZER / WORKSPACE -->
                 <div class="flex-1 panel rounded overflow-hidden relative flex flex-col">
-                    <div class="panel-header">
-                        <span><i class="fas fa-terminal"></i> WORKSPACE</span>
-                        <div class="text-[10px] text-gray-500">JS MODULES ACTIVE</div>
-                    </div>
+                    <div class="p-3 border-b border-gray-800 text-[var(--secondary)] font-bold text-xs">SYSTEM WORKSPACE</div>
                     <div id="workspace" class="flex-1 p-6 overflow-y-auto font-mono text-sm text-[var(--secondary)]">
-                        <p>// NEXUS Frontend Engine Loaded.</p>
-                        <p>// Reactive State: ACTIVE</p>
-                        <p>// MQTT Bridge: CONNECTING...</p>
-                        <p>// PeerJS Network: STANDBY</p>
+                        <p>// Nexus Engine Loaded.</p>
+                        <p>// AI Functions: ENABLED</p>
+                        <p>// Video System: PEERJS</p>
                         <br>
-                        <p class="text-white">> Ready for input. Type /help for commands.</p>
+                        <p class="text-white">> Type "/ai make theme red" to test AI mutation.</p>
                     </div>
                 </div>
             </section>
         </main>
     </div>
 
-    <!-- VIDEO MODAL (OVERLAY) -->
-    <div id="video-modal" class="fixed inset-0 z-50 bg-black/90 hidden flex-col items-center justify-center p-4">
+    <!-- VIDEO MODAL -->
+    <div id="video-modal" class="fixed inset-0 z-50 bg-black/95 hidden flex-col items-center justify-center p-4">
         <div class="w-full max-w-5xl h-[80vh] flex flex-col gap-2">
             <div class="flex justify-between items-center text-[var(--primary)] mb-2">
-                <h2 class="font-bold text-xl"><i class="fas fa-satellite-dish"></i> SECURE VIDEO LINK</h2>
-                <button onclick="App.closeVideoModal()" class="btn-cyber btn-alert">TERMINATE</button>
+                <h2 class="font-bold text-xl">SECURE VIDEO LINK</h2>
+                <button onclick="App.toggleVideo()" class="btn-cyber border-[var(--accent)] text-[var(--accent)]">TERMINATE</button>
             </div>
             
             <div class="flex-1 grid grid-cols-2 gap-4">
                 <!-- LOCAL -->
-                <div class="video-frame rounded-xl overflow-hidden flex flex-col">
-                    <div class="video-label">LOCAL FEED</div>
-                    <video id="local-video" class="flex-1 bg-gray-900 w-full h-full object-cover" autoplay muted playsinline></video>
-                    <div class="p-2 bg-gray-900 flex justify-center gap-2">
-                        <button onclick="VideoSys.startCamera()" class="btn-cyber">CAM ON</button>
-                        <button onclick="VideoSys.stopCamera()" class="btn-cyber btn-alert">OFF</button>
+                <div class="bg-gray-900 rounded-xl overflow-hidden flex flex-col border border-gray-800">
+                    <div class="p-2 bg-black/50 text-xs text-gray-500">LOCAL FEED</div>
+                    <video id="local-video" class="flex-1 bg-black object-cover w-full h-full" autoplay muted playsinline></video>
+                    <div class="p-2 bg-gray-900 flex justify-center gap-2 border-t border-gray-800">
+                        <button onclick="VideoSys.start()" class="btn-cyber text-xs">CAM ON</button>
+                        <button onclick="VideoSys.stop()" class="btn-cyber text-xs border-[var(--accent)] text-[var(--accent)]">OFF</button>
                     </div>
                 </div>
-
                 <!-- REMOTE -->
-                <div class="video-frame rounded-xl overflow-hidden flex flex-col">
-                    <div class="video-label">REMOTE FEED</div>
-                    <video id="remote-video" class="flex-1 bg-gray-900 w-full h-full object-cover" autoplay playsinline></video>
-                    <div class="p-2 bg-gray-900 flex justify-center gap-2">
+                <div class="bg-gray-900 rounded-xl overflow-hidden flex flex-col border border-gray-800">
+                    <div class="p-2 bg-black/50 text-xs text-gray-500">REMOTE FEED</div>
+                    <video id="remote-video" class="flex-1 bg-black object-cover w-full h-full" autoplay playsinline></video>
+                    <div class="p-2 bg-gray-900 flex justify-center gap-2 border-t border-gray-800">
                         <div class="text-[10px] text-gray-500 flex items-center">STATUS: <span id="remote-status" class="text-[var(--primary)] ml-2">IDLE</span></div>
                     </div>
                 </div>
             </div>
 
-            <!-- CONTROLS -->
             <div class="panel p-4 rounded-xl flex flex-col gap-2">
-                <div class="text-xs text-gray-400 mb-1">INITIATE PEER-TO-PEER CONNECTION</div>
+                <div class="text-xs text-gray-400 mb-1">PEER-TO-PEER CONNECTION</div>
                 <div class="flex gap-2">
                     <div class="flex-1">
-                        <label class="text-[10px] text-[var(--primary)]">YOUR ID (SHARE)</label>
-                        <input type="text" id="my-peer-id" readonly class="w-full bg-gray-800 text-gray-400 text-xs p-2">
+                        <label class="text-[10px] text-[var(--primary)]">MY ID (SHARE)</label>
+                        <input type="text" id="my-peer-id" readonly class="input-cyber bg-gray-800 text-gray-400 text-xs p-2">
                     </div>
                     <div class="flex-1">
                         <label class="text-[10px] text-[var(--secondary)]">TARGET ID (CALL)</label>
-                        <input type="text" id="target-peer-id" placeholder="Paste ID here..." class="w-full p-2">
+                        <input type="text" id="target-peer-id" placeholder="Paste ID here..." class="input-cyber text-xs p-2">
                     </div>
                     <div class="flex items-end">
-                        <button onclick="VideoSys.callPeer()" class="btn-cyber h-[38px]">CONNECT</button>
+                        <button onclick="VideoSys.call()" class="btn-cyber h-[38px]">CONNECT</button>
                     </div>
                 </div>
             </div>
@@ -207,56 +193,46 @@
     </div>
 
     <!-- SETTINGS MODAL -->
-    <div id="settings-modal" class="fixed inset-0 z-50 bg-black/80 hidden flex items-center justify-center">
+    <div id="settings-modal" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center">
         <div class="panel w-96 rounded-xl p-6">
             <h3 class="text-[var(--primary)] font-bold mb-4">SYSTEM CONFIG</h3>
             <div class="space-y-4">
                 <div>
                     <label class="text-xs text-gray-400">NICKNAME</label>
-                    <input type="text" id="setting-name" class="w-full p-2">
+                    <input type="text" id="setting-name" class="input-cyber p-2">
                 </div>
                 <div>
                     <label class="text-xs text-gray-400">ROOM CHANNEL</label>
-                    <input type="text" id="setting-room" class="w-full p-2" value="nexus_public">
-                </div>
-                <div class="text-xs text-gray-500 mt-4">
-                    <p>DEPLOYMENT INSTRUCTIONS:</p>
-                    <p>1. Save this file as index.html.</p>
-                    <p>2. Drag to Netlify Drop.</p>
-                    <p>3. No build steps required.</p>
+                    <input type="text" id="setting-room" class="input-cyber p-2" value="nexus_global">
                 </div>
             </div>
             <div class="mt-6 flex justify-end gap-2">
-                <button onclick="App.saveSettings()" class="btn-cyber">SAVE & RELOAD</button>
-                <button onclick="App.toggleSettings()" class="btn-cyber btn-alert">CLOSE</button>
+                <button onclick="App.saveSettings()" class="btn-cyber">REBOOT SYS</button>
+                <button onclick="App.toggleSettings()" class="btn-cyber border-[var(--accent)] text-[var(--accent)]">ABORT</button>
             </div>
         </div>
     </div>
 
 <script>
 /**
- * NEXUS ENGINE
- * A reactive, dependency-free frontend framework designed for TermOS.
+ * NEXUS REACTIVE ENGINE
+ * Integrates AI Mutations, P2P Video, and Reactive State
  */
 
-// --- 1. REACTIVE STORE ---
-// This allows the UI to update automatically when data changes.
+// 1. REACTIVE STORE
 const Store = {
     state: {
-        user: { name: 'User_' + Math.floor(Math.random()*1000), room: 'nexus_public' },
-        status: { online: false, ping: 0, peers: 0 },
-        logs: [],
-        video: { active: false, stream: null }
+        user: { name: 'User_' + Math.floor(Math.random()*1000), room: 'nexus_global' },
+        status: { online: false, ping: 0 },
+        logs: []
     },
     listeners: [],
     
-    // Subscribe to changes
     subscribe(key, callback) {
         if (!this.listeners[key]) this.listeners[key] = [];
         this.listeners[key].push(callback);
     },
 
-    // Update state and notify listeners
     set(key, value) {
         this.state[key] = value;
         if (this.listeners[key]) {
@@ -267,153 +243,219 @@ const Store = {
     log(msg, type = 'sys') {
         const entry = { time: new Date().toLocaleTimeString(), text: msg, type };
         this.state.logs.push(entry);
-        // Auto-scroll logic handled by Component
         if (this.listeners['logs']) this.listeners['logs'](this.state.logs);
     }
 };
 
-// --- 2. VIDEO SYSTEM (PEERJS) ---
+// 2. SYSTEM REBUILDER (COSMOS LOGIC)
+// This handles AI requests to change the UI
+const SystemRebuilder = {
+    execute(data) {
+        console.log("[REBUILDER] Executing:", data);
+        try {
+            if (data.action === "install_theme") {
+                const themeName = data.theme;
+                if(themeName === "red") {
+                    document.documentElement.style.setProperty('--primary', '#ff3333');
+                    document.documentElement.style.setProperty('--grid-line', 'rgba(255, 51, 51, 0.05)');
+                    Store.log("Theme applied: Red Alert", "sys");
+                } else if (themeName === "neon") {
+                    document.documentElement.style.setProperty('--primary', '#d946ef');
+                    document.documentElement.style.setProperty('--grid-line', 'rgba(217, 70, 239, 0.05)');
+                    Store.log("Theme applied: Neon Cyber", "sys");
+                } else if (themeName === "matrix") {
+                    document.documentElement.style.setProperty('--primary', '#00ff00');
+                    document.documentElement.style.setProperty('--bg-core', '#000');
+                    Store.log("Theme applied: Matrix", "sys");
+                } else {
+                    Store.log("Unknown theme requested.", "sys");
+                }
+            } 
+            else if (data.action === "code_inject") {
+                // Execute raw JS code from AI (COSMOS feature)
+                try {
+                    // Secure-ish: wrap in function to isolate scope slightly
+                    const func = new Function(data.code);
+                    func();
+                    Store.log("Code mutation applied successfully.", "sys");
+                } catch (e) {
+                    Store.log("Mutation failed: " + e.message, "sys");
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+};
+
+// 3. VIDEO SYSTEM (PEERJS)
 const VideoSys = {
     peer: null,
     currentCall: null,
     
     init() {
-        // Create a new PeerJS instance (uses default free server)
-        this.peer = new Peer(null, {
-            debug: 2
-        });
-
+        this.peer = new Peer(null, { debug: 2 });
         this.peer.on('open', (id) => {
             document.getElementById('my-peer-id').value = id;
-            Store.log(`Peer ID Generated: ${id.substring(0,8)}...`, 'sys');
-            // Publish ID to MQTT room so others can see it? Optional.
+            Store.log(`Peer ID Generated: ${id.substring(0,6)}...`, 'sys');
         });
-
         this.peer.on('call', (call) => {
-            // Answer incoming call automatically for demo
-            call.answer(Store.state.video.stream);
-            this.handleCall(call);
+            // Answer incoming
+            if(this.stream) {
+                call.answer(this.stream);
+                this.handleCall(call);
+            } else {
+                Store.log("Incoming call rejected (Camera off)", "err");
+            }
         });
-
         this.peer.on('error', (err) => {
             Store.log(`PeerJS Error: ${err.type}`, 'err');
-            alert("Connection failed. Ensure ports are open or network allows P2P.");
         });
     },
 
-    async startCamera() {
+    async start() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            Store.state.video.stream = stream;
-            document.getElementById('local-video').srcObject = stream;
-            Store.log("Camera Stream Active", 'sys');
-            
-            // If peer was created before camera, restart peer to attach stream properly (optional)
-            // In this simplified version, we just hold stream in store.
+            this.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('local-video').srcObject = this.stream;
+            Store.log("Camera Active", "sys");
         } catch (e) {
-            Store.log("Camera Access Denied", 'err');
-            alert("Allow camera access to use Video Call.");
+            Store.log("Camera Access Denied", "err");
         }
     },
 
-    stopCamera() {
-        if (Store.state.video.stream) {
-            Store.state.video.stream.getTracks().forEach(track => track.stop());
-            Store.state.video.stream = null;
+    stop() {
+        if(this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+            this.stream = null;
             document.getElementById('local-video').srcObject = null;
-            Store.log("Camera Stream Terminated", 'sys');
+            Store.log("Camera Off", "sys");
         }
     },
 
-    callPeer() {
+    call() {
         const destId = document.getElementById('target-peer-id').value;
-        if (!destId) return alert("Enter a Target Peer ID.");
-        if (!Store.state.video.stream) return alert("Turn on camera first.");
-
-        Store.log(`Initiating P2P connection to ${destId.substring(0,8)}...`, 'sys');
-        document.getElementById('remote-status').innerText = "CONNECTING...";
-
-        const call = this.peer.call(destId, Store.state.video.stream);
+        if (!destId || !this.stream) return;
+        
+        Store.log("Initiating P2P Call...", "sys");
+        const call = this.peer.call(destId, this.stream);
         this.handleCall(call);
     },
 
     handleCall(call) {
         this.currentCall = call;
         const remoteVid = document.getElementById('remote-video');
-
         call.on('stream', (remoteStream) => {
             remoteVid.srcObject = remoteStream;
             document.getElementById('remote-status').innerText = "LIVE";
-            Store.status.peer = 1; // Update dashboard
-            Store.log("P2P Video Link Established", 'sys');
+            Store.log("P2P Connection Established", "sys");
         });
-
         call.on('close', () => {
             document.getElementById('remote-status').innerText = "TERMINATED";
-            Store.log("Call Ended", 'sys');
+            Store.log("Call Ended", "sys");
         });
     }
 };
 
-// --- 3. COMM SYSTEM (MQTT) ---
+// 4. COMM SYSTEM (MQTT) - FIXED V2
 const CommSys = {
     client: null,
     
     init() {
-        this.client = new Paho.MQTT.Client("wss://broker.emqx.io:8084/mqtt", "nexus_" + Store.state.user.name);
+        // Use 'null' for random client ID generation
+        const clientId = "nexus_js_" + Math.random().toString(16).substr(2, 8);
+        
+        this.client = new Paho.MQTT.Client("broker.emqx.io", 8084, "/mqtt", clientId);
         
         this.client.onConnectionLost = (responseObject) => {
-            Store.log("Connection Lost. Reconnecting...", 'err');
+            Store.log("MQTT Disconnected", "err");
             Store.set('status', { ...Store.state.status, online: false });
-            setTimeout(() => this.connect(), 5000);
+            // Auto reconnect logic usually handled by library or custom timer
         };
 
         this.client.onMessageArrived = (message) => {
             const topic = message.destinationName;
-            if (topic === `termos/nexus/${Store.state.user.room}`) {
-                const data = JSON.parse(message.payloadString);
-                // Re-render chat
-                if (Store.listeners['logs']) Store.listeners['logs'](Store.state.logs); 
+            const payload = message.payloadString;
+            
+            console.log(`[MQTT IN] ${topic}: ${payload}`);
+
+            if (topic === `termos/nexus/global` || topic === Store.state.user.room) {
+                try {
+                    const data = JSON.parse(payload);
+                    
+                    // Handle CHAT
+                    if (data.type === "chat") {
+                        Store.log(`${data.sender}: ${data.msg}`, 'msg');
+                    }
+                    
+                    // Handle AI MUTATIONS (COSMOS BUILD LOGIC)
+                    if (data.type === "mutation" && data.sender === "KERNEL") {
+                        SystemRebuilder.execute(data.data);
+                        Store.log(`[SYSTEM] Mutation Applied: ${data.data.action}`, 'sys');
+                    }
+
+                } catch(e) {
+                    // Fallback plain text
+                    Store.log(payload, 'msg');
+                }
             }
         };
 
-        this.connect();
-    },
-
-    connect() {
         this.client.connect({
             onSuccess: () => {
-                Store.log(`Connected to Node: ${Store.state.user.room}`, 'sys');
+                Store.log("Connected to Nexus Network", "sys");
                 Store.set('status', { ...Store.state.status, online: true, ping: Math.floor(Math.random()*50)+20 });
-                
-                // Subscribe
-                this.client.subscribe(`termos/nexus/${Store.state.user.room}`);
+                // Subscribe to global and specific room
+                this.client.subscribe("termos/nexus/global");
+                this.client.subscribe("termos/nexus/" + Store.state.user.room);
             },
             onFailure: () => {
-                Store.log("Connection Failed", 'err');
-            }
+                Store.log("Connection Failed", "err");
+            },
+            useSSL: true
         });
     },
 
     send(text) {
-        const payload = JSON.stringify({
-            sender: Store.state.user.name,
-            text: text,
-            timestamp: Date.now()
-        });
-        const message = new Paho.MQTT.Message(payload);
-        message.destinationName = `termos/nexus/${Store.state.user.room}`;
-        this.client.send(message);
+        // Check for AI trigger
+        const isAiRequest = text.startsWith('/ai ');
         
-        // Add local log
-        Store.log(`You: ${text}`, 'msg');
+        if(isAiRequest) {
+            // Send to backend AI input topic
+            const cleanText = text.substring(4); // Remove "/ai "
+            const payload = JSON.stringify({ 
+                room: Store.state.user.room, 
+                user: Store.state.user.name, 
+                text: cleanText 
+            });
+            
+            const msg = new Paho.MQTT.Message(payload);
+            msg.destinationName = "termos/input";
+            
+            try {
+                this.client.send(msg);
+                Store.log(`You (AI Request): ${cleanText}`, 'msg');
+            } catch (err) {
+                console.error("Publish Error:", err);
+            }
+        } else {
+            // Normal P2P chat (Simulated locally or direct MQTT)
+            const payload = JSON.stringify({
+                type: "chat",
+                sender: Store.state.user.name,
+                msg: text
+            });
+            const msg = new Paho.MQTT.Message(payload);
+            msg.destinationName = "termos/nexus/global";
+            this.client.send(msg);
+            Store.log(`You: ${text}`, 'msg');
+        }
     }
 };
 
-// --- 4. APP CONTROLLER ---
+// 5. APP CONTROLLER
 const App = {
     init() {
-        // Load Settings
+        // Restore Settings
         const savedName = localStorage.getItem('nexus_name');
         const savedRoom = localStorage.getItem('nexus_room');
         if(savedName) Store.state.user.name = savedName;
@@ -421,78 +463,57 @@ const App = {
 
         document.getElementById('setting-name').value = Store.state.user.name;
         document.getElementById('setting-room').value = Store.state.user.room;
-        document.getElementById('room-name').innerText = Store.state.user.room.toUpperCase();
 
-        // Initialize Systems
+        // Init Systems
         VideoSys.init();
         CommSys.init();
 
-        // Setup Reactive Listeners (The "Magic" Part)
+        // UI Bindings
+        Store.subscribe('logs', (logs) => {
+            const container = document.getElementById('chat-log');
+            const recentLogs = logs.slice(-50);
+            container.innerHTML = recentLogs.map(log => {
+                if (log.type === 'sys') return `<div class="log-entry log-sys">[${log.time}] ${log.text}</div>`;
+                if (log.type === 'msg') return `<div class="log-entry log-msg">[${log.time}] ${log.text}</div>`;
+                if (log.type === 'ai') return `<div class="log-entry log-ai">[${log.time}] ${log.text}</div>`;
+                if (log.type === 'err') return `<div class="log-entry log-ai" style="color:red">[${log.time}] ${log.text}</div>`;
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        });
+
         Store.subscribe('status', (status) => {
             const dot = document.getElementById('sys-status');
             if (status.online) {
                 dot.innerText = "ONLINE";
                 dot.className = "text-[var(--primary)]";
-                document.getElementById('ping-display').innerText = status.ping + " ms";
+                document.getElementById('ping-val').innerText = status.ping + " ms";
             } else {
                 dot.innerText = "OFFLINE";
-                dot.className = "text-[var(--alert)]";
+                dot.className = "text-[var(--accent)]";
             }
         });
 
-        Store.subscribe('logs', (logs) => {
-            const container = document.getElementById('chat-log');
-            // Render only last 50 for performance
-            const recentLogs = logs.slice(-50);
-            
-            container.innerHTML = recentLogs.map(log => {
-                if (log.type === 'sys') return `<div class="log-entry log-sys">[${log.time}] SYS: ${log.text}</div>`;
-                if (log.type === 'err') return `<div class="log-entry log-err">[${log.time}] ERR: ${log.text}</div>`;
-                return `<div class="log-entry log-msg">[${log.time}] ${log.text}</div>`;
-            }).join('');
-
-            container.scrollTop = container.scrollHeight;
-        });
-
-        Store.log("NEXUS Frontend Engine Initialized.", 'sys');
+        Store.log("NEXUS EVOLUTION ENGINE LOADED", "sys");
     },
 
     sendMessage() {
         const input = document.getElementById('chat-input');
         const text = input.value.trim();
         if(!text) return;
-
-        if(text.startsWith('/join')) {
-            const room = text.split(' ')[1];
-            if(room) {
-                Store.state.user.room = room;
-                document.getElementById('room-name').innerText = room.toUpperCase();
-                localStorage.setItem('nexus_room', room);
-                // Reconnect logic
-                if(CommSys.client) {
-                    CommSys.client.disconnect();
-                    setTimeout(() => CommSys.connect(), 500);
-                }
-            }
-        } else {
-            CommSys.send(text);
-        }
+        CommSys.send(text);
         input.value = '';
     },
 
-    openVideoModal() {
-        document.getElementById('video-modal').classList.remove('hidden');
-        document.getElementById('video-modal').classList.add('flex');
-    },
-    closeVideoModal() {
-        document.getElementById('video-modal').classList.add('hidden');
-        document.getElementById('video-modal').classList.remove('flex');
-        VideoSys.stopCamera(); // Auto stop to save battery
+    toggleVideo() {
+        const el = document.getElementById('video-modal');
+        el.classList.toggle('hidden');
+        el.classList.toggle('flex');
     },
 
     toggleSettings() {
         document.getElementById('settings-modal').classList.toggle('hidden');
     },
+    
     saveSettings() {
         const name = document.getElementById('setting-name').value;
         const room = document.getElementById('setting-room').value;
