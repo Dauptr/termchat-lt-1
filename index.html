@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Light Edition</title>
+    <title>TermOS: Test Suite</title>
     <meta name="theme-color" content="#f3f4f6">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
@@ -12,26 +12,28 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     
     <!-- FONTS -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
             /* Light Theme Palette */
             --bg-primary: #ffffff;
             --bg-secondary: #f8fafc;
-            --bg-card: #ffffff;
             --text-main: #1f2937;
             --text-secondary: #64748b;
             --accent-blue: #3b82f6;
-            --accent-purple: #8b5cf6;
-            --border-color: #e5e7eb;
-            --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            --input-bg: #f1f5f9;
+            --accent-purple: #8b5cf6; /* For Test Mode */
+            --border-color: #e2e8f0;
+            --success: #10b981;
+            --error: #ef4444;
+            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
             --safe-bottom: env(safe-area-inset-bottom, 20px);
+            --safe-top: env(safe-area-inset-top, 20px);
         }
 
         body {
-            background: linear-gradient(135deg, #fdfbf7 0%, #e3f2fd 100%);
+            background: linear-gradient(135deg, #fdfbf7 0%, #eff6ff 100%);
             color: var(--text-main);
             font-family: 'Inter', sans-serif;
             overflow: hidden;
@@ -40,13 +42,13 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* --- BACKGROUND (Subtle Grid) --- */
+        /* --- BACKGROUND (Grid) --- */
         #bg-canvas {
             position: fixed; inset: 0; z-index: 1;
             opacity: 0.4;
             pointer-events: none;
         }
-        
+
         /* --- UI LAYOUT --- */
         .app-shell {
             position: relative; z-index: 10;
@@ -55,335 +57,386 @@
             height: 100%;
         }
         @media (min-width: 768px) {
-            .app-shell {
-                grid-template-columns: 260px 1fr;
-            }
+            .app-shell { grid-template-columns: 260px 1fr; }
         }
 
-        /* --- SIDEBAR (Clean White) --- */
+        /* --- SIDEBAR --- */
         .sidebar {
-            background: #ffffff;
+            background: rgba(255,255,255,0.9);
             border-right: 1px solid var(--border-color);
             display: none; /* Hidden on mobile */
             flex-direction: column;
             align-items: center;
-            padding-top: 20px;
+            padding: 20px;
+            gap: 12px;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.05);
         }
         @media (min-width: 768px) { .sidebar { display: flex; } }
-        
+
         .menu-item {
             display: flex; align-items: center; gap: 12px;
             width: 100%;
             padding: 12px 20px;
+            border-radius: 8px;
             cursor: pointer;
-            border-radius: 12px;
-            transition: background 0.2s, color 0.2s;
+            transition: background 0.2s, transform 0.2s;
             color: var(--text-secondary);
             font-weight: 500;
+            outline: none;
         }
-        .menu-item:hover {
-            background: var(--bg-secondary);
-            color: var(--text-main);
+        .menu-item:hover, .menu-item.active {
+            background: var(--accent-blue);
+            color: white;
+            transform: translateX(4px);
         }
-        .menu-item.active {
-            background: #eff6ff; /* Light blue bg for active */
-            color: var(--accent-blue);
-            font-weight: 600;
-            box-shadow: var(--shadow);
+        
+        /* Test Suite Specifics */
+        .menu-item.test-item {
+            background: #f3e8ff;
+            color: var(--accent-purple);
+            border: 1px solid var(--accent-purple);
+        }
+        .menu-item.test-item:hover {
+            background: var(--accent-purple);
+            color: white;
         }
 
-        /* --- HEADER (Clean) --- */
+        .test-badge {
+            position: absolute; top: 10px; right: 10px;
+            background: var(--success);
+            color: white;
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: none;
+        }
+        .test-running .test-badge { display: block; animation: pulse 1.5s infinite; }
+
+        /* --- MAIN VIEW --- */
+        .main-view {
+            display: flex; flex-direction: column;
+            position: relative;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* --- HEADER --- */
         .header {
             height: 60px;
-            padding-top: env(safe-area-inset-top, 0px);
-            background: rgba(255, 255, 255, 0.8); /* Slight transparency */
-            backdrop-filter: blur(10px);
+            padding-top: var(--safe-top);
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border-color);
             display: flex; align-items: center; justify-content: space-between;
             padding: 0 24px;
         }
+        
         .brand {
             font-family: 'Inter', sans-serif;
             font-weight: 700;
             font-size: 1.25rem;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.025em;
             color: var(--text-main);
         }
-        .brand span { color: var(--accent-blue); }
-        
-        /* Status Indicator (Core) */
-        .status-container {
-            display: flex; align-items: center; gap: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            background: #f1f5f9;
-            padding: 4px 10px;
+        .status-badge {
+            padding: 4px 12px;
             border-radius: 20px;
+            background: var(--bg-primary);
             border: 1px solid var(--border-color);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            box-shadow: var(--shadow-sm);
+            display: flex; align-items: center; gap: 8px;
         }
-        .status-dot {
-            width: 10px; height: 10px; border-radius: 50%;
-            background: #ccc;
-            transition: background 0.3s;
-        }
-        .status-dot.online { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.3); }
-        .status-dot.processing { background: #f59e0b; animation: pulse 1s infinite; }
-
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
         /* --- CONTENT AREA --- */
         .content-area {
             flex: 1;
             overflow-y: auto;
             padding: 20px;
-            padding-bottom: 120px;
+            padding-bottom: 140px; /* Space for input */
             background: transparent; /* Show grid behind */
+            display: flex; flex-direction: column;
+            gap: 10px;
         }
 
-        /* --- MESSAGES (Clean Modern Bubbles) --- */
-        .msg-row { display: flex; gap: 12px; margin-bottom: 20px; align-items: flex-end; }
+        /* --- MESSAGES --- */
+        .msg-row {
+            display: flex; gap: 12px; margin-bottom: 20px; align-items: flex-end;
+            animation: slideIn 0.3s ease-out;
+        }
         .msg-row.user { flex-direction: row-reverse; }
         
         .msg-bubble {
-            background: #f1f5f9;
+            background: var(--bg-primary);
             border: 1px solid var(--border-color);
             border-radius: 18px;
-            padding: 12px 18px;
+            padding: 12px 16px;
             max-width: 80%;
             position: relative;
-            font-family: 'Inter', sans-serif;
             font-size: 0.95rem;
+            line-height: 1.5;
             color: var(--text-main);
-            box-shadow: var(--shadow);
-            word-wrap: break-word;
+            box-shadow: var(--shadow-lg);
         }
+        
         .msg-bubble.user {
             background: var(--accent-blue);
-            color: #fff;
+            color: white;
             border-bottom-right-radius: 4px;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.15);
         }
         .msg-bubble.other {
-            background: #fff;
+            background: var(--bg-secondary);
             border-bottom-left-radius: 4px;
         }
+        
         .sender-name {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: var(--text-secondary);
             margin-bottom: 4px;
             display: block;
             font-family: 'JetBrains Mono', monospace;
         }
 
-        /* --- SYSTEM MESSAGES (Monospace) --- */
-        .system-msg {
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--text-secondary);
-            background: #f8fafc;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            text-align: center;
-            align-self: center;
-            border: 1px dashed var(--border-color);
-        }
-
-        /* --- INPUT DOCK (Modern) --- */
+        /* --- INPUT DOCK --- */
         .input-dock {
-            position: absolute; bottom: 0;
-            width: 100%;
+            position: absolute; bottom: 0; width: 100%;
             padding: 20px;
             padding-bottom: calc(20px + var(--safe-bottom));
-            background: #ffffff;
+            background: linear-gradient(to top, #ffffff 50%, rgba(255,255,255,0.9));
             border-top: 1px solid var(--border-color);
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            z-index: 20;
+            display: flex; justify-content: center; gap: 12px; z-index: 20;
         }
-        
+        @media (min-width: 768px) { .input-dock { background: #fff; } }
+
         .game-input {
             flex: 1;
-            background: var(--input-bg);
+            background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             color: var(--text-main);
-            padding: 16px 20px;
+            padding: 14px 20px;
             font-size: 1rem;
-            outline: none;
             border-radius: 12px;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+            transition: all 0.2s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
             font-family: 'JetBrains Mono', monospace;
         }
         .game-input:focus {
             border-color: var(--accent-blue);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            background: #fff;
+            box-shadow: inset 0 0 0 4px rgba(59, 130, 246, 0.1);
         }
 
-        .btn-action {
-            background: var(--text-main);
-            color: #fff;
-            border: none;
-            padding: 0 24px;
-            height: 48px;
+        /* --- TEST CONSOLE OVERLAY --- */
+        #test-log-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            z-index: 2000; /* Highest priority */
+            display: none;
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+        }
+        #test-log-overlay.active {
+            display: flex;
+            animation: fadeIn 0.3s ease-out;
+        }
+        #test-log {
+            width: 90%;
+            max-width: 600px;
+            height: 400px;
+            background: #0f172a;
+            color: #10b981;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            padding: 20px;
             border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.1s, opacity 0.1s;
-            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column;
+            border: 1px solid #1e293b;
         }
-        .btn-action:active { transform: scale(0.95); opacity: 0.9; }
-        .btn-action.primary { background: var(--accent-blue); }
+        #test-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px; border-bottom: 1px solid #1e293b; padding-bottom: 10px;
+        }
+        #test-logs {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background: #020617;
+            border-radius: 4px;
+            border: 1px solid #1e293b;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.03);
+            border-left: 3px solid transparent;
+        }
+        .log-entry.pass { border-left-color: var(--success); color: var(--success); }
+        .log-entry.fail { border-left-color: var(--error); color: var(--error); }
+        .log-entry.info { border-left-color: var(--accent-blue); color: var(--accent-blue); }
+        .log-entry .timestamp { opacity: 0.5; margin-right: 10px; font-size: 0.75rem; }
 
-        /* --- MOBILE NAV (Light) --- */
+        /* --- TOAST --- */
+        .toast {
+            position: fixed; 
+            top: calc(var(--safe-top) + 16px); 
+            left: 50%; 
+            transform: translateX(-50%) translateY(-20px); 
+            background: #1f2937; 
+            color: #ffffff; 
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 1rem; 
+            font-weight: 500;
+            z-index: 100; 
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            display: flex; align-items: center; gap: 10px;
+            opacity: 0;
+            pointer-events: none; 
+            max-width: 90%;
+            text-align: center;
+        }
+        .toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+
+        /* --- MOBILE NAV --- */
         .mobile-dock {
+            display: none;
             position: fixed; bottom: 0; left: 0; width: 100%;
             height: calc(70px + var(--safe-bottom));
             padding-bottom: var(--safe-bottom);
-            background: #ffffff;
+            background: #fff;
             border-top: 1px solid var(--border-color);
-            display: flex; justify-content: space-around; align-items: center;
             z-index: 30;
         }
-        @media (min-width: 768px) { .mobile-dock { display: none; } }
-        
-        .dock-item {
-            display: flex; flex-direction: column; align-items: center; gap: 4px;
+        @media (max-width: 768px) { .mobile-dock { display: flex; } }
+        .nav-item {
+            flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
             color: var(--text-secondary);
-            cursor: pointer; padding: 10px;
-            width: 33%; justify-content: center;
-            transition: color 0.2s;
+            padding: 8px;
         }
-        .dock-item.active { color: var(--accent-blue); background: #eff6ff; }
+        .nav-item.active { color: var(--accent-blue); }
+        .nav-icon { font-size: 1.5rem; }
 
-        /* --- MODALS & OVERLAYS --- */
-        .overlay {
-            position: fixed; inset: 0; background: rgba(255, 255, 255, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 999;
-            display: none; align-items: center; justify-content: center;
-        }
-        .overlay.active { display: flex; animation: fadeIn 0.2s ease-out; }
-        .overlay-box {
-            background: #fff;
-            border-radius: 16px;
-            padding: 30px;
-            width: 90%; max-width: 400px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
-        }
-        .overlay-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--text-main);
-            margin-bottom: 20px;
-        }
-        .input-field {
-            width: 100%;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            padding: 10px 14px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Animations */
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <!-- BACKGROUND -->
-    <canvas id="bg-canvas"></canvas>
+    <!-- BACKGROUND GRID -->
+    <div id="bg-canvas"></div>
 
-    <!-- ACTION OVERLAYS -->
-    <!-- Settings Modal -->
-    <div id="settings-overlay" class="overlay">
-        <div class="overlay-box">
-            <div class="overlay-title">System Config</div>
-            <input type="password" id="key-groq" class="input-field" placeholder="GROQ API KEY">
-            <input type="password" id="key-zhipu" class="input-field" placeholder="ZHIPU API KEY">
-            <div class="flex gap-2 mt-4">
-                <button onclick="App.saveSettings()" class="btn-action primary">SAVE</button>
-                <button onclick="App.closeSettings()" style="background:var(--bg-secondary); color:var(--text-main);">CANCEL</button>
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="toast" role="status" aria-live="polite">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span id="toast-msg">Notification</span>
+    </div>
+
+    <!-- TEST LOG OVERLAY -->
+    <div id="test-log-overlay">
+        <div id="test-log">
+            <div id="test-header">
+                <h3 style="color: white; font-weight: bold;">DIAGNOSTIC CONSOLE</h3>
+                <button onclick="App.closeTestRunner()" style="background:none; border:1px solid #334155; color:#94a3b8; padding:4px 8px; border-radius:4px; cursor:pointer;">CLOSE</button>
             </div>
+            <div id="test-logs"></div>
         </div>
     </div>
 
     <div class="app-shell">
-        <!-- Sidebar (Desktop) -->
+        <!-- SIDEBAR -->
         <nav class="sidebar">
             <div class="menu-item active" onclick="App.setMode('chat')">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 10c0 3.866-2.14-8 8-8 8a9.863 9.863 0 01-4.255-.949L3 14l1.395-3.72C3.512 9.642 3 13.574 3 12c0-3.866 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                <span>Chat</span>
+            </div>
+            <!-- TEST SUITE BUTTON -->
+            <div class="menu-item test-item" id="btn-test-run" onclick="App.runTestSuite()">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>Run Tests</span>
+                <span class="test-badge">RUNNING</span>
             </div>
             <div class="menu-item" onclick="App.openYouTube()">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 18a8 8 0 100-16 0 1.414 0 0 0 0 16l-5-5-5 1.414 0 0 0 0-5.414 0 0 0-5.414 0 0 0-5.414 5.414 5.414 5.414 0 0-5.414 5.414 9 9 9 0z"></path></svg>
-            </div>
-            <div class="menu-item" onclick="App.openSettings()">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 2.924 0 1.414 0 0 2.573 1.066c1.543-.94 3.31-2.573 1.066c1.543.94 3.31-2.573.94-3.31.826-2.37a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>Video</span>
             </div>
         </nav>
 
         <main class="main-view">
             <!-- Header -->
             <header class="header">
-                <div class="brand">TermOS <span>Light</span></div>
-                <div class="status-container">
-                    <div id="status-dot" class="status-dot"></div>
-                    <span id="status-text">SYSTEM IDLE</span>
+                <div class="brand">TermOS <span>Test Suite</span></div>
+                <div class="status-badge">
+                    <span style="width:8px; height:8px; background:var(--success); border-radius:50%;"></span>
+                    <span>SYSTEM READY</span>
                 </div>
             </header>
 
             <!-- Chat Area -->
-            <div class="content-area" id="content-area">
-                <div class="system-msg">Welcome to the Light Interface.</div>
-                <div class="system-msg">AI Provider: Local (Free)</div>
+            <div class="content-area" id="content-area" aria-live="polite">
+                <div class="msg-row">
+                    <div class="msg-bubble other">
+                        <span class="sender-name">System</span>
+                        Welcome to the Test Environment. Use the sidebar to run diagnostics.
+                    </div>
+                </div>
             </div>
 
             <!-- Input Dock -->
             <div class="input-dock">
-                <input type="text" id="main-input" class="game-input" placeholder="Type a message..." autocomplete="off">
-                <button onclick="App.submit()" class="btn-action primary">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                <input type="text" id="main-input" class="game-input" placeholder="Type a command..." autocomplete="off">
+                <button onclick="App.submit()" class="btn-action" style="background:var(--accent-blue); color:white; padding:0 24px; border-radius:12px; border:none; font-weight:600; cursor:pointer;">
+                    SEND
                 </button>
             </div>
         </main>
     </div>
 
-    <!-- Mobile Dock -->
+    <!-- MOBILE NAV -->
     <div class="mobile-dock">
-        <div class="dock-item active" onclick="App.setMode('chat')">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 10c0 3.866-2.14-8 8-8 8a9.863 9.863 0 01-4.255-.949L3 14l1.395-3.72C3.512 9.642 3 13.574 3 12c0-3.866 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+        <div class="nav-item active" onclick="App.setMode('chat')">
+            <div class="nav-icon">💬</div>
             <span>Chat</span>
         </div>
-        <div class="dock-item" onclick="App.openYouTube()">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 18a8 8 0 100-16 0 1.414 0 0 0 16l-5-5-5 1.414 0 0 0-5.414 0 0 0-5.414 5.414 5.414 9 9 9 0z"></path></svg>
-            <span>Video</span>
+        <div class="nav-item" onclick="App.runTestSuite()" style="color:var(--accent-purple)">
+            <div class="nav-icon">🧪</div>
+            <span>Tests</span>
         </div>
-        <div class="dock-item" onclick="App.openSettings()">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 2.924 0 1.414 0 0 2.573 1.066c1.543-.94 3.31-2.573 1.066c1.543.94 3.31-2.573.94-3.31.826-2.37a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-            <span>Config</span>
+        <div class="nav-item" onclick="App.openYouTube()">
+            <div class="nav-icon">▶️</div>
+            <span>Video</span>
         </div>
     </div>
 
 <script>
 /* --- CONSTANTS --- */
 const Config = {
-    broker: "broker.emqx.io", port: 8084, topic: "termos/light/v1",
-    providers: {
-        groq: { url: "https://api.groq.com/openai/v1/chat/completions", model: "llama-3.3-70b-versatile" },
-        zhipu: { url: "https://open.bigmodel.cn/api/paas/v4/chat/completions", model: "glm-4" }
-    }
+    broker: "broker.emqx.io", port: 8084, topic: "termos/light/v1"
 };
 
+/* --- STATE --- */
 const State = {
     user: "User_" + Math.floor(Math.random() * 10000),
-    keys: { groq: localStorage.getItem('light_groq') || "", zhipu: localStorage.getItem('light_zhipu') || "" },
-    provider: "local", // Default to Local
-    isLocal: true
+    keys: { groq: localStorage.getItem('light_groq') || "", zhipu: localStorage.getItem('light_zhipu') || "" }
 };
 
 /* --- APP LOGIC --- */
 const App = {
+    toastTimeout: null,
+
     init() {
         this.drawGrid();
         window.addEventListener('resize', () => this.drawGrid());
@@ -393,210 +446,191 @@ const App = {
         input.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.submit();
         });
-        input.addEventListener('input', () => {
-            // Scroll to bottom if user is typing
-            const area = document.getElementById('content-area');
-            if(area.scrollHeight - area.scrollTop - area.clientHeight < 50) {
-                area.scrollTop = area.scrollHeight;
-            }
-        });
 
         this.initNetwork();
     },
 
-    // VISUALS: Draw static grid
     drawGrid() {
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
         const resize = () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            draw();
         };
         window.addEventListener('resize', resize);
         resize();
 
         const draw = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = '#e5e7eb'; // Light gray lines
+            ctx.strokeStyle = '#e5e7eb';
             ctx.lineWidth = 1;
             const step = 40;
 
-            // Vertical lines
             for (let x = 0; x <= canvas.width; x += step) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
             }
-            // Horizontal lines
             for (let y = 0; y <= canvas.height; y += step) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
             }
         };
         draw();
     },
 
-    // NETWORK: MQTT (Preserved)
     initNetwork() {
         if (typeof Paho === 'undefined') return;
         
         const clientId = "TermOS_Light_" + State.user;
         const client = new Paho.Client(Config.broker, Config.port, clientId);
 
-        client.onConnectionLost = () => this.updateStatus('offline');
+        client.onConnectionLost = () => { /*console.log("MQTT Lost");*/ };
         client.onMessageArrived = (message) => {
             try {
                 const data = JSON.parse(message.payloadString);
                 if (data.sender !== State.user && data.type === 'chat') {
                     this.addLog(data.text, 'other', data.sender);
                 }
-            } catch(e) { console.error(e); }
+            } catch(e) {}
         };
 
         client.connect({
-            useSSL: true, timeout: 10,
-            onSuccess: () => {
-                client.subscribe(Config.topic);
-                this.updateStatus('online');
-            },
-            onFailure: () => {
-                this.updateStatus('offline');
-            }
+            useSSL: true, timeout: 10, keepAliveInterval: 30,
+            onSuccess: () => { client.subscribe(Config.topic); },
+            onFailure: () => {}
         });
-
         window.mqttClient = client;
     },
 
-    updateStatus(state) {
-        const dot = document.getElementById('status-dot');
-        const text = document.getElementById('status-text');
-        
-        dot.className = 'status-dot';
-        text.innerText = 'SYSTEM IDLE';
-
-        if (state === 'online') {
-            dot.classList.add('online');
-            text.innerText = 'SYSTEM ONLINE';
-        } else if (state === 'processing') {
-            dot.classList.add('processing');
-            text.innerText = 'BUSY';
-        } else if (state === 'offline') {
-            dot.className.remove('online');
-            dot.classList.remove('processing');
-            text.innerText = 'OFFLINE';
-        }
-    },
-
-    // CHAT LOGIC
     addLog(msg, type = 'user', senderName = 'Me') {
         const container = document.getElementById('content-area');
+        const row = document.createElement('div');
+        row.className = `msg-row ${type}`;
         
-        // Filter for system vs chat
-        if (type === 'system') {
-            const div = document.createElement('div');
-            div.className = 'system-msg';
-            div.innerText = msg;
-            container.appendChild(div);
+        const initial = senderName === 'Me' ? 'Me' : senderName.substring(0, 2).toUpperCase();
+        const avatarColor = type === 'user' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border';
+        
+        const avatarHtml = `<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${avatarColor}" style="flex-shrink:0;">${initial}</div>`;
+        const nameHtml = `<span class="sender-name">${senderName}</span>`;
+        const bubbleHtml = `<div class="msg-bubble ${type}">${msg}</div>`;
+        
+        if (type === 'user') {
+            row.innerHTML = `${avatarHtml}<div>${nameHtml}${bubbleHtml}</div>`;
         } else {
-            const row = document.createElement('div');
-            row.className = `msg-row ${type}`;
-            
-            // Avatar (Circle with initial)
-            const avatarHtml = `<div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold border border-blue-200" style="background:white;">${senderName[0]}</div>`;
-            
-            const bubble = document.createElement('div');
-            bubble.className = `msg-bubble ${type}`;
-            bubble.innerText = msg;
-            
-            row.innerHTML = `${avatarHtml}<div class="bubble">${msg}</div>`;
-            container.appendChild(row);
+            row.innerHTML = `${avatarHtml}<div>${nameHtml}${bubbleHtml}</div>`;
         }
-
-        container.scrollTop = container.scrollHeight;
+        container.appendChild(row);
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     },
 
-    // SUBMIT
     submit() {
         const input = document.getElementById('main-input');
         const txt = input.value.trim();
         if (!txt) return;
 
-        // Basic command check
-        if (txt.startsWith('/ai ')) {
-            Brain.query(txt.substring(4));
-        } else {
-            this.addLog(txt, 'user');
-            // Broadcast to MQTT if available
-            if (window.mqttClient && window.mqttClient.isConnected()) {
-                const msg = new Paho.Message(JSON.stringify({
-                    sender: State.user,
-                    text: txt,
-                    type: 'chat'
-                }));
-                msg.destinationName = Config.topic;
-                window.mqttClient.send(msg);
-            }
-        }
+        this.addLog(txt, 'user');
         input.value = '';
-    },
+        input.focus();
 
-    // SETTINGS
-    openSettings() {
-        document.getElementById('settings-overlay').classList.add('active');
-        document.getElementById('key-groq').value = State.keys.groq;
-        document.getElementById('key-zhipu').value = State.keys.zhipu;
-    },
-    closeSettings() {
-        document.getElementById('settings-overlay').classList.remove('active');
-    },
-    saveSettings() {
-        State.keys.groq = document.getElementById('key-groq').value;
-        State.keys.zhipu = document.getElementById('key-zhipu').value;
-        localStorage.setItem('light_groq', State.keys.groq);
-        localStorage.setItem('light_zhipu', State.keys.zhipu);
-        
-        this.closeSettings();
-        this.updateStatus('online'); // Reset status
-    },
-
-    // YOUTUBE APP (Simple Embed Placeholder)
-    openYouTube() {
-        alert("Video App: In this Light Edition, please use the link from the chat or paste it into the input. \n\n(Note: Full video features require a darker theme due to visibility.)");
-    },
-
-    // MODE SWITCH
-    setMode(mode) {
-        // In this clean version, switching modes isn't strictly necessary as layout is static, but function exists for extensibility
-        document.querySelectorAll('.menu-item, .dock-item').forEach(el => el.classList.remove('active'));
-        
-        if(mode === 'chat') {
-            document.querySelector('.sidebar .menu-item').classList.add('active');
-            document.querySelector('.mobile-dock .dock-item').classList.add('active');
+        if (txt.startsWith('/test')) {
+            this.runTestSuite();
         }
-    }
-};
+    },
 
-/* --- BRAIN (Unified) --- */
-const Brain = {
-    async query(prompt) {
-        App.updateStatus('processing');
+    notify(msg) {
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toast-msg');
+        toastMsg.textContent = msg;
+        toast.classList.add('visible');
+        if (this.toastTimeout) clearTimeout(this.toastTimeout);
+        this.toastTimeout = setTimeout(() => toast.classList.remove('visible'), 3000);
+    },
+
+    openYouTube() { this.notify("Video module is read-only in Test Suite"); },
+    setMode(mode) { /* Placeholder for mode switching */ },
+
+    /* --- TEST SUITE LOGIC --- */
+    runTestSuite() {
+        // Visual Updates
+        const btn = document.getElementById('btn-test-run');
+        btn.classList.add('test-running');
+        document.getElementById('test-log-overlay').classList.add('active');
         
-        // Simulate AI Response (if no key or Local)
-        const delay = 800 + Math.random() * 1000;
+        const logContainer = document.getElementById('test-logs');
+        logContainer.innerHTML = ''; // Clear previous logs
 
-        setTimeout(() => {
-            App.updateStatus('online');
-            
-            let response = "I am ready to help.";
-            if (prompt.toLowerCase().includes('hello')) response = "System Online. TermOS Light Edition running.";
-            else if (prompt.toLowerCase().includes('help')) response = "Commands: /ai [prompt], Settings (Top Right).";
-            else response = "I processed your request in the Light Core.";
+        const log = (msg, type) => {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString().split(' ')[0];
+            entry.innerHTML = `<span class="timestamp">[${time}]</span> ${msg}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        };
 
-            App.addLog(response, 'other', 'System');
-        }, delay);
+        // Async Test Runner
+        (async () => {
+            log("Initializing Diagnostic Suite...", "info");
+            await new Promise(r => setTimeout(r, 500));
+
+            // TEST 1: DOM Integrity
+            const inputEl = document.getElementById('main-input');
+            const contentEl = document.getElementById('content-area');
+            if (inputEl && contentEl) {
+                log("DOM Elements: PASS", "pass");
+            } else {
+                log("DOM Elements: FAIL", "fail");
+            }
+
+            await new Promise(r => setTimeout(r, 300));
+
+            // TEST 2: Local Storage
+            try {
+                localStorage.setItem('test_suite_check', '1');
+                localStorage.removeItem('test_suite_check');
+                log("Local Storage Access: PASS", "pass");
+            } catch (e) {
+                log("Local Storage Access: FAIL", "fail");
+            }
+
+            await new Promise(r => setTimeout(r, 300));
+
+            // TEST 3: Network Library
+            if (typeof Paho !== 'undefined') {
+                log("MQTT Library Loaded: PASS", "pass");
+            } else {
+                log("MQTT Library Loaded: FAIL", "fail");
+            }
+
+            await new Promise(r => setTimeout(r, 300));
+
+            // TEST 4: Accessibility (Focus)
+            const input = document.getElementById('main-input');
+            input.focus();
+            if (document.activeElement === input) {
+                log("Input Focus Management: PASS", "pass");
+            } else {
+                log("Input Focus Management: FAIL", "fail");
+            }
+
+            await new Promise(r => setTimeout(r, 300));
+
+            // TEST 5: Toast Notification
+            this.notify("Toast Accessibility Check");
+            await new Promise(r => setTimeout(r, 100));
+            const toast = document.getElementById('toast');
+            if (toast.classList.contains('visible')) {
+                log("Toast Notification Trigger: PASS", "pass");
+            } else {
+                log("Toast Notification Trigger: FAIL", "fail");
+            }
+
+            log("Diagnostic Suite Complete.", "info");
+            btn.classList.remove('test-running');
+        })();
+    },
+
+    closeTestRunner() {
+        document.getElementById('test-log-overlay').classList.remove('active');
     }
 };
 
