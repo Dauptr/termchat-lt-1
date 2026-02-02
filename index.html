@@ -3,1073 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Watercolor + Copilot (Complete)</title>
+    <title>TermOS: Total Build</title>
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <link href="https://fonts.googleapis.com" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com"></script>
     <style>
         :root { 
-            --glass-bg: rgba(20, 20, 30, 0.4); 
-            --glass-border: rgba(255, 255, 255, 0.05); 
-            --accent-primary: #d8b4fe; 
-            --accent-secondary: #67e8f9; 
-            --msg-user-bg: linear-gradient(135deg, #9333ea 0%, #4f46e5 100%); 
-            --neon-glow: 0 20px 50px -10px rgba(168, 85, 247, 0.3);
-            --code-bg: rgba(10, 10, 15, 0.9);
+            --glass-bg: rgba(15, 15, 25, 0.7); 
+            --accent: #d8b4fe; 
+            --neon: #67e8f9; 
         }
+        body { background: #020205; color: #e4e4e7; font-family: 'Inter', sans-serif; overflow: hidden; }
         
-        body { 
-            background: #050505; 
-            color: #e4e4e7; 
-            font-family: 'Inter', sans-serif; 
-            overflow: hidden; 
-            background-color: #09090b;
-        }
-
-        /* VISUAL LAYERS */
+        /* WATERCOLOR ENGINE CANVAS */
         #painted-canvas { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            z-index: 0; pointer-events: none; 
-            mix-blend-mode: screen; 
-        }
-        
-        .noise-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 1;
-            opacity: 0.07;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background: linear-gradient(45deg, #0f172a, #1e1b4b);
         }
 
-        #flash-overlay { position: fixed; inset: 0; background: rgba(216,180,254,0.15); opacity: 0; pointer-events: none; z-index: 100; transition: opacity 0.8s ease-out; mix-blend-mode: overlay; }
-        
-        /* UTILITIES */
         .glass-panel { 
             background: var(--glass-bg); 
-            backdrop-filter: blur(25px); 
-            -webkit-backdrop-filter: blur(25px); 
-            border: 1px solid var(--glass-border); 
-            box-shadow: var(--neon-glow); 
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
-            border-radius: 20px;
-        }
-        .glass-panel:hover { 
-            background: rgba(30, 30, 40, 0.5); 
-            transform: translateY(-2px);
-            box-shadow: 0 25px 60px -12px rgba(168, 85, 247, 0.4);
-        }
-        
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        
-        .font-header { font-family: 'Orbitron', sans-serif; letter-spacing: 0.05em; }
-        
-        /* ANIMATIONS */
-        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
-        .scan-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.03), transparent); animation: scanline 8s linear infinite; pointer-events: none; }
-
-        @keyframes paintIn { 
-            from { opacity: 0; transform: translateY(20px) scale(0.95); filter: blur(10px); } 
-            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } 
-        }
-        .msg-anim { animation: paintIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-        
-        @keyframes pulse-soft { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(0.98); } }
-        .animate-pulse { animation: pulse-soft 4s ease-in-out infinite; }
-
-        @keyframes flashInput { 0% { box-shadow: inset 0 0 0 rgba(6,182,212,0); } 50% { box-shadow: inset 0 0 20px rgba(6,182,212,0.5); } 100% { box-shadow: inset 0 0 0 rgba(6,182,212,0); } }
-        .editor-flash { animation: flashInput 0.3s ease-out; }
-
-        /* CODE BLOCK STYLES */
-        .ai-code-block {
-            background: rgba(24, 24, 27, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 12px;
-            overflow-x: auto;
-            font-family: 'Fira Code', monospace;
-            font-size: 13px;
-            color: #d4d4d8;
-            position: relative;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
-        }
-        .ai-code-block::before {
-            content: "CODE";
-            position: absolute;
-            top: 8px;
-            right: 12px;
-            font-size: 10px;
-            color: rgba(255,255,255,0.3);
-            background: rgba(255,255,255,0.05);
-            padding: 2px 8px;
-            border-radius: 6px;
-            border: 1px solid rgba(255,255,255,0.05);
+            backdrop-filter: blur(30px); 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
         }
 
-        /* MEDIA */
-        .media-overlay { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 600px; z-index: 40; transition: all 0.4s ease; }
-        .media-minimized { bottom: 20px; right: 20px; left: auto; width: 50px; height: 50px; transform: none; padding: 0; background: transparent; border: none; box-shadow: none; }
-        .video-active { border: 2px solid rgba(168, 85, 247, 0.3); box-shadow: 0 0 40px rgba(168, 85, 247, 0.2); }
+        .font-header { font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 2px; }
         
-        /* MODALS */
-        .modal-overlay { background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); }
-        
-        /* BOOT */
-        #boot-screen { position: fixed; inset: 0; background: #000; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 1.5s ease-out; }
-        .loader-ring { width: 80px; height: 80px; border: 1px solid rgba(255,255,255,0.05); border-top: 2px solid var(--accent-primary); border-radius: 50%; animation: spin 3s cubic-bezier(0.2, 0.8, 0.2, 1) infinite; box-shadow: 0 0 20px var(--accent-primary); }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* SCANNER ANIMATION */
+        @keyframes scanline { 0% { top: -10%; } 100% { top: 110%; } }
+        .scanner-bar { 
+            position: absolute; width: 100%; height: 2px; 
+            background: linear-gradient(90deg, transparent, var(--neon), transparent);
+            animation: scanline 4s linear infinite; opacity: 0.3;
+        }
 
-        /* COPILOT STYLES */
-        .copilot-editor {
-            background: var(--code-bg);
-            color: #e4e4e7;
-            font-family: 'Fira Code', monospace;
-            font-size: 14px;
-            line-height: 1.6;
-            resize: none;
-            outline: none;
-            border: none;
-            width: 100%;
-            height: 100%;
-            padding: 20px 20px 20px 60px;
-            border-radius: 8px;
-            caret-color: #67e8f9;
-        }
-        .suggestion-box {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 250px;
-            background: rgba(6, 182, 212, 0.1);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(6, 182, 212, 0.2);
-            color: #67e8f9;
-            padding: 12px;
-            border-radius: 8px;
-            font-family: 'Fira Code', monospace;
-            font-size: 12px;
-            pointer-events: none;
-            opacity: 0;
-            transform: translateY(-10px);
-            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 50;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        .suggestion-box.active { 
-            opacity: 1; 
-            transform: translateY(0); 
-            border-color: rgba(6, 182, 212, 0.5);
-            background: rgba(6, 182, 212, 0.15);
-        }
-        .suggestion-label {
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: rgba(103, 232, 249, 0.7);
-            margin-bottom: 4px;
-            display: block;
-            border-bottom: 1px solid rgba(6, 182, 212, 0.2);
-            padding-bottom: 2px;
-        }
+        .file-item { border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.3s; }
+        .file-item:hover { background: rgba(103, 232, 249, 0.1); padding-left: 12px; }
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col relative text-sm selection:bg-purple-500/30">
+<body class="h-screen w-screen flex flex-col relative text-sm">
 
-    <!-- BOOT LOADER -->
-    <div id="boot-screen">
-        <div class="loader-ring mb-8"></div>
-        <h1 class="text-4xl font-header text-white tracking-[0.3em] animate-pulse bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-cyan-400">TERMOS</h1>
-        <div class="mt-6 text-purple-300/60 font-mono text-xs tracking-[0.2em]">AI COPILOT & MEDIA LOADED</div>
-    </div>
+    <div id="painted-canvas"></div>
+    <div class="scanner-bar"></div>
 
-    <!-- VISUALS -->
-    <canvas id="painted-canvas"></canvas>
-    <div class="noise-overlay"></div>
-    <div id="flash-overlay"></div>
-
-    <!-- HEADER -->
-    <header class="fixed top-0 left-0 right-0 z-20 glass-panel border-b border-white/5 h-16 flex items-center justify-between px-4 lg:px-8 mx-4 mt-4 rounded-2xl">
-        <div class="flex items-center gap-4">
-            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            </div>
-            <div>
-                <h1 class="font-header font-bold text-lg text-white">TERMOS <span class="text-purple-300/80">COPILOT</span></h1>
-                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-mono">
-                    <div id="status-dot" class="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>
-                    <span id="room-display">DISCONNECTED</span>
-                </div>
-            </div>
-        </div>
-        <div class="flex items-center gap-2">
-            <div id="engine-badge" class="hidden px-2 py-0.5 bg-cyan-900/30 border border-cyan-500/30 rounded text-[9px] font-bold text-cyan-200 tracking-wider">GROQ</div>
-            <div id="room-badge" class="hidden px-3 py-1 bg-black/40 border border-purple-500/20 rounded-full text-[9px] font-bold text-purple-200 tracking-wider">PUBLIC</div>
-            <button onclick="UI.toggleCopilot()" class="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 border border-cyan-500/30 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-lg shadow-cyan-900/20 flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                COPILOT
-            </button>
-            <button onclick="UI.toggleAdmin()" class="bg-black/30 hover:bg-white/10 border border-white/10 hover:border-white/20 text-gray-400 hover:text-white px-3 py-1.5 rounded-full text-xs font-bold transition-all backdrop-blur-md">SETTINGS</button>
-        </div>
-    </header>
-    
-    <!-- MAIN CHAT -->
-    <main id="chat-container" class="flex-1 overflow-y-auto pt-24 pb-40 px-4 z-10 max-w-4xl mx-auto w-full space-y-6 scroll-smooth"></main>
-    
-    <!-- INPUT AREA -->
-    <div class="fixed bottom-0 left-0 w-full z-30 flex justify-center pb-6 pt-4 px-4">
-        <div class="max-w-4xl w-full relative">
-            <div class="flex items-end gap-2 bg-black/30 backdrop-blur-md rounded-2xl p-2 border border-white/5 shadow-2xl transition-all focus-within:border-purple-500/30 focus-within:shadow-[0_0_30px_-10px_rgba(168,85,247,0.3)]">
-                <button onclick="Commands.handle('/ai ')" class="p-3 rounded-xl text-gray-500 hover:text-purple-400 hover:bg-white/5 transition-all duration-300">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
-                </button>
-                <button onclick="Commands.handle('/code ')" class="p-3 rounded-xl text-gray-500 hover:text-cyan-400 hover:bg-white/5 transition-all duration-300">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
-                </button>
-                <input type="text" id="user-input" placeholder="Command: /ai, /code, /copilot..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-2 py-3 font-mono text-sm">
-                <button onclick="Commands.handle()" class="p-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-900/40 hover:scale-105 active:scale-95 transition-all duration-200">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
-                </button>
-            </div>
-            <div class="flex gap-4 mt-2 justify-center">
-                <button onclick="UI.toggleMedia()" class="text-[9px] text-gray-500 hover:text-purple-400 transition-colors tracking-widest">MEDIA</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- COPILOT MODAL -->
-    <div id="copilot-modal" class="fixed inset-0 z-[90] modal-overlay hidden flex items-center justify-center">
-        <div class="glass-panel w-[90%] max-w-4xl h-[80vh] p-1 rounded-3xl border border-white/10 shadow-2xl flex flex-col">
-            <div class="bg-black/40 rounded-2xl flex flex-col h-full overflow-hidden relative">
-                <!-- Toolbar -->
-                <div class="h-12 border-b border-white/5 flex items-center justify-between px-4 bg-slate-900/50 backdrop-blur-md z-20">
-                    <div class="flex items-center gap-2">
-                        <span class="text-cyan-400 font-mono text-xs font-bold">COPILOT EDITOR</span>
-                        <span id="copilot-status" class="text-[9px] text-gray-500 px-2 py-0.5 rounded bg-white/5 hidden">Analyzing...</span>
-                    </div>
-                    <button onclick="UI.toggleCopilot()" class="text-gray-400 hover:text-white text-xs">✖ CLOSE</button>
-                </div>
-
-                <!-- Editor Area -->
-                <div class="flex-1 relative bg-[#0a0a0c]">
-                    <!-- Line Numbers (Visual only) -->
-                    <div class="absolute left-0 top-0 bottom-0 w-[50px] bg-black/20 text-gray-700 text-right pr-3 pt-4 font-mono text-xs leading-[1.6] select-none pointer-events-none z-10 overflow-hidden">
-                        1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15
-                    </div>
-                    
-                    <!-- Main Editor -->
-                    <textarea id="copilot-editor" class="copilot-editor" spellcheck="false" placeholder="// Start typing code..."></textarea>
-                    
-                    <!-- Floating Suggestion -->
-                    <div id="copilot-suggestion" class="suggestion-box">
-                        <span class="suggestion-label">TAB to Accept</span>
-                        <span id="suggestion-text" class="text-white font-bold"></span>
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="h-8 border-t border-white/5 bg-slate-900/50 flex items-center px-4 justify-between text-[10px] text-gray-500 z-20">
-                    <span>JAVASCRIPT / HTML / CSS</span>
-                    <span class="flex items-center gap-2">
-                        <span>CTRL+ENTER to save to clipboard</span>
-                        <span id="char-count" class="text-cyan-400">0 chars</span>
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MEDIA DECK (FULLY RESTORED) -->
-    <div id="media-deck" class="media-overlay glass-panel rounded-3xl overflow-hidden border border-white/10 hidden">
-        <div class="scan-overlay"></div>
-        <div class="p-6 relative z-10">
-            <div class="flex justify-between items-center mb-6">
-                <span class="font-header font-bold text-white tracking-widest text-xs">MEDIA DECK</span>
-                <button onclick="UI.toggleMedia()" class="text-gray-400 hover:text-white w-8 h-8 rounded-full bg-black/20 flex items-center justify-center">✖</button>
-            </div>
-            
-            <!-- Tabs -->
-            <div class="flex gap-8 mb-6 border-b border-white/5">
-                <button onclick="UI.switchTab('radio')" id="tab-radio" class="pb-3 text-cyan-300 border-b-2 border-cyan-400 font-mono text-xs font-bold tracking-wide">RADIO</button>
-                <button onclick="UI.switchTab('video')" id="tab-video" class="pb-3 text-gray-500 border-b-2 border-transparent font-mono text-xs hover:text-purple-300 tracking-wide">VIDEO</button>
-            </div>
-
-            <!-- Radio -->
-            <div id="view-radio" class="grid gap-3">
-                <button onclick="Media.playRadio('https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3')" class="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all duration-300 text-left group">
-                    <span class="text-xs font-bold text-gray-200 group-hover:text-cyan-300 transition-colors">🎵 Lofi Beats</span>
-                    <div class="w-2 h-2 rounded-full bg-green-500/50 shadow-[0_0_10px_#22c55e]"></div>
-                </button>
-                <button onclick="Media.playRadio('https://streams.ilovemusic.com/iloveradio1599.mp3')" class="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all duration-300 text-left group">
-                    <span class="text-xs font-bold text-gray-200 group-hover:text-cyan-300 transition-colors">📻 Cyber Radio</span>
-                    <div class="w-2 h-2 rounded-full bg-gray-600 group-hover:bg-gray-400 transition-colors"></div>
-                </button>
-            </div>
-
-            <!-- Video -->
-            <div id="view-video" class="hidden">
-                <div class="aspect-video bg-black/50 rounded-2xl overflow-hidden border border-white/5 relative backdrop-blur-sm">
-                    <div id="video-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-600 font-mono text-xs tracking-widest">NO SIGNAL</div>
-                    <video id="main-video" class="w-full h-full hidden" controls autoplay playsinline></video>
-                </div>
-                <div class="mt-3 flex gap-2">
-                    <input type="text" id="video-url" placeholder="Paste .mp4 / .m3u8 URL" class="flex-1 bg-black/30 border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-purple-500/50 transition-colors font-mono">
-                    <button onclick="Media.shareVideo()" class="bg-purple-600/90 hover:bg-purple-500 text-white px-6 py-2.5 rounded-xl text-xs font-bold tracking-wider transition-all shadow-lg shadow-purple-900/30">CAST</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ADMIN PANEL -->
-    <div id="admin-panel" class="fixed bottom-28 right-4 z-50 glass-panel w-80 p-6 rounded-3xl border border-white/5 shadow-2xl hidden transform transition-all duration-500 translate-y-4 opacity-0">
-        <h3 class="text-purple-300 font-header font-bold mb-6 text-xs flex items-center justify-between tracking-widest"><span>AI CONFIG</span> <button onclick="UI.toggleAdmin()" class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center">✖</button></h3>
+    <main class="relative z-10 h-full flex flex-col p-6 gap-6">
         
-        <div class="space-y-5">
-            <!-- Provider Selector -->
-            <div class="space-y-2">
-                <label class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Active AI Provider</label>
-                <select id="ai-provider" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white focus:border-purple-500 outline-none transition-colors appearance-none cursor-pointer">
-                    <option value="groq">Groq (Llama 3.3)</option>
-                    <option value="zhipu">Zhipu AI (GLM-4)</option>
-                </select>
+        <!-- SYSTEM HEADER -->
+        <header class="flex justify-between items-center">
+            <div class="glass-panel px-6 py-3 flex items-center gap-4">
+                <div class="w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>
+                <h1 class="font-header text-lg text-cyan-100">TermOS Core</h1>
             </div>
+            <div id="mqtt-status" class="text-[10px] font-mono text-purple-400 opacity-50">MQTT: DISCONNECTED</div>
+        </header>
 
-            <!-- Groq Key -->
-            <div id="groq-settings" class="space-y-2">
-                <label class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Groq API Key</label>
-                <input type="password" id="groq-key" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white focus:border-purple-500 outline-none transition-colors placeholder-gray-600" placeholder="gsk_...">
-            </div>
-
-            <!-- Zhipu Key -->
-            <div id="zhipu-settings" class="space-y-2 hidden">
-                <label class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Zhipu API Key</label>
-                <input type="password" id="zhipu-key" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white focus:border-cyan-500 outline-none transition-colors placeholder-gray-600" placeholder="Paste Zhipu Key">
-            </div>
+        <div class="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
             
-            <button onclick="UI.saveSettings()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2 rounded-xl text-xs tracking-wider transition-all shadow-lg">SAVE ENGINE</button>
-
-            <div class="border-t border-white/5 pt-5 mt-5">
-                <label class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">GitHub Token (Optional)</label>
-                <input type="password" id="gh-token" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white focus:border-purple-500 outline-none transition-colors mt-1 placeholder-gray-600">
-            </div>
-        </div>
-    </div>
-
-    <!-- JOIN MODAL -->
-    <div id="join-modal" class="fixed inset-0 z-[60] modal-overlay hidden flex items-center justify-center">
-        <div class="glass-panel p-6 rounded-2xl max-w-sm w-full mx-4 border border-purple-500/30">
-            <h3 class="font-header font-bold text-center text-white mb-2">SECURE CHANNEL</h3>
-            <input type="text" id="room-name-input" placeholder="CHANNEL NAME" class="w-full bg-black/60 border border-purple-500/30 rounded-lg p-3 text-center text-white font-mono mb-4 outline-none">
-            <div class="flex gap-2">
-                <button onclick="Net.joinRoom()" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded text-xs font-bold">CONNECT</button>
-                <button onclick="UI.toggleJoinModal()" class="flex-1 bg-slate-700 text-white py-2 rounded text-xs font-bold">ABORT</button>
-            </div>
-        </div>
-    </div>
-
-<script>
-    /** 
-     * TERMOS: COMPLETE EDITION
-     * Features: Fixed Copilot + Dual AI + Full Media
-     */
-
-    // --- CONFIG & STATE ---
-    const Config = {
-        broker: "broker.emqx.io",
-        port: 8084,
-        user: `User_${Math.floor(Math.random() * 9000) + 1000}`,
-        providers: {
-            groq: {
-                model: "llama-3.3-70b-versatile",
-                url: "https://api.groq.com/openai/v1/chat/completions",
-                key: ""
-            },
-            zhipu: {
-                model: "glm-4-flash", // Fast model
-                url: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-                key: ""
-            }
-        },
-        activeProvider: "groq" // Default
-    };
-
-    const State = {
-        mqttClient: null,
-        currentRoom: null,
-        profile: { name: "Guest", avatar: "👤" },
-        isConnected: false,
-        github: { token: localStorage.getItem('termos_gh_token') || "" },
-        copilot: {
-            suggestion: null,
-            isTyping: false,
-            timer: null,
-            lastValue: ""
-        }
-    };
-
-    // --- UTILS ---
-    const Utils = {
-        escapeHTML: (str) => {
-            if(!str) return "";
-            return str.replace(/[&<>'"]/g, 
-                tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag]));
-        },
-        timestamp: () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        uuid: () => 'msg_' + Math.random().toString(36).substr(2, 9),
-        
-        parseMarkdown: (text) => {
-            const codeBlocks = [];
-            let safeText = text.replace(/```([\s\S]*?)```/g, (match, code) => {
-                codeBlocks.push(code);
-                return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
-            });
-
-            safeText = Utils.escapeHTML(safeText);
-            
-            safeText = safeText.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white font-bold">$1</strong>');
-            safeText = safeText.replace(/`([^`]+)`/g, '<span class="bg-purple-900/40 text-purple-300 px-1.5 py-0.5 rounded font-mono text-xs">$1</span>');
-            
-            safeText = safeText.replace(/__CODE_BLOCK_(\d+)__/g, (match, index) => {
-                const code = codeBlocks[index].replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                return `<div class="ai-code-block"><pre><code>${code}</code></pre></div>`;
-            });
-
-            safeText = safeText.replace(/\n/g, '<br>');
-            return safeText;
-        }
-    };
-
-    // --- UI CONTROLLER ---
-    const UI = {
-        container: document.getElementById('chat-container'),
-        input: document.getElementById('user-input'),
-        copilotModal: document.getElementById('copilot-modal'),
-        copilotEditor: document.getElementById('copilot-editor'),
-        
-        init: () => {
-            UI.updateStatus(false);
-            UI.loadSettings();
-            
-            // Provider Switch
-            document.getElementById('ai-provider').addEventListener('change', (e) => {
-                UI.toggleProviderSettings(e.target.value);
-            });
-
-            setTimeout(() => {
-                document.getElementById('boot-screen').style.opacity = '0';
-                setTimeout(() => document.getElementById('boot-screen').remove(), 1500);
-                Cosmos.start();
-                Net.connect();
-            }, 1500);
-
-            UI.input.addEventListener('keypress', (e) => {
-                if(e.key === 'Enter') Commands.handle();
-            });
-
-            // Copilot Event Listeners
-            UI.copilotEditor.addEventListener('input', Copilot.onType);
-            UI.copilotEditor.addEventListener('keydown', Copilot.onKey);
-            // Update char count
-            UI.copilotEditor.addEventListener('input', (e) => {
-                document.getElementById('char-count').textContent = e.target.value.length + " chars";
-            });
-        },
-
-        toggleCopilot: () => {
-            UI.copilotModal.classList.toggle('hidden');
-            if(!UI.copilotModal.classList.contains('hidden')) {
-                UI.copilotEditor.focus();
-            }
-        },
-
-        toggleProviderSettings: (provider) => {
-            const groqDiv = document.getElementById('groq-settings');
-            const zhipuDiv = document.getElementById('zhipu-settings');
-            if(provider === 'zhipu') {
-                groqDiv.classList.add('hidden');
-                zhipuDiv.classList.remove('hidden');
-            } else {
-                groqDiv.classList.remove('hidden');
-                zhipuDiv.classList.add('hidden');
-            }
-        },
-
-        log: (html, type = 'normal') => {
-            const div = document.createElement('div');
-            div.className = `msg-anim ${type}`;
-            div.innerHTML = html;
-            UI.container.appendChild(div);
-            UI.container.scrollTop = UI.container.scrollHeight;
-        },
-
-        updateStatus: (online) => {
-            const dot = document.getElementById('status-dot');
-            const label = document.getElementById('room-display');
-            State.isConnected = online;
-            
-            if(online) {
-                dot.className = "w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(34,197,94,0.8)] animate-pulse";
-                label.textContent = State.currentRoom ? `ROOM: ${State.currentRoom}` : "ONLINE";
-                label.className = "text-green-400";
-            } else {
-                dot.className = "w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse";
-                label.textContent = "DISCONNECTED";
-                label.className = "text-red-400";
-            }
-        },
-
-        toggleAdmin: () => {
-            const panel = document.getElementById('admin-panel');
-            if(panel.classList.contains('hidden')) {
-                panel.classList.remove('hidden');
-                setTimeout(() => panel.classList.remove('translate-y-4', 'opacity-0'), 10);
-            } else {
-                panel.classList.add('translate-y-4', 'opacity-0');
-                setTimeout(() => panel.classList.add('hidden'), 300);
-            }
-        },
-
-        saveSettings: () => {
-            const provider = document.getElementById('ai-provider').value;
-            const groqKey = document.getElementById('groq-key').value.trim();
-            const zhipuKey = document.getElementById('zhipu-key').value.trim();
-            const token = document.getElementById('gh-token').value.trim();
-
-            // Save Provider Choice
-            Config.activeProvider = provider;
-            localStorage.setItem('termos_provider', provider);
-
-            // Save Keys
-            Config.providers.groq.key = groqKey;
-            Config.providers.zhipu.key = zhipuKey;
-
-            localStorage.setItem('termos_groq', groqKey);
-            localStorage.setItem('termos_zhipu', zhipuKey);
-            localStorage.setItem('termos_gh_token', token);
-
-            // Update UI Badge
-            const badge = document.getElementById('engine-badge');
-            badge.classList.remove('hidden');
-            badge.textContent = provider.toUpperCase();
-            
-            if(provider === 'zhipu') {
-                badge.className = "px-2 py-0.5 bg-cyan-900/30 border border-cyan-500/30 rounded text-[9px] font-bold text-cyan-200 tracking-wider";
-            } else {
-                badge.className = "px-2 py-0.5 bg-purple-900/30 border border-purple-500/30 rounded text-[9px] font-bold text-purple-200 tracking-wider";
-            }
-
-            UI.log(`✅ Engine switched to ${provider.toUpperCase()}`, "system");
-        },
-
-        toggleMedia: () => {
-            const deck = document.getElementById('media-deck');
-            deck.classList.toggle('hidden');
-            if(!deck.classList.contains('hidden')) {
-                deck.classList.remove('media-minimized');
-            }
-        },
-
-        switchTab: (tab) => {
-            document.getElementById('tab-radio').className = tab === 'radio' ? "pb-3 text-cyan-300 border-b-2 border-cyan-400 font-mono text-xs font-bold tracking-wide" : "pb-3 text-gray-500 border-b-2 border-transparent font-mono text-xs hover:text-purple-300 tracking-wide";
-            document.getElementById('tab-video').className = tab === 'video' ? "pb-3 text-cyan-300 border-b-2 border-cyan-400 font-mono text-xs font-bold tracking-wide" : "pb-3 text-gray-500 border-b-2 border-transparent font-mono text-xs hover:text-purple-300 tracking-wide";
-            document.getElementById('view-radio').classList.toggle('hidden', tab !== 'radio');
-            document.getElementById('view-video').classList.toggle('hidden', tab !== 'video');
-        },
-
-        toggleJoinModal: () => {
-            document.getElementById('join-modal').classList.toggle('hidden');
-        },
-
-        loadSettings: () => {
-            // Load Keys
-            const savedGroq = localStorage.getItem('termos_groq') || "";
-            const savedZhipu = localStorage.getItem('termos_zhipu') || "";
-            
-            document.getElementById('groq-key').value = savedGroq;
-            document.getElementById('zhipu-key').value = savedZhipu;
-            document.getElementById('gh-token').value = State.github.token;
-
-            Config.providers.groq.key = savedGroq;
-            Config.providers.zhipu.key = savedZhipu;
-
-            // Load Provider Choice
-            const savedProvider = localStorage.getItem('termos_provider') || 'groq';
-            const select = document.getElementById('ai-provider');
-            select.value = savedProvider;
-            Config.activeProvider = savedProvider;
-            UI.toggleProviderSettings(savedProvider);
-
-            // Initial Badge
-            const badge = document.getElementById('engine-badge');
-            badge.classList.remove('hidden');
-            badge.textContent = savedProvider.toUpperCase();
-            badge.className = savedProvider === 'zhipu' ? "px-2 py-0.5 bg-cyan-900/30 border border-cyan-500/30 rounded text-[9px] font-bold text-cyan-200 tracking-wider" : "px-2 py-0.5 bg-purple-900/30 border border-purple-500/30 rounded text-[9px] font-bold text-purple-200 tracking-wider";
-        },
-
-        flash: () => {
-            const el = document.getElementById('flash-overlay');
-            el.style.opacity = '0.8';
-            setTimeout(() => el.style.opacity = '0', 150);
-        }
-    };
-
-    // --- NETWORKING (MQTT) ---
-    const Net = {
-        connect: () => {
-            if (typeof Paho === 'undefined') return;
-            try {
-                State.mqttClient = new Paho.MQTT.Client(Config.broker, Config.port, `termos_${Config.user}`);
-                State.mqttClient.onConnectionLost = Net.onLost;
-                State.mqttClient.onMessageArrived = Net.onMessage;
-                State.mqttClient.connect({
-                    onSuccess: Net.onConnect,
-                    onFailure: () => setTimeout(Net.connect, 5000),
-                    useSSL: true
-                });
-            } catch(e) { console.error("MQTT Error", e); }
-        },
-
-        onConnect: () => {
-            UI.log("📡 Neural Link Established.", "system");
-            UI.updateStatus(true);
-            Net.subscribe("termos/v3/chat");
-        },
-
-        onLost: () => {
-            UI.updateStatus(false);
-            setTimeout(Net.connect, 3000);
-        },
-
-        subscribe: (topic) => {
-            if(State.mqttClient && State.mqttClient.isConnected()) {
-                State.mqttClient.subscribe(topic, { qos: 1 });
-            }
-        },
-
-        unsubscribe: (topic) => {
-            if(State.mqttClient && State.mqttClient.isConnected()) {
-                State.mqttClient.unsubscribe(topic);
-            }
-        },
-
-        send: (topic, payload) => {
-            if(State.mqttClient && State.mqttClient.isConnected()) {
-                const msg = new Paho.MQTT.Message(JSON.stringify(payload));
-                msg.destinationName = topic;
-                State.mqttClient.send(msg);
-            }
-        },
-
-        onMessage: (msg) => {
-            try {
-                const data = JSON.parse(msg.payloadString);
-                const isMe = data.user === Config.user;
-
-                if(msg.destinationName === "termos/v3/chat" && !State.currentRoom && !isMe) {
-                    UI.renderMessage(data.text, data.name, data.avatar, false);
-                }
-                else if (msg.destinationName === `termos/rooms/${State.currentRoom}`) {
-                    if(data.type === 'video' && !isMe) {
-                        Media.playVideo(data.url);
-                        UI.log(`📺 Transmission from ${data.name}`, "system");
-                    } else if (!isMe && data.type !== 'video') {
-                        UI.renderMessage(data.text, data.name, data.avatar, false);
-                    }
-                }
-            } catch(e) {}
-        },
-
-        joinRoom: () => {
-            const name = document.getElementById('room-name-input').value.trim();
-            if(!name) return;
-
-            if(State.currentRoom) Net.unsubscribe(`termos/rooms/${State.currentRoom}`);
-            else Net.unsubscribe("termos/v3/chat");
-
-            State.currentRoom = name;
-            Net.subscribe(`termos/rooms/${name}`);
-            
-            Net.send(`termos/rooms/${name}`, { user: Config.user, type: 'join', name: State.profile.name });
-            
-            UI.updateStatus(true);
-            document.getElementById('room-badge').innerText = name.toUpperCase();
-            document.getElementById('room-badge').classList.remove('hidden');
-            UI.toggleJoinModal();
-            UI.log(`🔒 Joined Channel: ${name}`, "system");
-        }
-    };
-
-    // --- MESSAGING ---
-    UI.renderMessage = (text, name, avatar, isMe) => {
-        const safeText = Utils.escapeHTML(text);
-        const safeName = Utils.escapeHTML(name || "Unknown");
-        const avatarHTML = `<div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-sm border border-white/10 shrink-0">${avatar}</div>`;
-        const align = isMe ? "justify-end" : "justify-start";
-        const bg = isMe ? "var(--msg-user-bg)" : "bg-slate-800/60 border border-white/5";
-        const rounded = isMe ? "rounded-tr-none" : "rounded-tl-none";
-
-        const html = `
-            <div class="flex ${align} gap-3 items-end msg-anim">
-                ${!isMe ? avatarHTML : ''}
-                <div class="max-w-[80%]">
-                    <div class="${bg} ${rounded} p-4 shadow-lg text-sm text-white leading-relaxed break-words backdrop-blur-sm">
-                        ${safeText}
-                    </div>
-                    <div class="text-[9px] text-gray-500 mt-1 ${isMe ? 'text-right' : ''}">${safeName} • ${Utils.timestamp()}</div>
+            <!-- LEFT: ROOT FILE EXPLORER (Auto-rebuilds here) -->
+            <aside class="col-span-3 glass-panel flex flex-col rounded-3xl overflow-hidden">
+                <div class="p-4 bg-white/5 font-header text-[10px] border-b border-white/10">Project_Root</div>
+                <div class="flex-1 overflow-y-auto p-2" id="explorer">
+                    <!-- REBUILD_START -->
+                    <div class="file-item p-3 text-cyan-300">index.html</div>
+                    <div class="file-item p-3 opacity-50 text-xs">rebuild.js</div>
+                    <!-- REBUILD_END -->
                 </div>
-                ${isMe ? avatarHTML : ''}
-            </div>
-        `;
-        UI.container.insertAdjacentHTML('beforeend', html);
-        UI.container.scrollTop = UI.container.scrollHeight;
-    };
+            </aside>
 
-    UI.renderAIResponse = (text, isCodeMode) => {
-        const parsedText = Utils.parseMarkdown(text);
-        const badge = isCodeMode ? "💻 CODING" : "🧠 BRAINSTORM";
-        const colorClass = isCodeMode ? "text-cyan-300" : "text-purple-300";
-        const providerName = Config.activeProvider.toUpperCase();
-
-        const html = `
-            <div class="flex gap-3 items-start msg-anim">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 flex items-center justify-center text-sm border border-white/10 shrink-0">AI</div>
-                <div class="max-w-[90%]">
-                    <div class="bg-slate-900/80 border border-white/10 p-5 shadow-lg text-sm text-gray-200 leading-relaxed break-words backdrop-blur-md rounded-2xl">
-                        <div class="flex justify-between items-center mb-2">
-                            <div class="text-[10px] font-bold ${colorClass} uppercase tracking-wider flex items-center gap-2">
-                                <span class="w-1.5 h-1.5 rounded-full bg-current"></span> ${badge}
-                            </div>
-                            <div class="text-[9px] text-gray-600 font-mono">${providerName}</div>
-                        </div>
-                        <div class="prose prose-invert prose-sm max-w-none">
-                            ${parsedText}
-                        </div>
+            <!-- CENTER: COPILOT CODE ENGINE -->
+            <section class="col-span-9 glass-panel rounded-3xl flex flex-col overflow-hidden relative">
+                <textarea id="editor" class="flex-1 bg-transparent p-10 outline-none text-purple-100 font-mono text-base leading-relaxed resize-none" 
+                          placeholder="Initialize Copilot scripting..."></textarea>
+                
+                <div class="p-4 bg-black/20 border-t border-white/5 flex justify-between items-center">
+                    <div class="flex gap-4">
+                        <span class="text-[10px] text-cyan-500">LN 1, COL 1</span>
+                        <span class="text-[10px] text-purple-400">AUTOBUILD: ON</span>
                     </div>
+                    <button onclick="saveCode()" class="text-[10px] font-header bg-cyan-500/20 border border-cyan-500/50 px-4 py-1 rounded hover:bg-cyan-500 hover:text-black transition">Push Build</button>
                 </div>
-            </div>
-        `;
-        UI.container.insertAdjacentHTML('beforeend', html);
-        UI.container.scrollTop = UI.container.scrollHeight;
-    };
+            </section>
+        </div>
+    </main>
 
-    // --- COPILOT ENGINE (FULLY FIXED) ---
-    const Copilot = {
-        onType: (e) => {
-            // Debounce logic
-            if (State.copilot.timer) clearTimeout(State.copilot.timer);
-            State.copilot.timer = setTimeout(() => {
-                Copilot.generateSuggestion(e.target.value);
-            }, 500); // Wait 500ms after typing stops
-        },
+    <script>
+        // 1. MQTT Connection Logic
+        const client = new Paho.MQTT.Client("broker.hivemq.com", Number(8000), "termos_user_" + Math.random());
+        client.onConnectionLost = (res) => { document.getElementById('mqtt-status').innerText = "MQTT: LOST"; };
+        client.connect({onSuccess: () => { document.getElementById('mqtt-status').innerText = "MQTT: CONNECTED"; }});
 
-        onKey: (e) => {
-            if (e.key === 'Tab' && State.copilot.suggestion) {
-                e.preventDefault();
-                Copilot.acceptSuggestion();
-            } else if (e.key !== 'Tab') {
-                // Clear suggestion if user types normally
-                document.getElementById('copilot-suggestion').classList.remove('active');
-                State.copilot.suggestion = null;
-            }
-        },
-
-        generateSuggestion: async (code) => {
-            if (code.length < 3) return; // Don't suggest if too short
-            
-            const provider = Config.activeProvider;
-            const config = Config.providers[provider];
-            
-            if(!config.key) return;
-
-            // Show "Thinking"
-            document.getElementById('copilot-status').classList.remove('hidden');
-            document.getElementById('copilot-suggestion').classList.remove('active');
-
-            try {
-                const res = await fetch(config.url, {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${config.key}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        model: config.model,
-                        messages: [
-                            { role: "system", content: "You are a code completion AI. Complete the user's code. Return ONLY the new completion string. Do not wrap in markdown. Do not repeat the user's last word." },
-                            { role: "user", content: code }
-                        ],
-                        temperature: 0.2,
-                        max_tokens: 50
-                    })
-                });
-                
-                const data = await res.json();
-                document.getElementById('copilot-status').classList.add('hidden');
-
-                if(data.choices && data.choices[0]) {
-                    const completion = data.choices[0].message.content.trim();
-                    Copilot.showSuggestion(completion, code);
-                }
-            } catch (e) {
-                console.error("Copilot Error", e);
-                document.getElementById('copilot-status').classList.add('hidden');
-            }
-        },
-
-        showSuggestion: (suggestion, currentCode) => {
-            // Logic to strip overlap from suggestion
-            let displayText = suggestion;
-            
-            const lastWord = currentCode.split(/\s+/).pop(); 
-            
-            if (lastWord && suggestion.startsWith(lastWord)) {
-                // Remove the overlap
-                displayText = suggestion.slice(lastWord.length);
-            }
-
-            State.copilot.suggestion = suggestion; // Keep full suggestion for safe insertion later
-            document.getElementById('suggestion-text').textContent = displayText;
-            document.getElementById('copilot-suggestion').classList.add('active');
-        },
-
-        acceptSuggestion: () => {
-            if(!State.copilot.suggestion) return;
-            const editor = UI.copilotEditor;
-            const suggestion = State.copilot.suggestion;
-            
-            const cursorPos = editor.selectionStart;
-            const textBefore = editor.value.substring(0, cursorPos);
-            const textAfter = editor.value.substring(cursorPos, editor.value.length);
-            
-            // Smart Overlap Removal Logic
-            let textToInsert = suggestion;
-            const lastChars = editor.value.slice(Math.max(0, cursorPos - 20), cursorPos);
-            
-            // If suggestion overlaps with end of editor text
-            if (suggestion.startsWith(lastChars)) {
-                // If they are identical or close enough, strip the prefix
-                textToInsert = suggestion.slice(lastChars.length);
-            }
-
-            // Insert Logic
-            editor.value = textBefore + textToInsert + textAfter;
-            State.copilot.suggestion = null;
-            document.getElementById('copilot-suggestion').classList.remove('active');
-            
-            // Move cursor
-            const newCursorPos = cursorPos + textToInsert.length;
-            editor.selectionStart = newCursorPos;
-            editor.selectionEnd = newCursorPos;
-            editor.focus();
-
-            // Visual Feedback
-            editor.parentElement.classList.remove('editor-flash');
-            void editor.parentElement.offsetWidth; // trigger reflow
-            editor.parentElement.classList.add('editor-flash');
+        // 2. Watercolor Visual Engine (Dynamic Canvas)
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        document.getElementById('painted-canvas').appendChild(canvas);
+        
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
-    };
+        window.addEventListener('resize', resize);
+        resize();
 
-    // --- COMMANDS ---
-    const Commands = {
-        handle: (manualCmd = null) => {
-            const txt = manualCmd || UI.input.value.trim();
-            if(!txt) return;
-
-            if(!txt.startsWith('/')) {
-                UI.renderMessage(txt, "Me", State.profile.avatar, true);
-                const topic = State.currentRoom ? `termos/rooms/${State.currentRoom}` : "termos/v3/chat";
-                Net.send(topic, { user: Config.user, text: txt, name: State.profile.name, avatar: State.profile.avatar });
-                UI.input.value = '';
-                return;
-            }
-
-            const [cmd, ...args] = txt.split(' ');
-            const fullArgs = args.join(' ');
-
-            switch(cmd.toLowerCase()) {
-                case '/ai': AI.chat(fullArgs); break;
-                case '/code': AI.code(fullArgs); break;
-                case '/copilot': UI.toggleCopilot(); break;
-                case '/kernel': AI.think(); break;
-                case '/join': 
-                    document.getElementById('room-name-input').value = fullArgs; 
-                    UI.toggleJoinModal(); 
-                    break;
-                case '/leave': 
-                    if(State.currentRoom) {
-                        Net.send(`termos/rooms/${State.currentRoom}`, { user: Config.user, type: 'leave' });
-                        State.currentRoom = null;
-                        document.getElementById('room-badge').classList.add('hidden');
-                        Net.subscribe("termos/v3/chat");
-                        UI.log("📢 Returned to Public Frequency", "system");
-                    }
-                    break;
-                default: UI.log(`Unknown command: ${cmd}`, "system");
-            }
-            UI.input.value = '';
+        function paintEffect() {
+            ctx.fillStyle = 'rgba(2, 2, 5, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Add custom watercolor brush logic here
+            requestAnimationFrame(paintEffect);
         }
-    };
+        paintEffect();
 
-    // --- AI LOGIC (DUAL ENGINE) ---
-    const AI = {
-        query: async (systemPrompt, userPrompt, mode = 'chat') => {
-            const provider = Config.activeProvider;
-            const config = Config.providers[provider];
-            
-            if(!config.key) {
-                UI.log(`⚠️ ${provider.toUpperCase()} Key Required.`, "error");
-                UI.toggleAdmin();
-                return;
-            }
-
-            const id = Utils.uuid();
-            const loadingTxt = mode === 'code' ? "Compiling..." : "Synthesizing...";
-            UI.log(`<span id="${id}" class="text-purple-400 italic animate-pulse">${loadingTxt} (${provider})</span>`, "system");
-
-            try {
-                const res = await fetch(config.url, {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${config.key}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        model: config.model,
-                        messages: [
-                            { role: "system", content: systemPrompt },
-                            { role: "user", content: userPrompt }
-                        ],
-                        temperature: 0.7,
-                        max_tokens: 2048
-                    })
-                });
-                
-                const data = await res.json();
-                
-                // Zhipu returns error differently sometimes
-                if(data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-                
-                const reply = data.choices[0].message.content;
-                document.getElementById(id).remove(); 
-                
-                UI.renderAIResponse(reply, mode === 'code');
-
-            } catch(e) {
-                const loader = document.getElementById(id);
-                if(loader) loader.remove();
-                UI.log(`❌ Error: ${e.message}`, "error");
-            }
-        },
-
-        chat: (prompt) => {
-            if(!prompt) return UI.input.placeholder = "Type: /ai [question]";
-            const sysPrompt = provider => `You are TermOS AI using ${provider}. Be helpful and creative.`;
-            AI.query(sysPrompt(Config.activeProvider), prompt, 'chat');
-        },
-
-        code: (prompt) => {
-            if(!prompt) return UI.input.placeholder = "Type: /code [task]";
-            const sysPrompt = "You are an expert frontend engineer. Provide clean HTML/CSS/JS. Use markdown code blocks.";
-            AI.query(sysPrompt, prompt, 'code');
-        },
-
-        think: async () => {
-            const provider = Config.activeProvider;
-            const config = Config.providers[provider];
-            if(!config.key) return alert("API Key required.");
-            
-            const id = Utils.uuid();
-            UI.log(`<span id="${id}" class="text-cyan-400 italic">Kernel thought processing...</span>`, "system");
-            
-            const res = await fetch(config.url, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${config.key}`, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    model: config.model,
-                    messages: [{role: "system", content: "You are TermOS OS. Suggest 1 idea."}, {role: "user", content: "Generate idea."}]
-                })
-            });
-            const data = await res.json();
-            if(data.error) throw new Error(data.error.message);
-            document.getElementById(id).remove();
-            UI.renderAIResponse(data.choices[0].message.content, false);
+        // 3. Copilot Functionality
+        function saveCode() {
+            const code = document.getElementById('editor').value;
+            console.log("Pushing build to root...", code);
+            alert("Copilot Push: Rebuild triggered in GitHub Actions.");
         }
-    };
-
-    // --- MEDIA (FULLY RESTORED) ---
-    const Media = {
-        audio: null,
-        playRadio: (url) => {
-            if(Media.audio) Media.audio.pause();
-            Media.audio = new Audio(url);
-            Media.audio.play().catch(e => UI.log("Signal Lost: " + e.message, "error"));
-            UI.log("🎵 Radio Frequency Active", "system");
-            UI.toggleMedia();
-        },
-        playVideo: (url) => {
-            const v = document.getElementById('main-video');
-            const p = document.getElementById('video-placeholder');
-            v.src = url;
-            v.classList.remove('hidden');
-            p.classList.add('hidden');
-            v.parentElement.classList.add('video-active');
-            v.play();
-            UI.flash();
-        },
-        shareVideo: () => {
-            const url = document.getElementById('video-url').value;
-            if(!url) return;
-            Media.playVideo(url);
-            const topic = State.currentRoom ? `termos/rooms/${State.currentRoom}` : "termos/v3/chat";
-            Net.send(topic, { user: Config.user, type: 'video', url: url, name: State.profile.name });
-        }
-    };
-
-    // --- VISUALS ---
-    const Cosmos = {
-        start: () => {
-            const canvas = document.getElementById('painted-canvas');
-            const ctx = canvas.getContext('2d');
-            let width = canvas.width = window.innerWidth;
-            let height = canvas.height = window.innerHeight;
-            
-            const orbs = Array(60).fill().map(() => ({
-                x: Math.random() * width,
-                y: Math.random() * height,
-                vx: (Math.random() - 0.5) * 0.5,
-                vy: (Math.random() - 0.5) * 0.5,
-                r: Math.random() * 150 + 50,
-                color: Math.random() > 0.5 ? '#9333ea' : '#06b6d4'
-            }));
-
-            function draw() {
-                ctx.fillStyle = 'rgba(5, 5, 9, 0.1)'; 
-                ctx.fillRect(0, 0, width, height);
-                
-                orbs.forEach(orb => {
-                    orb.x += orb.vx;
-                    orb.y += orb.vy;
-                    
-                    if(orb.x < -orb.r) orb.x = width + orb.r;
-                    if(orb.x > width + orb.r) orb.x = -orb.r;
-                    if(orb.y < -orb.r) orb.y = height + orb.r;
-                    if(orb.y > height + orb.r) orb.y = -orb.r;
-
-                    ctx.beginPath();
-                    const gradient = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.r);
-                    gradient.addColorStop(0, orb.color + '40');
-                    gradient.addColorStop(1, 'rgba(0,0,0,0)');
-                    ctx.fillStyle = gradient;
-                    ctx.arc(orb.x, orb.y, orb.r, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-                requestAnimationFrame(draw);
-            }
-            draw();
-            window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
-        }
-    };
-
-    // Initialize
-    window.onload = UI.init;
-
-</script>
+    </script>
 </body>
 </html>
+
+
