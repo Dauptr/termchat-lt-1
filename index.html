@@ -1,472 +1,376 @@
-<script>
-    /**
-     * =========================================================================
-     *  TERMOS LT: SECURE & REPAIRED KERNEL
-     *  Fixes: XSS vulnerabilities, Syntax Errors, JSON Safety
-     * =========================================================================
-     */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TERMOS NEXUS</title>
+    
+    <!-- Load Paho MQTT via CDN (or use local file if preferred) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
 
-    // --- 0. SECURITY HELPER (Prevents XSS) ---
-    function escapeHtml(unsafe) {
-        return unsafe
-             .replace(/&/g, "&amp;")
-             .replace(/</g, "&lt;")
-             .replace(/>/g, "&gt;")
-             .replace(/"/g, "&quot;")
-             .replace(/'/g, "&#039;");
-    }
-
-    // --- 1. CONFIGURATION ---
-    let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || ""; 
-    const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
-    let adminMode = false;
-    let username = 'Anon_' + Math.floor(Math.random() * 1000);
-    let mqttClient = null;
-    let currentRoom = 'main'; 
-    let userStats = { level: 1, xp: 0, avatar: '>_<', title: 'Newbie' };
-    const LEVELS = ['Newbie', 'Apprentice', 'Coder', 'Hacker', 'Architect', 'Wizard', 'Master', 'GOD MODE'];
-
-    // --- 2. SYSTEM REBUILDER (Fixed Syntax & Logic) ---
-    const SystemRebuilder = {
-        installedModules: [],
-
-        install: function(featureName) {
-            if (this.installedModules.includes(featureName)) {
-                log(`Module [${featureName}] already active.`, 'sys-msg');
-                return;
-            }
-            console.log(`[KERNEL] Installing: ${featureName}`);
-            log(`INITIATING INSTALLATION: ${featureName.toUpperCase()}...`, 'sys-msg');
-
-            switch(featureName) {
-                case 'matrix': this.installMatrix(); break;
-                case 'crt': this.installCRT(); break;
-                case 'sound': this.installSound(); break;
-                case 'neon-theme': this.installNeonTheme(); break;
-                case 'god-mode': this.installGodMode(); break;
-                default: 
-                    log(`ERROR: Unknown module '${featureName}'`, 'sys-msg'); 
-                    return;
-            }
-            this.installedModules.push(featureName);
-            log(`INSTALLATION COMPLETE: ${featureName.toUpperCase()}`, 'sys-msg');
-        },
-
-        installMatrix: function() {
-            if (document.getElementById('matrix-canvas')) return;
-            const canvas = document.createElement('canvas');
-            canvas.id = 'matrix-canvas';
-            canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;opacity:0.2;pointer-events:none;';
-            document.body.prepend(canvas);
-            const ctx = canvas.getContext('2d');
-            
-            const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
-            window.addEventListener('resize', resize); resize();
-            
-            const cols = Math.floor(canvas.width / 20);
-            const ypos = Array(cols).fill(0);
-            
-            const draw = () => {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#0f0';
-                ctx.font = '15pt monospace';
-                ypos.forEach((y, i) => {
-                    const text = String.fromCharCode(Math.random() * 128);
-                    ctx.fillText(text, i * 20, y);
-                    if (y > 100 + Math.random() * 10000) ypos[i] = 0; else ypos[i] = y + 20;
-                });
-            };
-            setInterval(draw, 50);
-        },
-
-        installCRT: function() {
-            if (document.getElementById('crt-overlay')) return;
-            const overlay = document.createElement('div');
-            overlay.id = 'crt-overlay';
-            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.25) 50%), linear-gradient(90deg, rgba(255,0,0,0.06), rgba(0,255,0,0.02), rgba(0,0,255,0.06));background-size:100% 2px, 3px 100%;pointer-events:none;z-index:999;animation:flicker 0.15s infinite;';
-            document.body.appendChild(overlay);
-            
-            if (!document.getElementById('crt-styles')) {
-                const style = document.createElement('style');
-                style.id = 'crt-styles';
-                style.innerHTML = `@keyframes flicker { 0% { opacity: 0.95; } 50% { opacity: 1; } 100% { opacity: 0.98; } }`;
-                document.head.appendChild(style);
-            }
-        },
-
-        installSound: function() {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const originalLog = window.log;
-            if (typeof originalLog === 'function') {
-                window.log = function(text, type) {
-                    if (type !== 'system' && type !== 'sys-msg') {
-                        const osc = audioCtx.createOscillator();
-                        const gain = audioCtx.createGain();
-                        osc.connect(gain); gain.connect(audioCtx.destination);
-                        osc.type = 'sine'; osc.frequency.value = 800;
-                        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-                        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-                    }
-                    originalLog(text, type);
-                };
-            }
-        },
-
-        installNeonTheme: function() {
-            if (document.getElementById('neon-styles')) return;
-            const style = document.createElement('style');
-            style.id = 'neon-styles';
-            style.innerHTML = `body { text-shadow: 0 0 5px var(--term-green), 0 0 10px var(--term-green); } #screen { border: 1px solid var(--term-green); box-shadow: 0 0 15px var(--term-green); } .user-msg { color: #e0ffe0; font-weight: bold; }`;
-            document.head.appendChild(style);
-        },
-
-        installGodMode: function() {
-            if (document.getElementById('god-btn')) return;
-            const btn = document.createElement('button');
-            btn.id = 'god-btn';
-            btn.innerText = "SYS_ADMIN";
-            btn.style.cssText = "position:fixed;top:10px;right:10px;z-index:1000;background:red;color:white;border:none;padding:5px 10px;font-family:monospace;cursor:pointer;";
-            btn.onclick = () => {
-                const cmd = prompt("ENTER SYSTEM COMMAND:");
-                if(cmd) handleInput(cmd);
-            };
-            document.body.appendChild(btn);
+    <style>
+        /* --- RESET & BASIC SETUP --- */
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
-    };
 
-    // --- 3. INITIALIZATION ---
-    window.addEventListener('load', () => {
-        console.log(">> SYSTEM INITIALIZING...");
-        setTimeout(() => { checkAndRun(); }, 500);
-    });
-
-    function checkAndRun() {
-        try {
-            initMatrix();
-        } catch (e) { console.error("Matrix Init Failed:", e); }
-        
-        try {
-            runTerminalBoot();
-        } catch (e) {
-            console.error("Boot Sequence Failed:", e);
-            forceBootMainApp();
+        /* --- CRT SCANLINE EFFECT --- */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.2) 50%,
+                rgba(0,0,0,0.2)
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 10;
         }
-    }
 
-    // --- 4. MATRIX (Fallback) ---
-    function initMatrix() {
-        // If SystemRebuilder hasn't run it yet
-        if (!document.getElementById('matrix-canvas')) {
-            SystemRebuilder.installMatrix();
+        /* --- HEADER --- */
+        header {
+            background: #001100;
+            border-bottom: 2px solid #0f0;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 5;
         }
-    }
+        .brand { font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 5px #0f0; }
+        .status { font-size: 0.8em; }
+        .status.online { color: #0f0; }
+        .status.offline { color: #f00; animation: blink 1s infinite; }
 
-    // --- 5. TERMINAL BOOT ---
-    function runTerminalBoot() {
-        const term = document.getElementById('terminal-content');
-        if (!term) {
-            term = document.createElement('div');
-            term.id = 'terminal-content';
-            term.className = "font-mono text-sm text-green-300 mb-4 border-l-2 border-green-800 pl-2 bg-black/50 h-64 overflow-y-auto";
-            document.body.appendChild(term);
+        /* --- MAIN CHAT AREA --- */
+        #chat-window {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
         }
-        
-        let lines = [
-            "Initializing BIOS...", "Loading Kernel Modules...", "Checking Neural Net...",
-            ">>> [1] Multiverse Chat", ">>> [2] AI Assistant", ">>> [3] Local Mode",
-            "Type '1', '2', or '3' to start..."
-        ];
 
-        let index = 0;
-        const typeNextLine = () => {
-            if (index < lines.length) {
-                const div = document.createElement('div');
-                div.className = "opacity-80 animate-fade-in mb-1 font-mono text-sm";
-                div.innerText = lines[index];
-                term.appendChild(div);
-                term.scrollTop = term.scrollHeight;
-                index++;
-                setTimeout(typeNextLine, 30);
-            } else {
-                forceBootMainApp();
-            }
-        };
-        typeNextLine();
-    }
-
-    // --- 6. MAIN APP BOOT ---
-    function forceBootMainApp() {
-        console.log("!!! FORCE BOOT TRIGGERED !!!");
-        
-        let main = document.getElementById('main-app');
-        if(!main) {
-            main = document.createElement('div');
-            main.id = 'main-app';
-            main.className = "hidden flex flex-col relative z-10 h-full";
-            document.body.appendChild(main);
+        .msg {
+            margin-bottom: 10px;
+            line-height: 1.4;
+            word-wrap: break-word;
         }
-        
-        const boot = document.getElementById('terminal-boot');
-        if(boot) boot.style.display = 'none';
-        
-        main.classList.remove('hidden');
-        main.classList.add('flex');
-
-        if (!username || username === 'Guest') username = "Operator_" + Math.floor(Math.random() * 9999);
-        const userDisplay = document.getElementById('user-display');
-        if(userDisplay) userDisplay.innerText = `@${username.toUpperCase()}`;
-        
-        loadStats();
-        updateStatsUI();
-        connectMQTT();
-        addSystemMessage("System Initialized (Recovery Mode).");
-    }
-
-    // --- 7. UI UPDATES ---
-    function updateStatsUI() {
-        const titleEl = document.getElementById('lvl-text');
-        const xpEl = document.getElementById('xp-disp'); // Corrected ID
-        const barEl = document.getElementById('xp-bar');
-        
-        if(titleEl) titleEl.innerText = `LVL ${userStats.level} ${userStats.title.toUpperCase()}`;
-        if(xpEl) xpEl.innerText = `XP: ${userStats.xp.toLocaleString()}`;
-        
-        const progress = (userStats.xp % 1000) / 10; 
-        if(barEl) barEl.style.width = `${progress}%`;
-    }
-
-    function loadStats() {
-        const saved = localStorage.getItem('termos_stats');
-        if(saved) try { userStats = JSON.parse(saved); } catch(e){}
-    }
-
-    function addXP(amount) {
-        userStats.xp += amount;
-        if(userStats.xp > (userStats.level * 1000)) {
-            userStats.level++;
-            userStats.title = LEVELS[userStats.level] || 'GOD MODE';
-            addSystemMessage(`LEVEL UP! RANK: ${userStats.title}`);
+        .msg .meta {
+            opacity: 0.7;
+            font-size: 0.8em;
+            margin-right: 8px;
         }
-        updateStatsUI();
-        localStorage.setItem('termos_stats', JSON.stringify(userStats));
-    }
+        .msg.kernel { color: #00ffff; text-shadow: 0 0 5px #00ffff; font-weight: bold; }
+        .msg.user { color: #0f0; }
+        .msg.system { color: #ffff00; font-style: italic; }
+        .cmd-highlight { background: #222; padding: 2px 4px; border: 1px solid #444; }
 
-    // --- 8. CHAT RENDERING (SECURE) ---
-    function addUserMessage(text) {
-        const container = document.getElementById('main-app');
-        if(!container) return;
-        const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        
-        // XSS FIX: Use escapeHtml on user content
-        const safeText = escapeHtml(text);
-        
-        const html = `
-        <div class="flex flex-row-reverse items-end gap-3 animate-fade-in-up">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-green-400 to-emerald-600 flex items-center justify-center border border-white/20 font-mono text-black text-xs font-bold">ME</div>
-            <div class="p-4 rounded-l-xl rounded-br-xl text-sm text-green-100 shadow-[0_4px_20px_rgba(0,0,0,0.3)] max-w-[80%] bg-gray-900/50 border border-green-900/30">
-                <div class="flex items-center gap-2 mb-1 opacity-80 text-xs font-mono text-green-400">
-                    <span>@${escapeHtml(username.toUpperCase())}</span>
-                    <span>${time}</span>
-                </div>
-                <div class="text-left">${safeText}</div>
-            </div>
-        </div>`;
-        container.insertAdjacentHTML('beforeend', html);
-        scrollToBottom();
-    }
-
-    function addAIMessage(text, isAction) {
-        const container = document.getElementById('main-app');
-        if(!container) return;
-        const cssClass = isAction ? 'border border-cyan-500/50' : 'border border-white/10 bg-black/60';
-        
-        // XSS FIX: Escape AI content unless you explicitly trust the AI to render HTML
-        const safeText = escapeHtml(text);
-
-        const html = `
-        <div class="flex flex-row items-start gap-3 animate-fade-in-up">
-            <div class="w-8 h-8 rounded-full bg-black border border-cyan-500 flex items-center justify-center text-cyan-400 font-mono text-[8px] font-bold">AI</div>
-            <div class="flex-1">
-                <div class="px-2 py-1 text-[10px] text-cyan-600 font-mono">TERM_AI_SYSTEM</div>
-                <div class="p-4 rounded-r-xl rounded-bl-xl ${cssClass} text-sm text-gray-200 backdrop-blur-sm border-t-0">
-                    <p class="leading-relaxed">${safeText}</p>
-                </div>
-            </div>
-        </div>`;
-        container.insertAdjacentHTML('beforeend', html);
-        scrollToBottom();
-    }
-
-    function addSystemMessage(text) {
-        const container = document.getElementById('main-app');
-        if(!container) return;
-        container.insertAdjacentHTML('beforeend', `<div class="p-2 rounded text-xs text-center text-cyan-500 border border-cyan-900/30 bg-black/40 my-1 font-mono">[ SYSTEM: ${escapeHtml(text)} ]</div>`);
-        scrollToBottom();
-    }
-
-    function scrollToBottom() {
-        const c = document.getElementById('main-app');
-        if(c) c.scrollTop = c.scrollHeight;
-    }
-
-    // --- 9. MQTT (SECURE PARSING) ---
-    function connectMQTT() {
-        if (typeof Paho === 'undefined') {
-            console.warn("MQTT Library missing.");
-            return;
+        /* --- INPUT AREA --- */
+        #input-area {
+            background: #001100;
+            border-top: 2px solid #0f0;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            z-index: 5;
         }
+        .prompt { margin-right: 10px; font-weight: bold; }
         
-        const clientId = "termos-" + Math.random().toString(16).substr(2, 8);
-        mqttClient = new Paho.MQTT.Client(MQTT_BROKER_URL, clientId); // Updated for newer Paho API if needed, or keep split
+        input[type="text"] {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            outline: none;
+        }
 
-        mqttClient.onConnectionLost = () => {
-            addSystemMessage("Connection Lost. Reconnecting...");
-            setTimeout(connectMQTT, 5000);
+        /* --- SCROLLBAR --- */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #0f0; }
+
+        /* --- ANIMATIONS --- */
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+    </style>
+</head>
+<body>
+
+    <div class="scanlines"></div>
+
+    <header>
+        <div class="brand">TERMOS <span style="font-size:0.6em">NEXUS</span></div>
+        <div id="status-indicator" class="status offline">● DISCONNECTED</div>
+    </header>
+
+    <div id="chat-window">
+        <div class="msg system">Initializing TermOS NEXUS v1.0...</div>
+        <div class="msg system">Connecting to Neural Grid (MQTT)...</div>
+        <div class="msg system">Waiting for user identification...</div>
+    </div>
+
+    <div id="input-area">
+        <span class="prompt">USER@NEXUS:~$</span>
+        <input type="text" id="msg-input" placeholder="Enter command or message..." autocomplete="off" autofocus>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const MQTT_BROKER = "broker.emqx.io";
+        const MQTT_PORT = 8083; // WebSocket port (Standard for browsers)
+        const MQTT_PATH = "/mqtt";
+        
+        // Generate a random ID for this session
+        const CLIENT_ID = "termos_user_" + Math.random().toString(16).substr(2, 8);
+        let username = "Guest_" + Math.floor(Math.random() * 1000);
+        let isAdmin = false;
+        let adminToken = ""; // Set if user logs in
+
+        // --- DOM ELEMENTS ---
+        const chatWindow = document.getElementById('chat-window');
+        const msgInput = document.getElementById('msg-input');
+        const statusInd = document.getElementById('status-indicator');
+
+        // --- MQTT CLIENT ---
+        let client = new Paho.MQTT.Client(MQTT_BROKER, MQTT_PORT, MQTT_PATH, CLIENT_ID);
+
+        // --- CONNECT OPTIONS ---
+        const options = {
+            timeout: 3,
+            useSSL: false,
+            cleanSession: true,
+            onSuccess: onConnect,
+            onFailure: onFailure
         };
 
-        mqttClient.onMessageArrived = (message) => {
+        console.log("[JS] Attempting connection...");
+        client.connect(options);
+
+        // --- MQTT CALLBACKS ---
+        function onConnect() {
+            console.log("[MQTT] Connected");
+            statusInd.innerText = "● ONLINE";
+            statusInd.className = "status online";
+            addSystemMessage("Connection established. Identity: " + CLIENT_ID);
+
+            // Subscribe to all nexus chats
+            client.subscribe("termos/nexus/+");
+            
+            // Initial greeting to Kernel (AI)
+            publishMessage("/identify", "System Online");
+        }
+
+        function onFailure(responseObject) {
+            console.log("[MQTT] Connection failed: " + responseObject.errorMessage);
+            statusInd.innerText = "● ERROR: " + responseObject.errorMessage;
+        }
+
+        function onMessageArrived(message) {
+            const topic = message.topic;
+            const payload = message.payloadString;
+            
+            console.log("[IN] " + topic + ": " + payload);
+
+            // Parse Payload
+            let data = {};
             try {
-                // SECURITY: Ensure we are parsing safely
-                const payload = JSON.parse(message.payloadString);
+                data = JSON.parse(payload);
+            } catch (e) {
+                // If not JSON, treat as raw text
+                data = { msg: payload, sender: "Unknown" };
+            }
+
+            // Handle Message Logic
+            // 1. Check if it's a System Command from Kernel
+            if (data.sender === "KERNEL" || data.sender === "TermOS") {
+                if (data.type === "mutation") {
+                    // Execute UI Mutation Command
+                    handleMutation(data.data);
+                } else {
+                    // Standard Chat from Kernel
+                    addKernelMessage(data.msg);
+                }
+            } else {
+                // Standard Chat from Users
+                // Extract username from topic (e.g., termos/nexus/MyUser)
+                let user = topic.split('/').pop() || "Unknown";
                 
-                // Ensure payload has expected structure
-                if (payload && payload.text && payload.user) {
-                    const container = document.getElementById('main-app');
-                    if (container) {
-                        const safeText = escapeHtml(payload.text);
-                        const safeUser = escapeHtml(payload.user);
-                        
-                        container.insertAdjacentHTML('beforeend', `
-                        <div class="flex flex-row items-end gap-3 animate-fade-in-up opacity-80">
-                            <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center border border-white/20 font-mono text-white text-xs">${safeUser.substring(0,2).toUpperCase()}</div>
-                            <div class="p-3 rounded-xl bg-slate-800/50 text-sm text-gray-300 max-w-[80%] border border-white/5">
-                                <div class="opacity-70 text-[10px] font-mono text-gray-500 mb-1">@${safeUser.toUpperCase()}</div>
-                                <p class="leading-relaxed">${safeText}</p>
-                            </div>
-                        </div>`);
-                        scrollToBottom();
-                    }
+                // If data has sender field, use it
+                if (data.sender) user = data.sender;
+                
+                // Don't show my own messages (handled locally) unless loopback
+                if (!user.includes(CLIENT_ID)) {
+                    addUserMessage(user, data.msg || data.content || payload);
+                }
+            }
+        }
+
+        client.onMessageArrived = onMessageArrived;
+
+        // --- UI FUNCTIONS ---
+
+        function scrollToBottom() {
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function addSystemMessage(text) {
+            const div = document.createElement('div');
+            div.className = "msg system fade-in";
+            div.innerText = `[SYS] ${text}`;
+            chatWindow.appendChild(div);
+            scrollToBottom();
+        }
+
+        function addUserMessage(user, text) {
+            const div = document.createElement('div');
+            div.className = "msg user fade-in";
+            div.innerHTML = `<span class="meta">[${user}]</span> ${escapeHtml(text)}`;
+            chatWindow.appendChild(div);
+            scrollToBottom();
+        }
+
+        function addKernelMessage(text) {
+            const div = document.createElement('div');
+            div.className = "msg kernel fade-in";
+            div.innerText = `[KERNEL] ${text}`;
+            chatWindow.appendChild(div);
+            scrollToBottom();
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        }
+
+        // --- LOGIC & COMMANDS ---
+
+        function publishMessage(topicSuffix, payloadObj) {
+            const topic = "termos/nexus/" + topicSuffix;
+            const message = new Paho.MQTT.Message(JSON.stringify(payloadObj));
+            message.destinationName = topic;
+            client.send(message);
+        }
+
+        function handleInput() {
+            const text = msgInput.value.trim();
+            if (!text) return;
+
+            // 1. Display locally immediately
+            addUserMessage(username, text);
+
+            // 2. Handle Special Commands (Client-side)
+            if (text.startsWith("/name ")) {
+                username = text.substring(6);
+                addSystemMessage("Identity updated to: " + username);
+            } 
+            else if (text.startsWith("/token ")) {
+                adminToken = text.substring(7);
+                isAdmin = true;
+                addSystemMessage("Admin Token Accepted. God Mode Active.");
+            }
+            else if (text.startsWith("/exec ") && isAdmin) {
+                const cmd = text.substring(6);
+                executeRemoteShell(cmd);
+            }
+            else {
+                // 3. Publish to MQTT (For P2P Chat)
+                // Send to general nexus so others see it
+                publishMessage(username, { 
+                    sender: username, 
+                    msg: text, 
+                    timestamp: new Date().toISOString() 
+                });
+
+                // 4. Trigger AI Kernel (Send to 'termos/input')
+                // We send a simplified version for the backend to process
+                const aiTriggerMsg = new Paho.MQTT.Message(text);
+                aiTriggerMsg.destinationName = "termos/input";
+                client.send(aiTriggerMsg);
+            }
+
+            msgInput.value = '';
+            scrollToBottom();
+        }
+
+        // --- GOD MODE (HTTP EXEC) ---
+        async function executeRemoteShell(command) {
+            addSystemMessage(`Executing remote command: ${command}...`);
+            
+            try {
+                // We assume backend runs on same host, port 10000 (default in your python script)
+                // If running locally, use window.location.host
+                const host = window.location.hostname;
+                const port = 10000;
+                
+                const response = await fetch(`http://${host}:${port}/exec`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: adminToken,
+                        command: command
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    addKernelMessage(`[EXEC RESULT]\n${result.output}`);
+                } else {
+                    addSystemMessage("Exec Failed: Unauthorized or Server Error");
                 }
             } catch (e) {
-                console.error("MQTT Parse Error", e);
-                // Don't crash the app, just log it
+                addSystemMessage("Exec Failed: Connection to Python Backend refused.");
             }
-        };
-
-        mqttClient.connect({
-            onSuccess: () => {
-                mqttClient.subscribe(`termchat/messages/${currentRoom}`);
-                addSystemMessage("Uplink Established.");
-            },
-            onFailure: () => { addSystemMessage("MQTT Connection Failed."); },
-            useSSL: true
-        });
-    }
-
-    function publishMessage(text) {
-        if (mqttClient && mqttClient.isConnected()) {
-            mqttClient.publish(`termchat/messages/${currentRoom}`, JSON.stringify({ user: username, text: text }));
         }
-    }
 
-    // --- 10. UTILS ---
-    function switchRoom(roomName) {
-        if(!roomName) return;
-        if (mqttClient && mqttClient.isConnected()) {
-            mqttClient.unsubscribe(`termchat/messages/${currentRoom}`);
-        }
-        currentRoom = roomName;
-        const roomTitle = document.getElementById('room-title');
-        if(roomTitle) roomTitle.innerText = roomName.toUpperCase().replace('_', ' ');
-        if (mqttClient && mqttClient.isConnected()) {
-            mqttClient.subscribe(`termchat/messages/${currentRoom}`);
-        }
-        addSystemMessage(`Joined Room: [${roomName.toUpperCase()}]`);
-    }
-
-    function downloadCodeFile(filename, content) {
-        // FIXED SYNTAX ERROR HERE
-        let mimeType = 'text/plain';
-        if(filename.endsWith('.js')) mimeType = 'text/javascript';
-        
-        const element = document.createElement('a');
-        element.setAttribute('href', `data:${mimeType};charset=utf-8,` + encodeURIComponent(content));
-        element.setAttribute('download', filename);
-        element.style.display = 'none';
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-        
-        addSystemMessage(`File saved: ${filename}`);
-    }
-
-    // --- 11. INPUT HANDLING ---
-    function handleInput() {
-        const input = document.getElementById('cmd-input');
-        if (!input) return;
-        
-        const text = input.value.trim();
-        if (!text) return;
-
-        // System Installer Command
-        if (text.startsWith('/sys install ')) {
-            const mod = text.split(' ')[2];
-            SystemRebuilder.install(mod);
-        }
-        // API Key
-        else if (text.startsWith('/setkey ')) {
-            GROQ_API_KEY = text.substring(8);
-            localStorage.setItem('termos_groq_key', GROQ_API_KEY);
-            addSystemMessage("API KEY SAVED.");
-        }
-        // Chat
-        else {
-            addUserMessage(text);
-            addXP(1);
-            publishMessage(text);
+        // --- MUTATION HANDLER (AI UI CONTROL) ---
+        function handleMutation(data) {
+            addSystemMessage(`Received Mutation Command: ${JSON.stringify(data)}`);
             
-            // AI Trigger (Simple version)
-            if (text.startsWith('/ai ')) {
-                talkToClone(text.substring(4));
+            if (data.command === "install_theme") {
+                const name = data.args || "default";
+                document.body.style.color = name;
+                document.querySelector('header').style.borderColor = name;
+                addSystemMessage(`Theme mutated to: ${name}`);
+            } 
+            else if (data.command === "add_animation") {
+                const anim = document.createElement('div');
+                anim.style.position = 'fixed';
+                anim.style.top = '50%';
+                anim.style.left = '50%';
+                anim.style.transform = 'translate(-50%, -50%)';
+                anim.style.fontSize = '100px';
+                anim.style.color = '#f0f';
+                anim.style.zIndex = '999';
+                anim.innerText = "🤖";
+                document.body.appendChild(anim);
+                setTimeout(() => anim.remove(), 2000);
             }
         }
-        
-        input.value = '';
-    }
 
-    // Attach Global Listener
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            const input = document.getElementById('cmd-input');
-            if(input && document.activeElement === input) {
-                handleInput();
-            }
-        }
-    });
+        // --- EVENT LISTENERS ---
+        msgInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') handleInput();
+        });
 
-    // AI Logic Placeholder (Simplified for security)
-    async function talkToClone(prompt) {
-        if (!GROQ_API_KEY) {
-            addAIMessage("Error: API Key missing. Type /setkey [key]", false);
-            return;
-        }
-        addAIMessage("Thinking...", false);
-        try {
-            // Note: Ensure your fetch logic is here and secure
-            // ... (Omitted for brevity, use the logic from previous steps) ...
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ messages: [{role: "user", content: prompt}], model: "llama3-8b-8192" })
-            });
-            const data = await res.json();
-            if(data.choices) addAIMessage(data.choices[0].message.content, false);
-            else addAIMessage("AI Error.", false);
-        } catch (e) {
-            addAIMessage("Connection Failed.", false);
-        }
-    }
-
-</script>
+    </script>
+</body>
+</html>
