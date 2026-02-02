@@ -3,124 +3,1152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Total Build</title>
+    <title>TermOS: Build Engine</title>
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <style>
         :root { 
-            --glass-bg: rgba(15, 15, 25, 0.7); 
-            --accent: #d8b4fe; 
-            --neon: #67e8f9; 
+            --glass-bg: rgba(20, 20, 30, 0.4); 
+            --glass-border: rgba(255, 255, 255, 0.05); 
+            --accent-primary: #d8b4fe; 
+            --accent-secondary: #67e8f9; 
+            --msg-user-bg: linear-gradient(135deg, #9333ea 0%, #4f46e5 100%); 
+            --neon-glow: 0 20px 50px -10px rgba(168, 85, 247, 0.3);
+            --code-bg: rgba(10, 10, 15, 0.9);
         }
-        body { background: #020205; color: #e4e4e7; font-family: 'Inter', sans-serif; overflow: hidden; }
         
-        /* WATERCOLOR ENGINE CANVAS */
-        #painted-canvas { 
-            position: fixed; inset: 0; z-index: 0; pointer-events: none;
-            background: linear-gradient(45deg, #0f172a, #1e1b4b);
+        body { 
+            background: #050505; 
+            color: #e4e4e7; 
+            font-family: 'Inter', sans-serif; 
+            overflow: hidden; 
+            background-color: #09090b;
         }
 
+        /* VISUAL LAYERS */
+        #painted-canvas { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            z-index: 0; pointer-events: none; 
+            mix-blend-mode: screen; 
+        }
+        
+        .noise-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.07;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        #flash-overlay { position: fixed; inset: 0; background: rgba(216,180,254,0.15); opacity: 0; pointer-events: none; z-index: 100; transition: opacity 0.8s ease-out; mix-blend-mode: overlay; }
+        
+        /* UTILITIES */
         .glass-panel { 
             background: var(--glass-bg); 
-            backdrop-filter: blur(30px); 
-            border: 1px solid rgba(255, 255, 255, 0.08); 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            backdrop-filter: blur(25px); 
+            -webkit-backdrop-filter: blur(25px); 
+            border: 1px solid var(--glass-border); 
+            box-shadow: var(--neon-glow); 
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+            border-radius: 20px;
         }
-
-        .font-header { font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 2px; }
+        .glass-panel:hover { 
+            background: rgba(30, 30, 40, 0.5); 
+            transform: translateY(-2px);
+            box-shadow: 0 25px 60px -12px rgba(168, 85, 247, 0.4);
+        }
         
-        /* SCANNER ANIMATION */
-        @keyframes scanline { 0% { top: -10%; } 100% { top: 110%; } }
-        .scanner-bar { 
-            position: absolute; width: 100%; height: 2px; 
-            background: linear-gradient(90deg, transparent, var(--neon), transparent);
-            animation: scanline 4s linear infinite; opacity: 0.3;
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        
+        .font-header { font-family: 'Orbitron', sans-serif; letter-spacing: 0.05em; }
+        
+        /* ANIMATIONS */
+        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+        .scan-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.03), transparent); animation: scanline 8s linear infinite; pointer-events: none; }
+
+        @keyframes paintIn { 
+            from { opacity: 0; transform: translateY(20px) scale(0.95); filter: blur(10px); } 
+            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } 
+        }
+        .msg-anim { animation: paintIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        
+        @keyframes pulse-soft { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(0.98); } }
+        .animate-pulse { animation: pulse-soft 4s ease-in-out infinite; }
+
+        @keyframes flashInput { 0% { box-shadow: inset 0 0 0 rgba(6,182,212,0); } 50% { box-shadow: inset 0 0 20px rgba(6,182,212,0.5); } 100% { box-shadow: inset 0 0 0 rgba(6,182,212,0); } }
+        .editor-flash { animation: flashInput 0.3s ease-out; }
+
+        /* BUILD SCANNER ANIMATION */
+        @keyframes scanBar { 0% { width: 0%; } 100% { width: 100%; } }
+        .scanner-active { animation: scanBar 2s ease-in-out infinite alternate; }
+
+        /* CODE BLOCK STYLES */
+        .ai-code-block {
+            background: rgba(24, 24, 27, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 12px;
+            overflow-x: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            color: #d4d4d8;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+        .ai-code-block::before {
+            content: "CODE";
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.05);
+            padding: 2px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        /* BUILD PREVIEW IFRAME */
+        #build-preview-container {
+            position: fixed;
+            inset: 0;
+            z-index: 120; /* On top of everything */
+            background: rgba(0,0,0,0.9);
+            display: none;
+            backdrop-filter: blur(20px);
+        }
+        #build-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #fff;
+            display: block;
+        }
+        .scanner-hud {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            width: 300px;
+            padding: 20px;
+            display: none;
+            z-index: 110;
+        }
+        .scan-line {
+            height: 2px;
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+            margin-bottom: 8px;
+            width: 100%;
+            transform: scaleX(0);
+            transition: transform 0.2s;
+        }
+        .scan-line.active { transform: scaleX(1); }
+        .scan-text { font-family: 'Fira Code', monospace; font-size: 10px; color: #00ff00; text-shadow: 0 0 5px #00ff00; }
+
+        /* MEDIA */
+        .media-overlay { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 600px; z-index: 40; transition: all 0.4s ease; }
+        .media-minimized { bottom: 20px; right: 20px; left: auto; width: 50px; height: 50px; transform: none; padding: 0; background: transparent; border: none; box-shadow: none; }
+        .video-active { border: 2px solid rgba(168, 85, 247, 0.3); box-shadow: 0 0 40px rgba(168, 85, 247, 0.2); }
+        
+        /* MODALS */
+        .modal-overlay { background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); }
+        
+        /* BOOT */
+        #boot-screen { position: fixed; inset: 0; background: #000; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 1.5s ease-out; }
+        .loader-ring { width: 80px; height: 80px; border: 1px solid rgba(255,255,255,0.05); border-top: 2px solid var(--accent-primary); border-radius: 50%; animation: spin 3s cubic-bezier(0.2, 0.8, 0.2, 1) infinite; box-shadow: 0 0 20px var(--accent-primary); }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* COPILOT STYLES */
+        .copilot-editor {
+            background: var(--code-bg);
+            color: #e4e4e7;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            border: none;
+            width: 100%;
+            height: 100%;
+            padding: 20px 20px 20px 60px;
+            border-radius: 8px;
+            caret-color: #67e8f9;
+        }
+        .suggestion-box {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 250px;
+            background: rgba(6, 182, 212, 0.1);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            color: #67e8f9;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 50;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .suggestion-box.active { 
+            opacity: 1; 
+            transform: translateY(0); 
+            border-color: rgba(6, 182, 212, 0.5);
+            background: rgba(6, 182, 212, 0.15);
+        }
+        .suggestion-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(103, 232, 249, 0.7);
+            margin-bottom: 4px;
+            display: block;
+            border-bottom: 1px solid rgba(6, 182, 212, 0.2);
+            padding-bottom: 2px;
         }
 
-        .file-item { border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.3s; }
-        .file-item:hover { background: rgba(103, 232, 249, 0.1); padding-left: 12px; }
+        /* TOOLBAR BUTTONS */
+        .tool-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #e4e4e7;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .tool-btn:hover {
+            background: rgba(168, 85, 247, 0.1);
+            border-color: rgba(168, 85, 247, 0.4);
+            color: #d8b4fe;
+        }
+        .tool-btn-run {
+            background: linear-gradient(135deg, rgba(6,182,212,0.2), rgba(59,130,246,0.2));
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            color: #22d3ee;
+        }
+        .tool-btn-run:hover {
+            background: linear-gradient(135deg, rgba(6,182,212,0.4), rgba(59,130,246,0.4));
+            box-shadow: 0 0 15px rgba(6,182,212,0.3);
+        }
+        .tool-btn-scanner {
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            text-shadow: 0 0 5px #00ff00;
+            box-shadow: 0 0 10px rgba(0,255,0,0.2);
+        }
+        .tool-btn-scanner.active {
+            background: rgba(0,255,0,0.2);
+            color: #000;
+        }
+
+        /* SNIPPET MODAL */
+        .snippet-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .snippet-item {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .snippet-item:hover {
+            background: rgba(168, 85, 247, 0.1);
+            color: #e4e4e7;
+            border-color: rgba(168, 85, 247, 0.3);
+        }
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col relative text-sm">
+<body class="h-screen w-screen flex flex-col relative text-sm selection:bg-purple-500/30">
 
-    <div id="painted-canvas"></div>
-    <div class="scanner-bar"></div>
+    <!-- BOOT LOADER -->
+    <div id="boot-screen">
+        <div class="loader-ring mb-8"></div>
+        <h1 class="text-4xl font-header text-white tracking-[0.3em] animate-pulse bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-cyan-400">TERMOS</h1>
+        <div class="mt-6 text-purple-300/60 font-mono text-xs tracking-[0.2em]">BUILD SCANNER ONLINE</div>
+    </div>
 
-    <main class="relative z-10 h-full flex flex-col p-6 gap-6">
-        
-        <!-- SYSTEM HEADER -->
-        <header class="flex justify-between items-center">
-            <div class="glass-panel px-6 py-3 flex items-center gap-4">
-                <div class="w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>
-                <h1 class="font-header text-lg text-cyan-100">TermOS Core</h1>
-            </div>
-            <div id="mqtt-status" class="text-[10px] font-mono text-purple-400 opacity-50">MQTT: DISCONNECTED</div>
-        </header>
+    <!-- VISUALS -->
+    <canvas id="painted-canvas"></canvas>
+    <div class="noise-overlay"></div>
+    <div id="flash-overlay"></div>
 
-        <div class="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
-            
-            <!-- LEFT: ROOT FILE EXPLORER (Auto-rebuilds here) -->
-            <aside class="col-span-3 glass-panel flex flex-col rounded-3xl overflow-hidden">
-                <div class="p-4 bg-white/5 font-header text-[10px] border-b border-white/10">Project_Root</div>
-                <div class="flex-1 overflow-y-auto p-2" id="explorer">
-                    <!-- REBUILD_START -->
-                    <div class="file-item p-3 text-cyan-300">index.html</div>
-                    <div class="file-item p-3 opacity-50 text-xs">rebuild.js</div>
-                    <!-- REBUILD_END -->
-                </div>
-            </aside>
-
-            <!-- CENTER: COPILOT CODE ENGINE -->
-            <section class="col-span-9 glass-panel rounded-3xl flex flex-col overflow-hidden relative">
-                <textarea id="editor" class="flex-1 bg-transparent p-10 outline-none text-purple-100 font-mono text-base leading-relaxed resize-none" 
-                          placeholder="Initialize Copilot scripting..."></textarea>
-                
-                <div class="p-4 bg-black/20 border-t border-white/5 flex justify-between items-center">
-                    <div class="flex gap-4">
-                        <span class="text-[10px] text-cyan-500">LN 1, COL 1</span>
-                        <span class="text-[10px] text-purple-400">AUTOBUILD: ON</span>
-                    </div>
-                    <button onclick="saveCode()" class="text-[10px] font-header bg-cyan-500/20 border border-cyan-500/50 px-4 py-1 rounded hover:bg-cyan-500 hover:text-black transition">Push Build</button>
-                </div>
-            </section>
+    <!-- BUILD SCANNER HUD -->
+    <div id="scanner-hud" class="glass-panel border-green-500/30">
+        <div class="flex justify-between items-center mb-2">
+            <span class="text-green-400 font-header font-bold text-xs">BUILD SCANNER</span>
+            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
         </div>
-    </main>
+        <div class="scan-line" id="scan-bar"></div>
+        <div class="scan-text" id="scan-text">IDLE</div>
+    </div>
 
-    <script>
-        // 1. MQTT Connection Logic
-        const client = new Paho.MQTT.Client("broker.hivemq.com", Number(8000), "termos_user_" + Math.random());
-        client.onConnectionLost = (res) => { document.getElementById('mqtt-status').innerText = "MQTT: LOST"; };
-        client.connect({onSuccess: () => { document.getElementById('mqtt-status').innerText = "MQTT: CONNECTED"; }});
+    <!-- HEADER -->
+    <header class="fixed top-0 left-0 right-0 z-20 glass-panel border-b border-white/5 h-16 flex items-center justify-between px-4 lg:px-8 mx-4 mt-4 rounded-2xl">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <div>
+                <h1 class="font-header font-bold text-lg text-white">TERMOS <span class="text-purple-300/80">BUILDER</span></h1>
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-mono">
+                    <div id="status-dot" class="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>
+                    <span id="room-display">DISCONNECTED</span>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <div id="engine-badge" class="hidden px-2 py-0.5 bg-cyan-900/30 border border-cyan-500/30 rounded text-[9px] font-bold text-cyan-200 tracking-wider">GROQ</div>
+            <div id="room-badge" class="hidden px-3 py-1 bg-black/40 border border-purple-500/20 rounded-full text-[9px] font-bold text-purple-200 tracking-wider">PUBLIC</div>
+            <button onclick="UI.toggleCopilot()" class="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 border border-cyan-500/30 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-lg shadow-cyan-900/20 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                BUILDER
+            </button>
+            <button onclick="UI.toggleAdmin()" class="bg-black/30 hover:bg-white/10 border border-white/10 hover:border-white/20 text-gray-400 hover:text-white px-3 py-1.5 rounded-full text-xs font-bold transition-all backdrop-blur-md">SETTINGS</button>
+        </div>
+    </header>
+    
+    <!-- MAIN CHAT -->
+    <main id="chat-container" class="flex-1 overflow-y-auto pt-24 pb-40 px-4 z-10 max-w-4xl mx-auto w-full space-y-6 scroll-smooth"></main>
+    
+    <!-- INPUT AREA -->
+    <div class="fixed bottom-0 left-0 w-full z-30 flex justify-center pb-6 pt-4 px-4">
+        <div class="max-w-4xl w-full relative">
+            <div class="flex items-end gap-2 bg-black/30 backdrop-blur-md rounded-2xl p-2 border border-white/5 shadow-2xl transition-all focus-within:border-purple-500/30 focus-within:shadow-[0_0_30px_-10px_rgba(168,85,247,0.3)]">
+                <button onclick="Commands.handle('/ai ')" class="p-3 rounded-xl text-gray-500 hover:text-purple-400 hover:bg-white/5 transition-all duration-300">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                </button>
+                <button onclick="Commands.handle('/code ')" class="p-3 rounded-xl text-gray-500 hover:text-cyan-400 hover:bg-white/5 transition-all duration-300">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                </button>
+                <input type="text" id="user-input" placeholder="Command: /ai, /code, /copilot..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-2 py-3 font-mono text-sm">
+                <button onclick="Commands.handle()" class="p-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-900/40 hover:scale-105 active:scale-95 transition-all duration-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                </button>
+            </div>
+            <div class="flex gap-4 mt-2 justify-center">
+                <button onclick="UI.toggleMedia()" class="text-[9px] text-gray-500 hover:text-purple-400 transition-colors tracking-widest">MEDIA</button>
+            </div>
+        </div>
+    </div>
 
-        // 2. Watercolor Visual Engine (Dynamic Canvas)
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        document.getElementById('painted-canvas').appendChild(canvas);
+    <!-- COPILOT MODAL -->
+    <div id="copilot-modal" class="fixed inset-0 z-[90] modal-overlay hidden flex items-center justify-center">
+        <div class="glass-panel w-[90%] max-w-4xl h-[80vh] p-1 rounded-3xl border border-white/10 shadow-2xl flex flex-col">
+            <div class="bg-black/40 rounded-2xl flex flex-col h-full overflow-hidden relative">
+                <!-- Toolbar -->
+                <div class="h-12 border-b border-white/5 flex items-center justify-between px-4 bg-slate-900/50 backdrop-blur-md z-20">
+                    <div class="flex items-center gap-3">
+                        <span class="text-cyan-400 font-mono text-xs font-bold">BUILDER TOOLKIT</span>
+                        <span id="copilot-status" class="text-[9px] text-gray-500 px-2 py-0.5 rounded bg-white/5 hidden">Analyzing...</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="Rebuilder.toggleScanner()" class="tool-btn tool-btn-scanner text-[10px] font-bold" title="Toggle Build Scanner">
+                            ⚡
+                        </button>
+                        <button onclick="UI.toggleSnippets()" class="text-gray-400 hover:text-white text-xs transition-colors">📚</button>
+                        <button onclick="UI.toggleCopilot()" class="text-gray-400 hover:text-white text-xs transition-colors">✖ CLOSE</button>
+                    </div>
+                </div>
+
+                <!-- Editor Area -->
+                <div class="flex-1 relative bg-[#0a0a0c]">
+                    <!-- Line Numbers (Visual only) -->
+                    <div class="absolute left-0 top-0 bottom-0 w-[50px] bg-black/20 text-gray-700 text-right pr-3 pt-4 font-mono text-xs leading-[1.6] select-none pointer-events-none z-10 overflow-hidden">
+                        1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15
+                    </div>
+                    
+                    <!-- Main Editor -->
+                    <textarea id="copilot-editor" class="copilot-editor" spellcheck="false" placeholder="// Write HTML/CSS here and click Live Preview..."></textarea>
+                    
+                    <!-- Floating Suggestion -->
+                    <div id="copilot-suggestion" class="suggestion-box">
+                        <span class="suggestion-label">TAB to Accept</span>
+                        <span id="suggestion-text" class="text-white font-bold"></span>
+                    </div>
+                </div>
+
+                <!-- Build Tools Footer -->
+                <div class="h-12 border-t border-white/5 bg-slate-900/50 flex items-center px-4 justify-between z-20">
+                    <div class="flex gap-2">
+                        <button onclick="ModernTools.formatCode()" class="tool-btn" title="Format Code">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </button>
+                        <button onclick="ModernTools.runCode()" class="tool-btn tool-btn-run" title="Run in Terminal">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 00.368-.923.902-.828L14.752 5.11l.803-2.271a1 1 0 01-1.472-1.506l-.803-2.259a1 1 0 00-.368-1.544L5.507 10.923a1 1 0 01-.367-1.23.823-1.876L1.876 4.014a1 1 0 00-.234-.55.823-1.737l-2.35-2.35a1 1 0 00-.47-1.06l-2.35-2.35A1 1 0 000-1.414l-2.35-2.35a1 1 0 01-.47-1.06l-2.35-2.35z"></path></svg>
+                        </button>
+                        <button onclick="Rebuilder.toggleLivePreview()" class="tool-btn tool-btn-run" title="Live Preview">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-3 3 3 3 0 006 0v6a3 3 0 00-6 0v-6a3 3 0 000-3-3 3 3 0 000 6 0v-6a3 3 0 000 3 3 3 0 000 3 6z"></path></svg>
+                            LIVE PREVIEW
+                        </button>
+                        <button onclick="ModernTools.saveFile()" class="tool-btn" title="Download HTML">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1"></path></svg>
+                        </button>
+                    </div>
+                    <span class="text-[10px] text-gray-500 font-mono">CTRL+ENTER to Run</span>
+                    <span id="char-count" class="text-cyan-400">0 chars</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BUILD PREVIEW MODAL -->
+    <div id="build-preview-container">
+        <iframe id="build-iframe"></iframe>
+        <div class="absolute top-4 left-4 z-10 pointer-events-none">
+            <button onclick="Rebuilder.toggleLivePreview()" class="bg-black/50 hover:bg-black/80 text-white px-3 py-1 rounded text-xs font-bold border border-white/20 transition-colors">✖ EXIT PREVIEW</button>
+        </div>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div id="admin-panel" class="fixed bottom-28 right-4 z-50 glass-panel w-80 p-6 rounded-3xl border border-white/5 shadow-2xl hidden transform transition-all duration-500 translate-y-4 opacity-0">
+        <h3 class="text-purple-300 font-header font-bold mb-6 text-xs flex items-center justify-between tracking-widest"><span>AI CONFIG</span> <button onclick="UI.toggleAdmin()" class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center">✖</button></h3>
         
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
+        <div class="space-y-5">
+            <div class="space-y-2">
+                <label class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Active AI Provider</label>
+                <select id="ai-provider" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white focus:border-purple-500 outline-none transition-colors appearance-none cursor-pointer">
+                    <option value="groq">Groq (Llama 3.3)</option>
+                    <option value="zhipu">Zhipu AI (GLM-4)</option>
+                </select>
+            </div>
 
-        function paintEffect() {
-            ctx.fillStyle = 'rgba(2, 2, 5, 0.05)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            // Add custom watercolor brush logic here
-            requestAnimationFrame(paintEffect);
-        }
-        paintEffect();
+            <div id="groq-settings" class="space-y-2">
+                <label class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Groq API Key</label>
+                <input type="password" id="groq-key" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white focus:border-purple-500 outline-none transition-colors placeholder-gray-600" placeholder="gsk_...">
+            </div>
 
-        // 3. Copilot Functionality
-        function saveCode() {
-            const code = document.getElementById('editor').value;
-            console.log("Pushing build to root...", code);
-            alert("Copilot Push: Rebuild triggered in GitHub Actions.");
+            <div id="zhipu-settings" class="space-y-2 hidden">
+                <label class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Zhipu API Key</label>
+                <input type="password" id="zhipu-key" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white focus:border-cyan-500 outline-none transition-colors placeholder-gray-600" placeholder="Paste Zhipu Key">
+            </div>
+            
+            <button onclick="UI.saveSettings()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2 rounded-xl text-xs tracking-wider transition-all shadow-lg">SAVE ENGINE</button>
+
+            <div class="border-t border-white/5 pt-5 mt-5">
+                <label class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">GitHub Token (Optional)</label>
+                <input type="password" id="gh-token" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white focus:border-purple-500 outline-none transition-colors mt-1 placeholder-gray-600">
+            </div>
+        </div>
+    </div>
+
+    <!-- SNIPPET DRAWER -->
+    <div id="snippets-drawer" class="fixed right-0 top-20 bottom-24 w-64 z-[95] glass-panel border-l border-white/10 transform translate-x-full transition-transform duration-300 p-4">
+        <h3 class="text-purple-300 font-header font-bold mb-4 text-xs uppercase tracking-wider border-b border-white/5 pb-2">Snippet Library</h3>
+        <div id="snippets-list" class="flex flex-col gap-2 overflow-y-auto max-h-[60vh] pr-1">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+
+<script>
+    /** 
+     * TERMOS: BUILD SCANNER EDITION
+     * Features: Live Preview, Automated Scanner, Visual Build Log
+     */
+
+    // --- CONFIG & STATE ---
+    const Config = {
+        broker: "broker.emqx.io",
+        port: 8084,
+        user: `User_${Math.floor(Math.random() * 9000) + 1000}`,
+        providers: {
+            groq: {
+                model: "llama-3.3-70b-versatile",
+                url: "https://api.groq.com/openai/v1/chat/completions",
+                key: ""
+            },
+            zhipu: {
+                model: "glm-4-flash",
+                url: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+                key: ""
+            }
+        },
+        activeProvider: "groq"
+    };
+
+    const State = {
+        mqttClient: null,
+        currentRoom: null,
+        profile: { name: "Guest", avatar: "👤" },
+        isConnected: false,
+        github: { token: localStorage.getItem('termos_gh_token') || "" },
+        copilot: {
+            suggestion: null,
+            isTyping: false,
+            timer: null,
+            lastValue: ""
+        },
+        snippetsOpen: false,
+        scannerActive: false,
+        livePreviewActive: false
+    };
+
+    // --- UTILS ---
+    const Utils = {
+        escapeHTML: (str) => {
+            if(!str) return "";
+            return str.replace(/[&<>'"]/g, 
+                tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag]));
+        },
+        timestamp: () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        uuid: () => 'msg_' + Math.random().toString(36).substr(2, 9),
+        
+        parseMarkdown: (text) => {
+            const codeBlocks = [];
+            let safeText = text.replace(/```([\s\S]*?)```/g, (match, code) => {
+                codeBlocks.push(code);
+                return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+            });
+            safeText = Utils.escapeHTML(safeText);
+            safeText = safeText.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white font-bold">$1</strong>');
+            safeText = safeText.replace(/`([^`]+)`/g, '<span class="bg-purple-900/40 text-purple-300 px-1.5 py-0.5 rounded font-mono text-xs">$1</span>');
+            safeText = safeText.replace(/__CODE_BLOCK_(\d+)__/g, (match, index) => {
+                const code = codeBlocks[index].replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return `<div class="ai-code-block"><pre><code>${code}</code></pre></div>`;
+            });
+            safeText = safeText.replace(/\n/g, '<br>');
+            return safeText;
         }
-    </script>
+    };
+
+    // --- BUILD SCANNER (THE NEW FEATURE) ---
+    const Rebuilder = {
+        container: document.getElementById('build-preview-container'),
+        iframe: document.getElementById('build-iframe'),
+        hud: document.getElementById('scanner-hud'),
+        scanBar: document.getElementById('scan-bar'),
+        scanText: document.getElementById('scan-text'),
+        scanTimer: null,
+
+        toggleLivePreview: () => {
+            State.livePreviewActive = !State.livePreviewActive;
+            const container = document.getElementById('build-preview-container');
+            const scannerBtn = document.querySelector('.tool-btn-scanner'); // Access via query selector to update class
+
+            if(State.livePreviewActive) {
+                container.style.display = 'block';
+                Rebuilder.scanAndInject();
+                UI.log("🖼 Live Preview Initialized.", "system");
+                scannerBtn.classList.add('active');
+            } else {
+                container.style.display = 'none';
+                UI.log("⏹ Live Preview Terminated.", "system");
+                scannerBtn.classList.remove('active');
+            }
+        },
+
+        toggleScanner: () => {
+            State.scannerActive = !State.scannerActive;
+            const hud = document.getElementById('scanner-hud');
+            if(State.scannerActive) {
+                hud.style.display = 'block';
+                Rebuilder.scanAndInject();
+            } else {
+                hud.style.display = 'none';
+            }
+        },
+
+        scanAndInject: () => {
+            const code = UI.copilotEditor.value;
+            
+            // Visual Feedback
+            Rebuilder.updateScannerUI("SCANNING SYNTAX...");
+
+            setTimeout(() => {
+                // Extract HTML, Body, Style, Scripts
+                const fullDoc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{background:#f0f0f0;color:#333;font-family:sans-serif;padding:20px;}</style></head><body>${code}</body></html>`;
+                
+                // Inject into iframe
+                const doc = Rebuilder.iframe.contentDocument || Rebuilder.iframe.contentWindow.document;
+                doc.open();
+                doc.write(fullDoc);
+                doc.close();
+
+                Rebuilder.updateScannerUI("BUILD COMPLETE", true);
+                UI.log(`⚡ Build finished. [${code.length} chars]`, "system");
+            }, 300);
+        },
+
+        updateScannerUI: (status, success) => {
+            if(!Rebuilder.scanText) return;
+            Rebuilder.scanText.textContent = status;
+            Rebuilder.scanText.style.color = success ? '#00ff00' : '#ffff00';
+            Rebuilder.scanText.style.textShadow = success ? '0 0 10px #00ff00' : 'none';
+
+            if(Rebuilder.scanBar) {
+                Rebuilder.scanBar.classList.remove('active');
+                void Rebuilder.scanBar.offsetWidth; 
+                Rebuilder.scanBar.classList.add('active');
+            }
+        }
+    };
+
+    // --- UI CONTROLLER ---
+    const UI = {
+        container: document.getElementById('chat-container'),
+        input: document.getElementById('user-input'),
+        copilotModal: document.getElementById('copilot-modal'),
+        copilotEditor: document.getElementById('copilot-editor'),
+        
+        init: () => {
+            UI.updateStatus(false);
+            UI.loadSettings();
+            
+            document.getElementById('ai-provider').addEventListener('change', (e) => UI.toggleProviderSettings(e.target.value));
+
+            setTimeout(() => {
+                document.getElementById('boot-screen').style.opacity = '0';
+                setTimeout(() => document.getElementById('boot-screen').remove(), 1500);
+                Cosmos.start();
+                Net.connect();
+            }, 1500);
+
+            UI.input.addEventListener('keypress', (e) => { if(e.key === 'Enter') Commands.handle(); });
+
+            // Copilot Event Listeners
+            UI.copilotEditor.addEventListener('input', Copilot.onType);
+            UI.copilotEditor.addEventListener('keydown', Copilot.onKey);
+            // Auto-scan on input (if scanner is active)
+            UI.copilotEditor.addEventListener('input', () => {
+                if(State.scannerActive || State.livePreviewActive) {
+                    clearTimeout(Rebuilder.scanTimer);
+                    Rebuilder.scanTimer = setTimeout(Rebuilder.scanAndInject, 800);
+                }
+            });
+
+            UI.copilotEditor.addEventListener('input', (e) => {
+                document.getElementById('char-count').textContent = e.target.value.length + " chars";
+            });
+        },
+
+        toggleCopilot: () => {
+            UI.copilotModal.classList.toggle('hidden');
+            if(!UI.copilotModal.classList.contains('hidden')) {
+                UI.copilotEditor.focus();
+            } else {
+                // Turn off scanners when closing editor
+                if(Rebuilder.container) Rebuilder.container.style.display = 'none';
+                if(Rebuilder.hud) Rebuilder.hud.style.display = 'none';
+                State.livePreviewActive = false;
+                State.scannerActive = false;
+            }
+        },
+
+        toggleProviderSettings: (provider) => {
+            const groqDiv = document.getElementById('groq-settings');
+            const zhipuDiv = document.getElementById('zhipu-settings');
+            if(provider === 'zhipu') {
+                groqDiv.classList.add('hidden');
+                zhipuDiv.classList.remove('hidden');
+            } else {
+                groqDiv.classList.remove('hidden');
+                zhipuDiv.classList.add('hidden');
+            }
+        },
+
+        log: (html, type = 'normal') => {
+            const div = document.createElement('div');
+            div.className = `msg-anim ${type}`;
+            div.innerHTML = html;
+            UI.container.appendChild(div);
+            UI.container.scrollTop = UI.container.scrollHeight;
+        },
+
+        updateStatus: (online) => {
+            const dot = document.getElementById('status-dot');
+            const label = document.getElementById('room-display');
+            State.isConnected = online;
+            if(online) {
+                dot.className = "w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(34,197,94,0.8)] animate-pulse";
+                label.textContent = State.currentRoom ? `ROOM: ${State.currentRoom}` : "ONLINE";
+                label.className = "text-green-400";
+            } else {
+                dot.className = "w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse";
+                label.textContent = "DISCONNECTED";
+                label.className = "text-red-400";
+            }
+        },
+
+        toggleAdmin: () => {
+            const panel = document.getElementById('admin-panel');
+            if(panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                setTimeout(() => panel.classList.remove('translate-y-4', 'opacity-0'), 10);
+            } else {
+                panel.classList.add('translate-y-4', 'opacity-0');
+                setTimeout(() => panel.classList.add('hidden'), 300);
+            }
+        },
+
+        saveSettings: () => {
+            const provider = document.getElementById('ai-provider').value;
+            const groqKey = document.getElementById('groq-key').value.trim();
+            const zhipuKey = document.getElementById('zhipu-key').value.trim();
+            const token = document.getElementById('gh-token').value.trim();
+
+            Config.activeProvider = provider;
+            localStorage.setItem('termos_provider', provider);
+            Config.providers.groq.key = groqKey;
+            Config.providers.zhipu.key = zhipuKey;
+            localStorage.setItem('termos_groq', groqKey);
+            localStorage.setItem('termos_zhipu', zhipuKey);
+            localStorage.setItem('termos_gh_token', token);
+
+            const badge = document.getElementById('engine-badge');
+            badge.classList.remove('hidden');
+            badge.textContent = provider.toUpperCase();
+            badge.className = provider === 'zhipu' ? "px-2 py-0.5 bg-cyan-900/30 border border-cyan-500/30 rounded text-[9px] font-bold text-cyan-200 tracking-wider" : "px-2 py-0.5 bg-purple-900/30 border border-purple-500/30 rounded text-[9px] font-bold text-purple-200 tracking-wider";
+            UI.log(`✅ Engine switched to ${provider.toUpperCase()}`, "system");
+        },
+
+        toggleMedia: () => {
+            const deck = document.getElementById('media-deck');
+            deck.classList.toggle('hidden');
+            if(!deck.classList.contains('hidden')) {
+                deck.classList.remove('media-minimized');
+            }
+        },
+
+        switchTab: (tab) => {
+            document.getElementById('tab-radio').className = tab === 'radio' ? "pb-3 text-cyan-300 border-b-2 border-cyan-400 font-mono text-xs font-bold tracking-wide" : "pb-3 text-gray-500 border-b-2 border-transparent font-mono text-xs hover:text-purple-300 tracking-wide";
+            document.getElementById('tab-video').className = tab === 'video' ? "pb-3 text-cyan-300 border-b-2 border-cyan-400 font-mono text-xs font-bold tracking-wide" : "pb-3 text-gray-500 border-b-2 border-transparent font-mono text-xs hover:text-purple-300 tracking-wide";
+            document.getElementById('view-radio').classList.toggle('hidden', tab !== 'radio');
+            document.getElementById('view-video').classList.toggle('hidden', tab !== 'video');
+        },
+
+        toggleJoinModal: () => {
+            document.getElementById('join-modal').classList.toggle('hidden');
+        },
+
+        loadSettings: () => {
+            const savedGroq = localStorage.getItem('termos_groq') || "";
+            const savedZhipu = localStorage.getItem('termos_zhipu') || "";
+            document.getElementById('groq-key').value = savedGroq;
+            document.getElementById('zhipu-key').value = savedZhipu;
+            document.getElementById('gh-token').value = State.github.token;
+            Config.providers.groq.key = savedGroq;
+            Config.providers.zhipu.key = savedZhipu;
+
+            const savedProvider = localStorage.getItem('termos_provider') || 'groq';
+            const select = document.getElementById('ai-provider');
+            select.value = savedProvider;
+            Config.activeProvider = savedProvider;
+            UI.toggleProviderSettings(savedProvider);
+
+            const badge = document.getElementById('engine-badge');
+            badge.classList.remove('hidden');
+            badge.textContent = savedProvider.toUpperCase();
+            badge.className = savedProvider === 'zhipu' ? "px-2 py-0.5 bg-cyan-900/30 border border-cyan-500/30 rounded text-[9px] font-bold text-cyan-200 tracking-wider" : "px-2 py-0.5 bg-purple-900/30 border border-purple-500/30 rounded text-[9px] font-bold text-purple-200 tracking-wider";
+        },
+
+        flash: () => {
+            const el = document.getElementById('flash-overlay');
+            el.style.opacity = '0.8';
+            setTimeout(() => el.style.opacity = '0', 150);
+        }
+    };
+
+    // --- NETWORKING (MQTT) ---
+    const Net = {
+        connect: () => {
+            if (typeof Paho === 'undefined') return;
+            try {
+                State.mqttClient = new Paho.MQTT.Client(Config.broker, Config.port, `termos_${Config.user}`);
+                State.mqttClient.onConnectionLost = Net.onLost;
+                State.mqttClient.onMessageArrived = Net.onMessage;
+                State.mqttClient.connect({
+                    onSuccess: Net.onConnect,
+                    onFailure: () => setTimeout(Net.connect, 5000),
+                    useSSL: true
+                });
+            } catch(e) { console.error("MQTT Error", e); }
+        },
+        onConnect: () => { UI.log("📡 Neural Link Established.", "system"); UI.updateStatus(true); Net.subscribe("termos/v3/chat"); },
+        onLost: () => { UI.updateStatus(false); setTimeout(Net.connect, 3000); },
+        subscribe: (topic) => { if(State.mqttClient && State.mqttClient.isConnected()) State.mqttClient.subscribe(topic, { qos: 1 }); },
+        unsubscribe: (topic) => { if(State.mqttClient && State.mqttClient.isConnected()) State.mqttClient.unsubscribe(topic); },
+        send: (topic, payload) => { if(State.mqttClient && State.mqttClient.isConnected()) { const msg = new Paho.MQTT.Message(JSON.stringify(payload)); msg.destinationName = topic; State.mqttClient.send(msg); } },
+        onMessage: (msg) => {
+            try {
+                const data = JSON.parse(msg.payloadString);
+                const isMe = data.user === Config.user;
+                if(msg.destinationName === "termos/v3/chat" && !State.currentRoom && !isMe) UI.renderMessage(data.text, data.name, data.avatar, false);
+                else if (msg.destinationName === `termos/rooms/${State.currentRoom}`) {
+                    if(data.type === 'video' && !isMe) { UI.log(`📺 Transmission from ${data.name}`, "system"); } 
+                    else if (!isMe && data.type !== 'video') UI.renderMessage(data.text, data.name, data.avatar, false);
+                }
+            } catch(e) {}
+        },
+        joinRoom: () => {
+            const name = document.getElementById('room-name-input').value.trim();
+            if(!name) return;
+            if(State.currentRoom) Net.unsubscribe(`termos/rooms/${State.currentRoom}`); else Net.unsubscribe("termos/v3/chat");
+            State.currentRoom = name;
+            Net.subscribe(`termos/rooms/${name}`);
+            Net.send(`termos/rooms/${name}`, { user: Config.user, type: 'join', name: State.profile.name });
+            UI.updateStatus(true);
+            document.getElementById('room-badge').innerText = name.toUpperCase();
+            document.getElementById('room-badge').classList.remove('hidden');
+            UI.toggleJoinModal();
+            UI.log(`🔒 Joined Channel: ${name}`, "system");
+        }
+    };
+
+    // --- MESSAGING ---
+    UI.renderMessage = (text, name, avatar, isMe) => {
+        const safeText = Utils.escapeHTML(text);
+        const safeName = Utils.escapeHTML(name || "Unknown");
+        const avatarHTML = `<div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-sm border border-white/10 shrink-0">${avatar}</div>`;
+        const align = isMe ? "justify-end" : "justify-start";
+        const bg = isMe ? "var(--msg-user-bg)" : "bg-slate-800/60 border border-white/5";
+        const rounded = isMe ? "rounded-tr-none" : "rounded-tl-none";
+        const html = `<div class="flex ${align} gap-3 items-end msg-anim">${!isMe ? avatarHTML : ''}<div class="max-w-[80%]"><div class="${bg} ${rounded} p-4 shadow-lg text-sm text-white leading-relaxed break-words backdrop-blur-sm">${safeText}</div><div class="text-[9px] text-gray-500 mt-1 ${isMe ? 'text-right' : ''}">${safeName} • ${Utils.timestamp()}</div></div>${isMe ? avatarHTML : ''}</div>`;
+        UI.container.insertAdjacentHTML('beforeend', html);
+        UI.container.scrollTop = UI.container.scrollHeight;
+    };
+
+    UI.renderAIResponse = (text, isCodeMode) => {
+        const parsedText = Utils.parseMarkdown(text);
+        const badge = isCodeMode ? "💻 CODING" : "🧠 BRAINSTORM";
+        const colorClass = isCodeMode ? "text-cyan-300" : "text-purple-300";
+        const providerName = Config.activeProvider.toUpperCase();
+        const html = `<div class="flex gap-3 items-start msg-anim"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 flex items-center justify-center text-sm border border-white/10 shrink-0">AI</div><div class="max-w-[90%]"><div class="bg-slate-900/80 border border-white/10 p-5 shadow-lg text-sm text-gray-200 leading-relaxed break-words backdrop-blur-md rounded-2xl"><div class="flex justify-between items-center mb-2"><div class="text-[10px] font-bold ${colorClass} uppercase tracking-wider flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-current"></span> ${badge}</div><div class="text-[9px] text-gray-600 font-mono">${providerName}</div></div><div class="prose prose-invert prose-sm max-w-none">${parsedText}</div></div></div></div>`;
+        UI.container.insertAdjacentHTML('beforeend', html);
+        UI.container.scrollTop = UI.container.scrollHeight;
+    };
+
+    // --- COPILOT ENGINE ---
+    const Copilot = {
+        onType: (e) => {
+            if (State.copilot.timer) clearTimeout(State.copilot.timer);
+            State.copilot.timer = setTimeout(() => Copilot.generateSuggestion(e.target.value), 500); 
+        },
+
+        onKey: (e) => {
+            if (e.key === 'Tab' && State.copilot.suggestion) {
+                e.preventDefault(); Copilot.acceptSuggestion();
+            } else if (e.key !== 'Tab') {
+                document.getElementById('copilot-suggestion').classList.remove('active');
+                State.copilot.suggestion = null;
+            }
+        },
+
+        generateSuggestion: async (code) => {
+            if (code.length < 3) return; 
+            
+            const provider = Config.activeProvider;
+            const config = Config.providers[provider];
+            if(!config.key) return;
+
+            document.getElementById('copilot-status').classList.remove('hidden');
+            document.getElementById('copilot-suggestion').classList.remove('active');
+
+            try {
+                const res = await fetch(config.url, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${config.key}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: config.model,
+                        messages: [
+                            { role: "system", content: "You are a code completion AI. Complete the user's code. Return ONLY the new completion string. Do not wrap in markdown. Do not repeat the user's last word." },
+                            { role: "user", content: code }
+                        ],
+                        temperature: 0.2,
+                        max_tokens: 50
+                    })
+                });
+                
+                const data = await res.json();
+                document.getElementById('copilot-status').classList.add('hidden');
+                
+                if(data.choices && data.choices[0]) {
+                    const completion = data.choices[0].message.content.trim();
+                    Copilot.showSuggestion(completion, code);
+                }
+            } catch (e) {
+                console.error("Copilot Error", e);
+                document.getElementById('copilot-status').classList.add('hidden');
+            }
+        },
+
+        showSuggestion: (suggestion, currentCode) => {
+            let displayText = suggestion;
+            const lastWord = currentCode.split(/\s+/).pop(); 
+            
+            if (lastWord && suggestion.startsWith(lastWord)) {
+                displayText = suggestion.slice(lastWord.length);
+            }
+            State.copilot.suggestion = suggestion;
+            document.getElementById('suggestion-text').textContent = displayText;
+            document.getElementById('copilot-suggestion').classList.add('active');
+        },
+
+        acceptSuggestion: () => {
+            const editor = UI.copilotEditor;
+            const suggestion = State.copilot.suggestion;
+            if (!suggestion) return;
+
+            const cursorPos = editor.selectionStart;
+            const textBefore = editor.value.substring(0, cursorPos);
+            const textAfter = editor.value.substring(cursorPos, editor.value.length);
+            
+            let textToInsert = suggestion;
+            const lastChars = editor.value.slice(Math.max(0, cursorPos - 20), cursorPos);
+            
+            if (suggestion.startsWith(lastChars)) {
+                textToInsert = suggestion.slice(lastChars.length);
+            }
+
+            editor.value = textBefore + textToInsert + textAfter;
+            State.copilot.suggestion = null;
+            document.getElementById('copilot-suggestion').classList.remove('active');
+            
+            const newCursorPos = cursorPos + textToInsert.length;
+            editor.selectionStart = newCursorPos;
+            editor.selectionEnd = newCursorPos;
+            editor.focus();
+
+            editor.parentElement.classList.remove('editor-flash');
+            void editor.parentElement.offsetWidth; 
+            editor.parentElement.classList.add('editor-flash');
+        }
+    };
+
+    // --- COMMANDS ---
+    const Commands = {
+        handle: (manualCmd = null) => {
+            const txt = manualCmd || UI.input.value.trim();
+            if(!txt) return;
+
+            if(!txt.startsWith('/')) {
+                UI.renderMessage(txt, "Me", State.profile.avatar, true);
+                const topic = State.currentRoom ? `termos/rooms/${State.currentRoom}` : "termos/v3/chat";
+                Net.send(topic, { user: Config.user, text: txt, name: State.profile.name, avatar: State.profile.avatar });
+                UI.input.value = '';
+                return;
+            }
+
+            const [cmd, ...args] = txt.split(' ');
+            const fullArgs = args.join(' ');
+
+            switch(cmd.toLowerCase()) {
+                case '/ai': AI.chat(fullArgs); break;
+                case '/code': AI.code(fullArgs); break;
+                case '/copilot': UI.toggleCopilot(); break;
+                case '/kernel': AI.think(); break;
+                case '/join': document.getElementById('room-name-input').value = fullArgs; UI.toggleJoinModal(); break;
+                case '/leave': 
+                    if(State.currentRoom) {
+                        Net.send(`termos/rooms/${State.currentRoom}`, { user: Config.user, type: 'leave' });
+                        State.currentRoom = null;
+                        document.getElementById('room-badge').classList.add('hidden');
+                        Net.subscribe("termos/v3/chat");
+                        UI.log("📢 Returned to Public Frequency", "system");
+                    }
+                    break;
+                default: UI.log(`Unknown command: ${cmd}`, "system");
+            }
+            UI.input.value = '';
+        }
+    };
+
+    // --- AI LOGIC ---
+    const AI = {
+        query: async (systemPrompt, userPrompt, mode = 'chat') => {
+            const provider = Config.activeProvider;
+            const config = Config.providers[provider];
+            if(!config.key) { UI.log(`⚠️ ${provider.toUpperCase()} Key Required.`, "error"); UI.toggleAdmin(); return; }
+
+            const id = Utils.uuid();
+            const loadingTxt = mode === 'code' ? "Compiling..." : "Synthesizing...";
+            UI.log(`<span id="${id}" class="text-purple-400 italic animate-pulse">${loadingTxt} (${provider})</span>`, "system");
+
+            try {
+                const res = await fetch(config.url, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${config.key}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: config.model,
+                        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+                        temperature: 0.7,
+                        max_tokens: 2048
+                    })
+                });
+                const data = await res.json();
+                if(data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+                const reply = data.choices[0].message.content;
+                document.getElementById(id).remove(); 
+                UI.renderAIResponse(reply, mode === 'code');
+            } catch(e) {
+                const loader = document.getElementById(id);
+                if(loader) loader.remove();
+                UI.log(`❌ Error: ${e.message}`, "error");
+            }
+        },
+        chat: (prompt) => {
+            if(!prompt) return UI.input.placeholder = "Type: /ai [question]";
+            const sysPrompt = provider => `You are TermOS AI using ${provider}. Be helpful and creative.`;
+            AI.query(sysPrompt(Config.activeProvider), prompt, 'chat');
+        },
+        code: (prompt) => {
+            if(!prompt) return UI.input.placeholder = "Type: /code [task]";
+            const sysPrompt = "You are an expert frontend engineer. Provide clean HTML/CSS/JS. Use markdown code blocks.";
+            AI.query(sysPrompt, prompt, 'code');
+        },
+        think: async () => {
+            const provider = Config.activeProvider;
+            const config = Config.providers[provider];
+            if(!config.key) return alert("API Key required.");
+            const id = Utils.uuid();
+            UI.log(`<span id="${id}" class="text-cyan-400 italic">Kernel thought processing...</span>`, "system");
+            const res = await fetch(config.url, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${config.key}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    model: config.model,
+                    messages: [{role: "system", content: "You are TermOS OS. Suggest 1 idea."}, {role: "user", content: "Generate idea."}]
+                })
+            });
+            const data = await res.json();
+            if(data.error) throw new Error(data.error.message);
+            document.getElementById(id).remove();
+            UI.renderAIResponse(data.choices[0].message.content, false);
+        }
+    };
+
+    // --- MODERN TOOLS ---
+    const ModernTools = {
+        formatCode: () => {
+            const editor = UI.copilotEditor;
+            let code = editor.value;
+            code = code.replace(/\s*([{}\[\]:,])\s*/g, ' $1');
+            code = code.replace(/;\s*(?!;)/g, ';\n');
+            code = code.replace(/\{(?=[^$])/g, ' {\n    ');
+            const keywords = ['function', 'const', 'let', 'var', 'if', 'else', 'return', 'class'];
+            keywords.forEach(kw => {
+                const regex = new RegExp(`\\b${kw}\\b`, 'gi');
+                code = code.replace(regex, kw);
+            });
+            editor.value = code;
+            UI.flash();
+        },
+        runCode: () => {
+            const code = UI.copilotEditor.value;
+            if(!code) return;
+            UI.log("🚀 Starting Build Process...", "system");
+            const originalLog = console.log;
+            const originalError = console.error;
+            const originalWarn = console.warn;
+
+            console.log = (...args) => {
+                UI.log(`[STDOUT] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}`, "system");
+                originalLog(...args);
+            };
+            console.error = (...args) => {
+                UI.log(`[ERROR] ${args.join(' ')}`, "error");
+                originalError(...args);
+            };
+            console.warn = (...args) => {
+                UI.log(`[WARN] ${args.join(' ')}`, "system");
+                originalWarn(...args);
+            };
+            try {
+                const safeCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const fn = new Function(safeCode);
+                fn();
+                UI.log("✅ Build Completed Successfully.", "system");
+            } catch(e) {
+                UI.log(`❌ Build Failed: ${e.message}`, "error");
+            } finally {
+                console.log = originalLog;
+                console.error = originalError;
+                console.warn = originalWarn;
+            }
+        },
+        saveFile: () => {
+            const code = UI.copilotEditor.value;
+            const blob = new Blob([code], {type: "text/html"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "termos_project.html";
+            a.click();
+        },
+        insertSnippet: (key) => {
+            const editor = UI.copilotEditor;
+            const snippet = ModernTools.snippets[key];
+            const startPos = editor.selectionStart;
+            const before = editor.value.substring(0, startPos);
+            const after = editor.value.substring(startPos);
+            editor.value = before + snippet + after;
+            editor.focus();
+            UI.toggleSnippets();
+        }
+    };
+
+    // Populate Snippets
+    ModernTools.snippets = {
+        "Card": '<div class="bg-white rounded-lg p-4 shadow-lg"><h3 class="font-bold">Card</h3><p>Content...</p></div>',
+        "Button": '<button class="bg-blue-500 text-white px-4 py-2 rounded">Click Me</button>',
+        "Loader": '<div class="w-8 h-8 border-4 border-t-cyan-500 rounded-full animate-spin"></div>'
+    };
+
+    // --- VISUALS ---
+    const Cosmos = {
+        start: () => {
+            const canvas = document.getElementById('painted-canvas');
+            const ctx = canvas.getContext('2d');
+            let width = canvas.width = window.innerWidth;
+            let height = canvas.height = window.innerHeight;
+            const orbs = Array(60).fill().map(() => ({
+                x: Math.random() * width, y: Math.random() * height,
+                vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5,
+                r: Math.random() * 150 + 50,
+                color: Math.random() > 0.5 ? '#9333ea' : '#06b6d4'
+            }));
+
+            function draw() {
+                ctx.fillStyle = 'rgba(5, 5, 9, 0.1)'; 
+                ctx.fillRect(0, 0, width, height);
+                orbs.forEach(orb => {
+                    orb.x += orb.vx; orb.y += orb.vy;
+                    if(orb.x < -orb.r) orb.x = width + orb.r; if(orb.x > width + orb.r) orb.x = -orb.r;
+                    if(orb.y < -orb.r) orb.y = height + orb.r; if(orb.y > height + orb.r) orb.y = -orb.r;
+                    const g = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.r);
+                    g.addColorStop(0, orb.color + '40'); g.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(orb.x, orb.y, orb.r, 0, Math.PI * 2); ctx.fill();
+                });
+                requestAnimationFrame(draw);
+            }
+            draw();
+            window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
+        }
+    };
+
+    window.onload = UI.init;
+
+</script>
 </body>
 </html>
 
