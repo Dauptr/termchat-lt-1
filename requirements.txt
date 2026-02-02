@@ -1,13 +1,15 @@
-# 1. The Core Framework
+# 1. The Core Framework (REQUIRED - was missing)
 streamlit
 
 # 2. AI Libraries
-# OpenAI SDK is here if you want to use OpenAI, 
-# but we are using 'requests' for Groq in app.py to avoid version conflicts.
+# Pinned to >=1.0.0 to match the code syntax used in app.py
 openai>=1.0.0
+
+# Zhipu AI (Optional - only if you plan to use Chinese models later)
+# zhipuai
 
 # 3. Utilities
 python-dotenv
 
-# 4. MQTT (REQUIRED for Streamlit Backend to talk to Frontend)
-paho-mqtt>=2.0.0
+# 4. MQTT (Optional - only needed if Python acts as a Bot, not just a UI)
+# paho-mqtt>=2.0.0
