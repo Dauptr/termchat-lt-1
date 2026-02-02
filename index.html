@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Test Suite</title>
+    <title>TermOS: Light Chat</title>
     <meta name="theme-color" content="#f3f4f6">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
@@ -16,16 +16,13 @@
 
     <style>
         :root {
-            /* Light Theme Palette */
             --bg-primary: #ffffff;
             --bg-secondary: #f8fafc;
             --text-main: #1f2937;
             --text-secondary: #64748b;
             --accent-blue: #3b82f6;
-            --accent-purple: #8b5cf6; /* For Test Mode */
+            --accent-red: #ef4444;
             --border-color: #e2e8f0;
-            --success: #10b981;
-            --error: #ef4444;
             --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
             --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
             --safe-bottom: env(safe-area-inset-bottom, 20px);
@@ -42,7 +39,7 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* --- BACKGROUND (Grid) --- */
+        /* --- BACKGROUND --- */
         #bg-canvas {
             position: fixed; inset: 0; z-index: 1;
             opacity: 0.4;
@@ -64,7 +61,7 @@
         .sidebar {
             background: rgba(255,255,255,0.9);
             border-right: 1px solid var(--border-color);
-            display: none; /* Hidden on mobile */
+            display: none;
             flex-direction: column;
             align-items: center;
             padding: 20px;
@@ -79,7 +76,7 @@
             padding: 12px 20px;
             border-radius: 8px;
             cursor: pointer;
-            transition: background 0.2s, transform 0.2s;
+            transition: all 0.2s;
             color: var(--text-secondary);
             font-weight: 500;
             outline: none;
@@ -89,29 +86,6 @@
             color: white;
             transform: translateX(4px);
         }
-        
-        /* Test Suite Specifics */
-        .menu-item.test-item {
-            background: #f3e8ff;
-            color: var(--accent-purple);
-            border: 1px solid var(--accent-purple);
-        }
-        .menu-item.test-item:hover {
-            background: var(--accent-purple);
-            color: white;
-        }
-
-        .test-badge {
-            position: absolute; top: 10px; right: 10px;
-            background: var(--success);
-            color: white;
-            font-size: 0.6rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            display: none;
-        }
-        .test-running .test-badge { display: block; animation: pulse 1.5s infinite; }
 
         /* --- MAIN VIEW --- */
         .main-view {
@@ -125,13 +99,12 @@
         .header {
             height: 60px;
             padding-top: var(--safe-top);
-            background: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.9);
             backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border-color);
             display: flex; align-items: center; justify-content: space-between;
             padding: 0 24px;
         }
-        
         .brand {
             font-family: 'Inter', sans-serif;
             font-weight: 700;
@@ -150,13 +123,13 @@
             display: flex; align-items: center; gap: 8px;
         }
 
-        /* --- CONTENT AREA --- */
+        /* --- CONTENT AREA (Chat) --- */
         .content-area {
             flex: 1;
             overflow-y: auto;
             padding: 20px;
-            padding-bottom: 140px; /* Space for input */
-            background: transparent; /* Show grid behind */
+            padding-bottom: 140px; /* Space for input + mobile nav */
+            background: transparent;
             display: flex; flex-direction: column;
             gap: 10px;
         }
@@ -179,8 +152,8 @@
             line-height: 1.5;
             color: var(--text-main);
             box-shadow: var(--shadow-lg);
+            word-wrap: break-word;
         }
-        
         .msg-bubble.user {
             background: var(--accent-blue);
             color: white;
@@ -190,6 +163,15 @@
             background: var(--bg-secondary);
             border-bottom-left-radius: 4px;
         }
+        .msg-bubble.system {
+            background: transparent;
+            border: none;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin: 10px auto;
+            box-shadow: none;
+        }
         
         .sender-name {
             font-size: 0.7rem;
@@ -197,6 +179,10 @@
             margin-bottom: 4px;
             display: block;
             font-family: 'JetBrains Mono', monospace;
+        }
+        .msg-row.user .sender-name {
+            text-align: right;
+            color: rgba(255,255,255,0.8);
         }
 
         /* --- INPUT DOCK --- */
@@ -229,85 +215,46 @@
             box-shadow: inset 0 0 0 4px rgba(59, 130, 246, 0.1);
         }
 
-        /* --- TEST CONSOLE OVERLAY --- */
-        #test-log-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.8);
-            z-index: 2000; /* Highest priority */
+        /* --- VIDEO OVERLAY --- */
+        #video-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+            z-index: 1000;
             display: none;
-            backdrop-filter: blur(5px);
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            animation: fadeIn 0.3s;
         }
-        #test-log-overlay.active {
-            display: flex;
-            animation: fadeIn 0.3s ease-out;
-        }
-        #test-log {
-            width: 90%;
-            max-width: 600px;
-            height: 400px;
-            background: #0f172a;
-            color: #10b981;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
-            padding: 20px;
+        #video-overlay.active { display: flex; }
+        .video-container {
+            width: 90%; max-width: 800px;
+            background: #fff;
             border-radius: 12px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            overflow: hidden;
             display: flex; flex-direction: column;
-            border: 1px solid #1e293b;
         }
-        #test-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 15px; border-bottom: 1px solid #1e293b; padding-bottom: 10px;
+        .video-frame {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 */
+            height: 0;
+            background: #000;
         }
-        #test-logs {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
-            background: #020617;
-            border-radius: 4px;
-            border: 1px solid #1e293b;
-            font-size: 0.8rem;
-            color: #94a3b8;
+        .video-frame iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         }
-        .log-entry {
-            margin-bottom: 8px;
-            padding: 8px;
-            border-radius: 4px;
-            background: rgba(255,255,255,0.03);
-            border-left: 3px solid transparent;
+        .video-controls {
+            padding: 15px;
+            display: flex; gap: 10px;
+            background: #f8fafc;
         }
-        .log-entry.pass { border-left-color: var(--success); color: var(--success); }
-        .log-entry.fail { border-left-color: var(--error); color: var(--error); }
-        .log-entry.info { border-left-color: var(--accent-blue); color: var(--accent-blue); }
-        .log-entry .timestamp { opacity: 0.5; margin-right: 10px; font-size: 0.75rem; }
-
-        /* --- TOAST --- */
-        .toast {
-            position: fixed; 
-            top: calc(var(--safe-top) + 16px); 
-            left: 50%; 
-            transform: translateX(-50%) translateY(-20px); 
-            background: #1f2937; 
-            color: #ffffff; 
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-size: 1rem; 
-            font-weight: 500;
-            z-index: 100; 
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            display: flex; align-items: center; gap: 10px;
-            opacity: 0;
-            pointer-events: none; 
-            max-width: 90%;
-            text-align: center;
+        .close-video {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white; border: none;
+            width: 40px; height: 40px; border-radius: 50%;
+            font-size: 24px; cursor: pointer; z-index: 1001;
         }
-        .toast.visible {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-            pointer-events: auto;
-        }
+        .close-video:hover { background: rgba(255,255,255,0.4); }
 
         /* --- MOBILE NAV --- */
         .mobile-dock {
@@ -331,7 +278,6 @@
         /* Animations */
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -339,20 +285,17 @@
     <!-- BACKGROUND GRID -->
     <div id="bg-canvas"></div>
 
-    <!-- TOAST NOTIFICATION -->
-    <div id="toast" class="toast" role="status" aria-live="polite">
-        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        <span id="toast-msg">Notification</span>
-    </div>
-
-    <!-- TEST LOG OVERLAY -->
-    <div id="test-log-overlay">
-        <div id="test-log">
-            <div id="test-header">
-                <h3 style="color: white; font-weight: bold;">DIAGNOSTIC CONSOLE</h3>
-                <button onclick="App.closeTestRunner()" style="background:none; border:1px solid #334155; color:#94a3b8; padding:4px 8px; border-radius:4px; cursor:pointer;">CLOSE</button>
+    <!-- VIDEO OVERLAY -->
+    <div id="video-overlay">
+        <button class="close-video" onclick="App.closeVideo()">✕</button>
+        <div class="video-container">
+            <div class="video-frame">
+                <iframe id="yt-player" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
             </div>
-            <div id="test-logs"></div>
+            <div class="video-controls">
+                <input type="text" id="video-input" class="game-input" placeholder="Paste YouTube Link or ID...">
+                <button onclick="App.loadVideo()" style="padding: 0 20px; background:var(--accent-blue); color:white; border:none; border-radius:12px; font-weight:600; cursor:pointer;">LOAD</button>
+            </div>
         </div>
     </div>
 
@@ -363,13 +306,7 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
                 <span>Chat</span>
             </div>
-            <!-- TEST SUITE BUTTON -->
-            <div class="menu-item test-item" id="btn-test-run" onclick="App.runTestSuite()">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <span>Run Tests</span>
-                <span class="test-badge">RUNNING</span>
-            </div>
-            <div class="menu-item" onclick="App.openYouTube()">
+            <div class="menu-item" onclick="App.openVideoModal()">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <span>Video</span>
             </div>
@@ -378,27 +315,30 @@
         <main class="main-view">
             <!-- Header -->
             <header class="header">
-                <div class="brand">TermOS <span>Test Suite</span></div>
+                <div class="brand">TermOS <span>Light</span></div>
                 <div class="status-badge">
-                    <span style="width:8px; height:8px; background:var(--success); border-radius:50%;"></span>
-                    <span>SYSTEM READY</span>
+                    <span style="width:8px; height:8px; background:var(--accent-blue); border-radius:50%;"></span>
+                    <span>ONLINE</span>
                 </div>
             </header>
 
             <!-- Chat Area -->
             <div class="content-area" id="content-area" aria-live="polite">
                 <div class="msg-row">
-                    <div class="msg-bubble other">
-                        <span class="sender-name">System</span>
-                        Welcome to the Test Environment. Use the sidebar to run diagnostics.
+                    <div class="msg-bubble system">
+                        System Initialized. <br>
+                        Try: <br>
+                        - <b>/ai hello</b><br>
+                        - <b>/video dQw4w9WgXcQ</b><br>
+                        - <b>/clear</b>
                     </div>
                 </div>
             </div>
 
             <!-- Input Dock -->
             <div class="input-dock">
-                <input type="text" id="main-input" class="game-input" placeholder="Type a command..." autocomplete="off">
-                <button onclick="App.submit()" class="btn-action" style="background:var(--accent-blue); color:white; padding:0 24px; border-radius:12px; border:none; font-weight:600; cursor:pointer;">
+                <input type="text" id="main-input" class="game-input" placeholder="Type a message..." autocomplete="off">
+                <button onclick="App.submit()" style="background:var(--accent-blue); color:white; padding:0 24px; border:none; border-radius:12px; font-weight:600; cursor:pointer;">
                     SEND
                 </button>
             </div>
@@ -411,11 +351,7 @@
             <div class="nav-icon">💬</div>
             <span>Chat</span>
         </div>
-        <div class="nav-item" onclick="App.runTestSuite()" style="color:var(--accent-purple)">
-            <div class="nav-icon">🧪</div>
-            <span>Tests</span>
-        </div>
-        <div class="nav-item" onclick="App.openYouTube()">
+        <div class="nav-item" onclick="App.openVideoModal()">
             <div class="nav-icon">▶️</div>
             <span>Video</span>
         </div>
@@ -430,13 +366,11 @@ const Config = {
 /* --- STATE --- */
 const State = {
     user: "User_" + Math.floor(Math.random() * 10000),
-    keys: { groq: localStorage.getItem('light_groq') || "", zhipu: localStorage.getItem('light_zhipu') || "" }
+    mqttClient: null
 };
 
 /* --- APP LOGIC --- */
 const App = {
-    toastTimeout: null,
-
     init() {
         this.drawGrid();
         window.addEventListener('resize', () => this.drawGrid());
@@ -477,48 +411,68 @@ const App = {
         draw();
     },
 
+    // --- NETWORK / MQTT ---
     initNetwork() {
         if (typeof Paho === 'undefined') return;
         
         const clientId = "TermOS_Light_" + State.user;
         const client = new Paho.Client(Config.broker, Config.port, clientId);
 
-        client.onConnectionLost = () => { /*console.log("MQTT Lost");*/ };
+        client.onConnectionLost = () => { console.log("MQTT Lost"); };
         client.onMessageArrived = (message) => {
             try {
                 const data = JSON.parse(message.payloadString);
+                // Don't echo my own messages
                 if (data.sender !== State.user && data.type === 'chat') {
                     this.addLog(data.text, 'other', data.sender);
                 }
-            } catch(e) {}
+            } catch(e) { console.error(e); }
         };
 
         client.connect({
             useSSL: true, timeout: 10, keepAliveInterval: 30,
-            onSuccess: () => { client.subscribe(Config.topic); },
-            onFailure: () => {}
+            onSuccess: () => {
+                console.log("MQTT Connected");
+                client.subscribe(Config.topic);
+            },
+            onFailure: () => { console.log("MQTT Failed"); }
         });
-        window.mqttClient = client;
+
+        State.mqttClient = client;
     },
 
+    // --- CHAT LOGIC ---
     addLog(msg, type = 'user', senderName = 'Me') {
         const container = document.getElementById('content-area');
-        const row = document.createElement('div');
-        row.className = `msg-row ${type}`;
         
-        const initial = senderName === 'Me' ? 'Me' : senderName.substring(0, 2).toUpperCase();
-        const avatarColor = type === 'user' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border';
-        
-        const avatarHtml = `<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${avatarColor}" style="flex-shrink:0;">${initial}</div>`;
-        const nameHtml = `<span class="sender-name">${senderName}</span>`;
-        const bubbleHtml = `<div class="msg-bubble ${type}">${msg}</div>`;
-        
-        if (type === 'user') {
-            row.innerHTML = `${avatarHtml}<div>${nameHtml}${bubbleHtml}</div>`;
+        if (type === 'system') {
+            const row = document.createElement('div');
+            row.className = 'msg-row';
+            const div = document.createElement('div');
+            div.className = 'msg-bubble system';
+            div.innerHTML = msg; // Allow bold/html for system messages
+            row.appendChild(div);
+            container.appendChild(row);
         } else {
-            row.innerHTML = `${avatarHtml}<div>${nameHtml}${bubbleHtml}</div>`;
+            const row = document.createElement('div');
+            row.className = `msg-row ${type}`;
+            
+            const initial = senderName === 'Me' ? 'Me' : senderName.substring(0, 2).toUpperCase();
+            const avatarColor = type === 'user' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border';
+            
+            const avatarHtml = `<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${avatarColor}" style="flex-shrink:0;">${initial}</div>`;
+            const nameHtml = `<span class="sender-name">${senderName}</span>`;
+            const bubbleHtml = `<div class="msg-bubble ${type}">${msg}</div>`;
+            
+            if (type === 'user') {
+                row.innerHTML = `${avatarHtml}<div>${nameHtml}${bubbleHtml}</div>`;
+            } else {
+                row.innerHTML = `${avatarHtml}<div>${nameHtml}${bubbleHtml}</div>`;
+            }
+            container.appendChild(row);
         }
-        container.appendChild(row);
+
+        // Auto-scroll to bottom
         container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     },
 
@@ -527,110 +481,97 @@ const App = {
         const txt = input.value.trim();
         if (!txt) return;
 
+        // Display User Message
         this.addLog(txt, 'user');
         input.value = '';
-        input.focus();
+        input.focus(); // Keep focus for UX
 
-        if (txt.startsWith('/test')) {
-            this.runTestSuite();
+        // Process Commands
+        if (txt.startsWith('/ai ')) {
+            Brain.query(txt.substring(4));
+        } else if (txt.startsWith('/clear')) {
+            this.clearChat();
+        } else if (txt.startsWith('/video ')) {
+            const parts = txt.split(' ');
+            if(parts.length > 1) this.loadVideo(parts[1]);
+            else this.openVideoModal();
+        } else {
+            this.broadcast(txt);
         }
     },
 
-    notify(msg) {
-        const toast = document.getElementById('toast');
-        const toastMsg = document.getElementById('toast-msg');
-        toastMsg.textContent = msg;
-        toast.classList.add('visible');
-        if (this.toastTimeout) clearTimeout(this.toastTimeout);
-        this.toastTimeout = setTimeout(() => toast.classList.remove('visible'), 3000);
+    broadcast(text) {
+        if (State.mqttClient && State.mqttClient.isConnected()) {
+            const msg = new Paho.Message(JSON.stringify({
+                sender: State.user,
+                text: text,
+                type: 'chat'
+            }));
+            msg.destinationName = Config.topic;
+            State.mqttClient.send(msg);
+        } else {
+            this.addLog("System Offline: Message not sent", "system");
+        }
     },
 
-    openYouTube() { this.notify("Video module is read-only in Test Suite"); },
-    setMode(mode) { /* Placeholder for mode switching */ },
+    clearChat() {
+        const container = document.getElementById('content-area');
+        container.innerHTML = '';
+        this.addLog("History Cleared", "system");
+    },
 
-    /* --- TEST SUITE LOGIC --- */
-    runTestSuite() {
-        // Visual Updates
-        const btn = document.getElementById('btn-test-run');
-        btn.classList.add('test-running');
-        document.getElementById('test-log-overlay').classList.add('active');
+    setMode(mode) {
+        document.querySelectorAll('.nav-item, .menu-item').forEach(el => el.classList.remove('active'));
+        if(mode === 'chat') {
+            document.querySelector('.sidebar .menu-item').classList.add('active');
+            document.querySelector('.mobile-dock .nav-item').classList.add('active');
+        }
+    },
+
+    // --- VIDEO FUNCTIONS ---
+    openVideoModal() {
+        document.getElementById('video-overlay').classList.add('active');
+        document.getElementById('video-input').focus();
+    },
+    closeVideo() {
+        document.getElementById('video-overlay').classList.remove('active');
+        const iframe = document.getElementById('yt-player');
+        iframe.src = iframe.src; // Stop video playback
+    },
+    loadVideo(id) {
+        const input = document.getElementById('video-input');
+        if(!id && input) id = input.value.trim();
         
-        const logContainer = document.getElementById('test-logs');
-        logContainer.innerHTML = ''; // Clear previous logs
+        if(!id) return;
 
-        const log = (msg, type) => {
-            const entry = document.createElement('div');
-            entry.className = `log-entry ${type}`;
-            const time = new Date().toLocaleTimeString().split(' ')[0];
-            entry.innerHTML = `<span class="timestamp">[${time}]</span> ${msg}`;
-            logContainer.appendChild(entry);
-            logContainer.scrollTop = logContainer.scrollHeight;
-        };
+        // Extract ID if full URL provided
+        const ytIdMatch = id.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        if (ytIdMatch) id = ytIdMatch[1];
 
-        // Async Test Runner
-        (async () => {
-            log("Initializing Diagnostic Suite...", "info");
-            await new Promise(r => setTimeout(r, 500));
+        const iframe = document.getElementById('yt-player');
+        iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+        
+        document.getElementById('video-overlay').classList.add('active');
+    }
+};
 
-            // TEST 1: DOM Integrity
-            const inputEl = document.getElementById('main-input');
-            const contentEl = document.getElementById('content-area');
-            if (inputEl && contentEl) {
-                log("DOM Elements: PASS", "pass");
-            } else {
-                log("DOM Elements: FAIL", "fail");
-            }
+/* --- BRAIN (Simulated AI) --- */
+const Brain = {
+    query(prompt) {
+        App.addLog(`Processing: "${prompt}"...`, "system");
+        
+        // Simulate Network Delay
+        setTimeout(() => {
+            let response = "";
+            const p = prompt.toLowerCase();
 
-            await new Promise(r => setTimeout(r, 300));
+            if (p.includes('hello')) response = "Hello! TermOS Light is ready.";
+            else if (p.includes('time')) response = `Current Time: ${new Date().toLocaleTimeString()}`;
+            else if (p.includes('status')) response = "System Status: Optimal. Network Connected.";
+            else response = `I received your request regarding "${prompt}". I am a simulated core.`;
 
-            // TEST 2: Local Storage
-            try {
-                localStorage.setItem('test_suite_check', '1');
-                localStorage.removeItem('test_suite_check');
-                log("Local Storage Access: PASS", "pass");
-            } catch (e) {
-                log("Local Storage Access: FAIL", "fail");
-            }
-
-            await new Promise(r => setTimeout(r, 300));
-
-            // TEST 3: Network Library
-            if (typeof Paho !== 'undefined') {
-                log("MQTT Library Loaded: PASS", "pass");
-            } else {
-                log("MQTT Library Loaded: FAIL", "fail");
-            }
-
-            await new Promise(r => setTimeout(r, 300));
-
-            // TEST 4: Accessibility (Focus)
-            const input = document.getElementById('main-input');
-            input.focus();
-            if (document.activeElement === input) {
-                log("Input Focus Management: PASS", "pass");
-            } else {
-                log("Input Focus Management: FAIL", "fail");
-            }
-
-            await new Promise(r => setTimeout(r, 300));
-
-            // TEST 5: Toast Notification
-            this.notify("Toast Accessibility Check");
-            await new Promise(r => setTimeout(r, 100));
-            const toast = document.getElementById('toast');
-            if (toast.classList.contains('visible')) {
-                log("Toast Notification Trigger: PASS", "pass");
-            } else {
-                log("Toast Notification Trigger: FAIL", "fail");
-            }
-
-            log("Diagnostic Suite Complete.", "info");
-            btn.classList.remove('test-running');
-        })();
-    },
-
-    closeTestRunner() {
-        document.getElementById('test-log-overlay').classList.remove('active');
+            App.addLog(response, 'other', 'AI Core');
+        }, 1000);
     }
 };
 
