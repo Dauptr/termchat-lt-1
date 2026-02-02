@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TermOS: Galactic</title>
     <meta name="theme-color" content="#0b0d17">
+    
+    <!-- CUSTOM FAVICON: Green T on Black -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23000'/><text x='16' y='20' text-anchor='middle' fill='%2333ff00' font-family='monospace' font-size='16'>T</text></svg>">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
@@ -25,15 +29,12 @@
             color: #e2e8f0; 
             font-family: 'Inter', sans-serif; 
             overflow: hidden; 
-            /* Deep Space Background */
             background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
         }
 
-        /* COSMIC CANVAS */
         #cosmic-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
         #matrix-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.15; pointer-events: none; }
         
-        /* FLASH OVERLAY FOR VIDEO EVENTS */
         #flash-overlay {
             position: fixed; inset: 0; 
             background: radial-gradient(circle, rgba(168,85,247,0.2) 0%, rgba(6,182,212,0.2) 100%);
@@ -41,12 +42,10 @@
             transition: opacity 0.5s ease-out; mix-blend-mode: screen;
         }
         
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         
-        /* Utilities */
         .glass-panel { 
             background: var(--glass-bg); 
             backdrop-filter: blur(20px); 
@@ -61,33 +60,26 @@
         }
         
         .ascii-art { font-family: 'Fira Code', monospace; line-height: 0.9; white-space: pre; font-size: 8px; text-shadow: 0 0 2px rgba(255,255,255,0.5); }
-        
-        /* Fonts */
         .font-header { font-family: 'Orbitron', sans-serif; }
         
-        /* Gradients */
         .avatar-gradient-user { background: linear-gradient(135deg, #a855f7, #ec4899); }
         .avatar-gradient-ai { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
         .avatar-gradient-neural { background: linear-gradient(135deg, #22d3ee, #a855f7); }
         
-        /* Input Glow */
         .input-glow:focus-within { 
             box-shadow: 0 0 25px rgba(6, 182, 212, 0.4); 
             border-color: rgba(6, 182, 212, 0.6); 
         }
         
-        /* Modals & Overlays */
         .admin-hidden { display: none; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
         .admin-visible { display: flex; opacity: 1; pointer-events: auto; }
         
-        /* Message Animations */
         @keyframes slideUpFade {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .msg-anim { animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-        /* Media Player Styles */
         .media-overlay {
             position: fixed;
             bottom: 90px;
@@ -122,7 +114,6 @@
             box-shadow: 0 0 50px rgba(168, 85, 247, 0.2); 
             border: 1px solid rgba(168, 85, 247, 0.3);
         }
-        /* Active Video Glow Effect */
         .video-active {
             animation: pulse-border 2s infinite;
             border: 2px solid #a855f7;
@@ -137,18 +128,15 @@
         video { width: 100%; height: 100%; object-fit: contain; }
         .visualizer-bar { height: 4px; background: #22d3ee; width: 0%; transition: width 0.1s; border-radius: 2px; }
 
-        /* Code Editor */
         .code-editor-overlay { position: fixed; inset: 0; z-[70]; background: #0f172a; display: flex; flex-direction: column; }
         .code-editor { flex: 1; background: #020617; color: #a855f7; font-family: 'Fira Code', monospace; font-size: 13px; padding: 1rem; border: none; resize: none; outline: none; }
         
-        /* Neural Message */
         .neural-msg { 
             background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(168,85,247,0.1)); 
             border-left: 3px solid #22d3ee; 
             backdrop-filter: blur(10px);
         }
         
-        /* BOOT LOADER */
         #boot-screen {
             position: fixed; inset: 0; background: #000; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 1s ease;
         }
@@ -189,7 +177,6 @@
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <!-- Room Indicator -->
             <div id="room-status-ui" class="hidden md:flex items-center gap-1 mr-2 px-2 py-1 bg-purple-900/30 border border-purple-500/30 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.2)]">
                 <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
                 <span id="current-room-name" class="text-[10px] text-purple-200 font-mono font-bold">PUBLIC</span>
@@ -361,7 +348,6 @@
 <script>
     const API_MODEL = "llama-3.3-70b-versatile"; 
     
-    // --- STATE & CONFIG ---
     let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || "";
     let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
     let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "your-username";
@@ -380,8 +366,7 @@
     let username = 'User_' + Math.floor(Math.random() * 10000);
     let mqttClient = null;
     
-    // Room State
-    let currentRoomName = null; // null = Public
+    let currentRoomName = null;
     
     let userStats = { level: 1, xp: 0, avatar: '>_<', ascii: null };
     const LEVELS = { 3: 'Cyber', 5: 'Ghost', 8: 'Oracle' }; 
@@ -394,7 +379,7 @@
             const boot = document.getElementById('boot-screen');
             boot.style.opacity = '0';
             setTimeout(() => boot.remove(), 1000);
-            initCosmos(); // Start the galaxy
+            initCosmos();
             startApp();
         }, 1500);
     });
@@ -407,7 +392,6 @@
         if(document.getElementById('gh-repo')) document.getElementById('gh-repo').value = REPO_NAME;
         if(document.getElementById('gh-branch')) document.getElementById('gh-branch').value = REPO_BRANCH;
 
-        // MQTT Setup
         if (typeof Paho !== 'undefined') {
             mqttClient = new Paho.MQTT.Client(MQTT_BROKER_URL, "termos_client_" + Math.random().toString(16).substr(2, 8));
             mqttClient.onConnectionLost = () => { 
@@ -450,7 +434,6 @@
         }
     }
 
-    // --- DOM UTILS ---
     function getBox() {
         let el = document.getElementById('chat-container');
         if (!el) {
@@ -464,7 +447,6 @@
     function scrollDown() { const b=getBox(); if(b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); }
     function escapeHtml(text) { if(!text) return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
-    // --- VISUALS: COSMIC ENGINE ---
     let isCosmicRunning = false;
     function initCosmos() {
         const canvas = document.getElementById('cosmic-canvas');
@@ -482,26 +464,19 @@
         }));
 
         function draw() {
-            // Dark trail effect
             ctx.fillStyle = 'rgba(5, 5, 10, 0.4)'; 
             ctx.fillRect(0, 0, width, height);
-            
             ctx.fillStyle = "#FFF";
-            
             stars.forEach(star => {
-                // Move star towards screen
                 star.z -= 2; 
                 if(star.z <= 0) {
                     star.z = width;
                     star.x = (Math.random() - 0.5) * width * 2;
                     star.y = (Math.random() - 0.5) * height * 2;
                 }
-                
-                // 3D to 2D projection
                 const k = 128.0 / star.z;
                 const px = star.x * k + width / 2;
                 const py = star.y * k + height / 2;
-                
                 if(px >= 0 && px <= width && py >= 0 && py <= height) {
                     const size = (1 - star.z / width) * 3;
                     const shade = parseInt((1 - star.z / width) * 255);
@@ -517,26 +492,19 @@
         window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
     }
 
-    // --- VISUALS: FLASH EFFECT ---
     function triggerFlashEffect() {
         const overlay = document.getElementById('flash-overlay');
         overlay.style.opacity = '0.8';
-        setTimeout(() => {
-            overlay.style.opacity = '0';
-        }, 100);
-        
-        // Add glow to video wrapper
+        setTimeout(() => { overlay.style.opacity = '0'; }, 100);
         const wrapper = document.getElementById('video-wrapper');
         wrapper.classList.remove('video-active');
-        void wrapper.offsetWidth; // trigger reflow
+        void wrapper.offsetWidth;
         wrapper.classList.add('video-active');
     }
 
-    // --- UI: MEDIA PLAYER ---
     function toggleMediaOverlay() {
         const el = document.getElementById('media-overlay');
         const btn = document.getElementById('media-toggle-btn');
-        
         if (el.classList.contains('media-minimized')) {
             el.classList.remove('media-minimized');
             el.classList.add('media-expanded');
@@ -563,9 +531,7 @@
         document.getElementById('media-video').classList.add('hidden');
         document.getElementById('tab-radio').classList.remove('border-cyan-400', 'text-cyan-400');
         document.getElementById('tab-video').classList.remove('border-purple-500', 'text-purple-300');
-        
         document.getElementById('media-' + tab).classList.remove('hidden');
-        
         if(tab === 'radio') {
             document.getElementById('tab-radio').classList.add('border-cyan-400', 'text-cyan-400');
         } else {
@@ -575,7 +541,6 @@
 
     function playRadio(url, el) {
         if(radioStream) { radioStream.pause(); }
-        
         document.querySelectorAll('.radio-station').forEach(d => {
             d.classList.remove('active', 'border-cyan-400');
             d.querySelector('.visualizer-bar').style.width = '0%';
@@ -583,7 +548,6 @@
         });
         el.classList.add('active', 'border-cyan-400');
         el.querySelector('.loading-indicator').classList.remove('hidden');
-        
         radioStream = new Audio(url);
         radioStream.play().then(() => {
             el.querySelector('.loading-indicator').classList.add('hidden');
@@ -597,9 +561,7 @@
     function shareVideo() {
         const url = document.getElementById('video-url-input').value;
         if(!url) return;
-        
         playVideoUrl(url);
-
         if(mqttClient && mqttClient.isConnected()) {
             const dest = (currentRoomName) ? `termos/rooms/${currentRoomName}` : "termos/v3/chat";
             const payload = JSON.stringify({ user: username, nick: userProfile.name, type: 'video', url: url });
@@ -614,25 +576,19 @@
         const player = document.getElementById('video-player');
         const placeholder = document.getElementById('video-placeholder');
         const roomLabel = document.getElementById('video-room-label');
-        
-        // Trigger Hyperspace Flash
         triggerFlashEffect();
-
         player.src = url;
         player.classList.remove('hidden');
         placeholder.classList.add('hidden');
         roomLabel.classList.remove('hidden');
         roomLabel.innerText = `ROOM: ${(currentRoomName || "PUBLIC").toUpperCase()}`;
-        
         if(!document.getElementById('media-video').classList.contains('hidden')) return; 
         switchMediaTab('video');
     }
 
-    // --- UI: CODE EDITOR ---
     function toggleCodeEditor() {
         const overlay = document.getElementById('code-editor-overlay');
         const textarea = document.getElementById('code-editor-textarea');
-        
         if(overlay.classList.contains('admin-hidden')) {
             textarea.value = document.documentElement.outerHTML;
             overlay.classList.remove('admin-hidden');
@@ -664,7 +620,6 @@
         document.body.removeChild(a);
     }
 
-    // --- UI: PROFILE ---
     function openProfileModal() {
         document.getElementById('edit-name').value = userProfile.name;
         document.getElementById('edit-avatar').value = (userProfile.avatar.startsWith('data:') ? "" : userProfile.avatar);
@@ -710,7 +665,6 @@
         } catch (e) { alert("Storage Full."); }
     }
 
-    // --- MESSAGING ---
     function addSystemMessage(txt) {
         const box = getBox();
         const d = document.createElement('div');
@@ -751,7 +705,6 @@
         scrollDown();
     }
 
-    // --- CORE COMMANDS ---
     const SystemRebuilder = {
         install: function(name) {
             name = name.toLowerCase().trim().replace(/[^a-zA-Z0-9]/g, '');
@@ -788,7 +741,6 @@
             addSystemMessage("✅ Terminal Mode Engaged.");
         },
         installMatrix: function() {
-            // Switch to Matrix Canvas
             document.getElementById('cosmic-canvas').classList.add('hidden');
             document.getElementById('matrix-canvas').classList.remove('hidden');
             initMatrix();
@@ -814,7 +766,6 @@
         }
     };
 
-    // --- MQTT & ROOMS ---
     function connectMQTT() {
         try {
             mqttClient.connect({
@@ -878,7 +829,6 @@
         connectMQTT(); 
     }
 
-    // --- MATRIX FALLBACK ---
     let isMatrixRunning = false;
     function initMatrix() {
         const canvas = document.getElementById('matrix-canvas');
@@ -958,7 +908,6 @@
         }
     }
 
-    // --- INPUT HANDLER ---
     function handleInput() {
         try {
             let inp = document.getElementById('user-input');
@@ -1020,7 +969,6 @@
         } catch (e) { console.error(e); }
     }
 
-    // --- ADMIN PANEL ---
     function toggleAdminMode() {
         let panel = document.getElementById('admin-panel');
         if(!panel) return; 
@@ -1035,7 +983,6 @@
         document.getElementById('join-room-modal').classList.add('admin-hidden');
     }
 
-    // --- XP SYSTEM ---
     function addXP(amount) {
         userStats.xp += amount;
         if(userStats.xp > (userStats.level * 100)) {
@@ -1172,34 +1119,76 @@
         
         addSystemMessage("🧬 CLONING SOURCE...");
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 40000); 
+        const timeoutId = setTimeout(() => controller.abort(), 60000); 
         try {
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/index.html?ref=${branch}`;
             const res = await fetch(url, { headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }, signal: controller.signal });
             if (!res.ok) { const errText = await res.json(); throw new Error(`Read: ${errText.message}`); }
             const data = await res.json();
             if(!data.content) throw new Error("File not found.");
-            const currentContent = atob(data.content);
+            let currentContent = atob(data.content);
             
+            const MAX_INPUT_CHARS = 90000;
+            let contentToSend = currentContent;
+            let isTruncated = false;
+
+            if (currentContent.length > MAX_INPUT_CHARS) {
+                isTruncated = true;
+                const keepStart = 45000; 
+                const keepEnd = 40000;
+                const middlePlaceholder = "\n\n/* [SYSTEM: MIDDLE SECTION OMITTED TO SAVE TOKENS. PRESERVE EXISTING LOGIC HERE] */\n\n";
+                
+                contentToSend = currentContent.substring(0, keepStart) + 
+                               middlePlaceholder + 
+                               currentContent.substring(currentContent.length - keepEnd);
+                
+                addSystemMessage("⚠️ Context Window Full. Optimizing prompt...");
+            }
+
             addSystemMessage("🧬 MUTATING...");
+            
+            const systemInstruction = isTruncated 
+                ? "You are an expert coder. The provided HTML file has been truncated in middle. Apply the requested changes. For the truncated middle section, output ONLY the placeholder comment: /* [SYSTEM: MIDDLE SECTION OMITTED...] */. Do NOT hallucinate the middle content."
+                : "You are an expert coder. Return the FULL modified HTML code.";
+
             const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                 signal: controller.signal,
                 body: JSON.stringify({
                     model: API_MODEL,
-                    messages: [{ role: "system", content: "Return ONLY raw code." }, { role: "user", content: `Modify to: "${input}".\n\nCODE:\n` + currentContent }],
-                    temperature: 0.5, max_tokens: 8000
+                    messages: [{ role: "system", content: systemInstruction + " Return ONLY raw code. No markdown." }, { role: "user", content: `Modify to: "${input}".\n\nCODE:\n` + contentToSend }],
+                    temperature: 0.2, 
+                    max_tokens: 8192 
                 })
             });
             const aiData = await aiReq.json();
-            if (aiData.error) throw new Error(`AI Error: ${aiData.error.message}`);
+            
+            if (aiData.error) {
+                if(aiData.error.message.includes("context_length_exceeded") || aiData.error.type === "invalid_request_error") {
+                    throw new Error("Token limit exceeded. File is too complex for one-shot edit. Try smaller changes.");
+                }
+                throw new Error(`AI Error: ${aiData.error.message}`);
+            }
             
             let newCode = aiData.choices[0].message.content;
             if (newCode.startsWith("```html")) newCode = newCode.substring(7);
             else if (newCode.startsWith("```")) newCode = newCode.substring(3);
             if (newCode.endsWith("```")) newCode = newCode.substring(0, newCode.length - 3);
             newCode = newCode.trim();
+
+            if (isTruncated) {
+                const placeholder = "/* [SYSTEM: MIDDLE SECTION OMITTED TO SAVE TOKENS. PRESERVE EXISTING LOGIC HERE] */";
+                if (newCode.includes(placeholder)) {
+                    const middleStart = 45000;
+                    const middleEnd = currentContent.length - 40000;
+                    const originalMiddle = currentContent.substring(middleStart, middleEnd);
+                    newCode = newCode.replace(placeholder, originalMiddle);
+                    addSystemMessage("🧬 Stitching code...");
+                } else {
+                    throw new Error("AI lost the placeholder context. Aborting to prevent corruption.");
+                }
+            }
             
             addSystemMessage("🧬 UPLOADING...");
             const putUrl = `https://api.github.com/repos/${owner}/${repo}/contents/index.html`;
@@ -1215,13 +1204,14 @@
                 }),
                 signal: controller.signal
             });
-            if (!putRes.ok) throw new Error(`GitHub Write Failed`);
+            if (!putRes.ok) throw new Error(`GitHub Write Failed: ${putRes.statusText}`);
             clearTimeout(timeoutId);
             addSystemMessage("🎉 SUCCESS. REBOOTING...");
             setTimeout(() => location.reload(), 2000);
         } catch (err) {
             clearTimeout(timeoutId);
-            addSystemMessage("❌ FAIL: " + err.message);
+            if(err.name === 'AbortError') addSystemMessage("❌ Timeout.");
+            else addSystemMessage("❌ FAIL: " + err.message);
         }
     }
 </script>
