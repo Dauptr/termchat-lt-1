@@ -104,16 +104,43 @@
         }
         .media-content { display: flex; flex-direction: column; }
         
-        .video-container { 
+        /* VIDEO GRID STYLES */
+        .video-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(100%, 1fr)); 
+            gap: 10px; 
             width: 100%; 
-            aspect-ratio: 16/9; 
+            min-height: 200px; 
+        }
+        @media (min-width: 640px) {
+            .video-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        
+        .video-container { 
             background: #000; 
-            border-radius: 16px; 
+            border-radius: 12px; 
             overflow: hidden; 
             position: relative; 
-            box-shadow: 0 0 50px rgba(168, 85, 247, 0.2); 
-            border: 1px solid rgba(168, 85, 247, 0.3);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); 
+            border: 1px solid rgba(168, 85, 247, 0.3); 
+            aspect-ratio: 16/9;
         }
+        .video-container.local {
+            border: 2px solid #a855f7;
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+        }
+        .video-container.remote {
+            border: 1px solid #06b6d4;
+        }
+        
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); /* Mirror effect */ }
+        .remote-label {
+            position: absolute; bottom: 8px; left: 8px;
+            background: rgba(0,0,0,0.7); color: #22d3ee;
+            padding: 2px 6px; border-radius: 4px; font-size: 10px; font-family: monospace;
+            z-index: 10;
+        }
+
         .video-active {
             animation: pulse-border 2s infinite;
             border: 2px solid #a855f7;
@@ -125,7 +152,6 @@
             100% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.4); }
         }
 
-        video { width: 100%; height: 100%; object-fit: contain; }
         .visualizer-bar { height: 4px; background: #22d3ee; width: 0%; transition: width 0.1s; border-radius: 2px; }
 
         .code-editor-overlay { position: fixed; inset: 0; z-[70]; background: #0f172a; display: flex; flex-direction: column; }
@@ -182,7 +208,7 @@
                 <span id="current-room-name" class="text-[10px] text-purple-200 font-mono font-bold">PUBLIC</span>
             </div>
 
-            <button onclick="toggleMediaOverlay()" id="media-toggle-btn" class="hidden md:flex bg-purple-900/20 hover:bg-purple-900/40 text-purple-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border border-purple-500/30 transition-all hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]">📺 PLAYING</button>
+            <button onclick="toggleMediaOverlay()" id="media-toggle-btn" class="hidden md:flex bg-purple-900/20 hover:bg-purple-900/40 text-purple-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border border-purple-500/30 transition-all hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]">📺 MEDIA</button>
             <button onclick="triggerKernelThought()" class="hidden md:flex bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border-cyan-500/30 transition-all hover:shadow-[0_0_15px_rgba(6,182,212,0.4)]">🧠 KERNEL</button>
             <button onclick="toggleCodeEditor()" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border-white/10 transition-all">🖋 CODE</button>
             <button onclick="openProfileModal()" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border-white/10 transition-all">👤 PROFILE</button>
@@ -204,7 +230,7 @@
                 <button id="voice-btn" class="p-3 rounded-xl text-gray-400 hover:text-cyan-400 hover:bg-white/5 transition-colors shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7m0 0H8m4 0h4m-4 8H8"></path></svg>
                 </button>
-                <input type="text" id="user-input" placeholder="Command: /join [room], /video [url], /kernel..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light font-sans">
+                <input type="text" id="user-input" placeholder="Command: /join [room], /video [start], /kernel..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light font-sans">
                 <button id="send-btn" class="p-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-900/50 transition-all transform active:scale-95 shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 5l-7 7 5 14z"></path></svg>
                 </button>
@@ -227,7 +253,7 @@
             <!-- Tabs -->
             <div class="flex border-b border-white/10 mb-3 mx-5">
                 <button onclick="switchMediaTab('radio')" id="tab-radio" class="flex-1 pb-2 text-cyan-400 border-b-2 border-cyan-400 font-mono text-sm hover:text-white transition-colors">📻 RADIO</button>
-                <button onclick="switchMediaTab('video')" id="tab-video" class="flex-1 pb-2 text-gray-500 border-b-2 border-transparent hover:text-purple-300 font-mono text-sm hover:bg-white/5 transition-colors">📺 VIDEO ROOM</button>
+                <button onclick="switchMediaTab('video')" id="tab-video" class="flex-1 pb-2 text-gray-500 border-b-2 border-transparent hover:text-purple-300 font-mono text-sm hover:bg-white/5 transition-colors">📹 VIDEO ROOM</button>
             </div>
 
             <!-- Radio Content -->
@@ -253,28 +279,24 @@
                 </div>
             </div>
 
-            <!-- Video Room Content -->
+            <!-- Video Room Content (UPDATED FOR WEBRTC) -->
             <div id="media-video" class="hidden space-y-3 px-5 pb-5">
                 <div class="bg-black/40 rounded-2xl p-3 border border-purple-500/20 backdrop-blur-md">
                     <div class="flex justify-between items-center mb-2">
-                        <span class="text-white font-bold text-xs text-purple-300 font-header tracking-widest">SHARED VIDEO FEED</span>
-                        <span class="text-[9px] text-gray-500">PASTE URL & SHARE</span>
+                        <span class="text-white font-bold text-xs text-purple-300 font-header tracking-widest">LIVE UPLINK</span>
+                        <span class="text-[9px] text-gray-500" id="video-status-text">STANDBY</span>
                     </div>
-                    <div id="video-wrapper" class="video-container relative">
-                        <div id="video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 z-20 bg-black/90 transition-all duration-500">
-                            <div class="text-4xl mb-2 animate-pulse">📡</div>
-                            <span class="text-xs text-gray-500 font-mono">AWAITING SIGNAL...</span>
-                        </div>
-                        <video id="video-player" class="hidden" controls autoplay playsinline></video>
-                        <!-- Overlay for Room Name -->
-                        <div id="video-room-label" class="absolute top-3 left-3 bg-black/80 backdrop-blur-sm px-3 py-1 rounded text-[9px] text-cyan-400 font-mono border border-cyan-500/30 hidden">ROOM: PUBLIC</div>
-                        <!-- Tech Overlay Lines -->
-                        <div class="absolute inset-0 border border-white/5 rounded-2xl pointer-events-none"></div>
-                        <div class="absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-transparent via-purple-500 to-transparent opacity-50"></div>
+                    
+                    <div id="video-placeholder" class="bg-black/90 rounded-xl border border-white/5 p-6 flex flex-col items-center justify-center text-center min-h-[200px]">
+                        <div class="text-4xl mb-2">📡</div>
+                        <p class="text-gray-400 text-xs mb-4 max-w-[200px]">Join a room first, then enable camera to start P2P video link.</p>
+                        <button id="start-video-btn" onclick="startWebRTC()" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-all">
+                            📹 ENABLE CAMERA
+                        </button>
                     </div>
-                    <div class="mt-3 flex gap-2">
-                        <input type="text" id="video-url-input" placeholder="Paste Stream URL (.mp4, .m3u8)..." class="w-full bg-black/60 border border-white/10 rounded-lg p-3 text-white text-xs outline-none focus:border-purple-500 transition-colors font-mono">
-                        <button onclick="shareVideo()" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-5 rounded-lg shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-all">▶ SHARE</button>
+
+                    <div id="video-grid" class="video-grid hidden">
+                        <!-- Local and Remote videos will be injected here -->
                     </div>
                 </div>
             </div>
@@ -348,6 +370,7 @@
 <script>
     const API_MODEL = "llama-3.3-70b-versatile"; 
     
+    // --- CONFIGURATION ---
     let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || "";
     let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
     let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "your-username";
@@ -372,6 +395,16 @@
     const LEVELS = { 3: 'Cyber', 5: 'Ghost', 8: 'Oracle' }; 
     let installedModules = [];
     let adminMode = false;
+
+    // --- WEBRTC VARIABLES ---
+    let localStream = null;
+    const peers = {}; // key: remoteUsername, value: RTCPeerConnection
+    const rtcConfig = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+    };
 
     // --- BOOT SEQUENCE ---
     window.addEventListener('load', () => {
@@ -401,20 +434,27 @@
             mqttClient.onMessageArrived = (message) => {
                 try {
                     const data = JSON.parse(message.payloadString);
+                    
+                    // --- WEBRTC SIGNALING HANDLER ---
+                    if (data.type === 'webrtc_signal') {
+                        handleWebRTCSignal(data);
+                        return;
+                    }
+                    if (data.type === 'webrtc_join') {
+                        handleWebRTCJoin(data);
+                        return;
+                    }
+                    if (data.type === 'webrtc_leave') {
+                        handleWebRTCLeave(data.sender);
+                        return;
+                    }
+
+                    // --- CHAT HANDLER ---
                     if (message.destinationName === "termos/v3/chat" && !currentRoomName) {
                         if (data.user !== username) addUserMessage(data.text, data.nick, data.avatar);
                     }
                     else if (currentRoomName && message.destinationName === `termos/rooms/${currentRoomName}`) {
-                        if (data.type === 'video') {
-                            playVideoUrl(data.url);
-                            addSystemMessage(`📺 Incoming transmission: ${data.nick}`);
-                        } else if (data.type === 'join') {
-                            addSystemMessage(`👋 ${data.nick} entered frequency.`);
-                        } else if (data.type === 'leave') {
-                            addSystemMessage(`🚪 ${data.nick} disconnected.`);
-                        } else {
-                            if (data.user !== username) addUserMessage(data.text, data.nick, data.avatar);
-                        }
+                        if (data.user !== username) addUserMessage(data.text, data.nick, data.avatar);
                     }
                 } catch(e) { console.error("MQTT Msg Error", e); }
             };
@@ -433,6 +473,211 @@
             setTimeout(() => { addSystemMessage("⚠️ API Key Required."); requestApiKey(); }, 2000);
         }
     }
+
+    // --- WEBRTC LOGIC ---
+
+    async function startWebRTC() {
+        if (!currentRoomName) {
+            alert("Please join a room first using /join [room]");
+            return;
+        }
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+            alert("WebRTC requires HTTPS or Localhost.");
+            return;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localStream = stream;
+            
+            // UI Updates
+            document.getElementById('video-placeholder').classList.add('hidden');
+            document.getElementById('video-grid').classList.remove('hidden');
+            document.getElementById('video-status-text').innerText = "LIVE";
+            document.getElementById('video-status-text').classList.add('text-red-500', 'animate-pulse');
+            
+            // Add Local Video
+            addLocalVideo(stream);
+
+            // Announce join to room
+            sendSignal({ type: 'webrtc_join', sender: username, nick: userProfile.name });
+            
+            // If anyone else is already in the room, we can't know easily without a presence list.
+            // In a simple MQTT mesh, we announce join, and existing users (who see this) will send us OFFERS.
+            addSystemMessage("📹 Uplink Established. Waiting for peers...");
+
+        } catch (err) {
+            console.error(err);
+            addSystemMessage("❌ Camera Access Denied: " + err.message);
+        }
+    }
+
+    function handleWebRTCJoin(data) {
+        if (!localStream) return; // We are not in video mode
+        if (data.sender === username) return; // Ignore self
+
+        addSystemMessage(`📹 Peer detected: ${data.nick}. Negotiating...`);
+        
+        // Create Peer Connection
+        const pc = createPeerConnection(data.sender);
+        
+        // Add local tracks
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+        // Create Offer
+        pc.createOffer()
+            .then(offer => pc.setLocalDescription(offer))
+            .then(() => {
+                sendSignal({
+                    type: 'webrtc_signal',
+                    sender: username,
+                    target: data.sender,
+                    signalType: 'offer',
+                    sdp: pc.localDescription
+                });
+            })
+            .catch(e => addSystemMessage("❌ Offer Error: " + e.message));
+    }
+
+    function handleWebRTCSignal(data) {
+        if (!localStream) return; // Ignore if we aren't in video mode
+        if (data.target !== username) return; // Not for us
+
+        const { sender, signalType, sdp, candidate } = data;
+
+        if (signalType === 'offer') {
+            handleOffer(sender, sdp);
+        } else if (signalType === 'answer') {
+            handleAnswer(sender, sdp);
+        } else if (signalType === 'candidate') {
+            handleCandidate(sender, candidate);
+        }
+    }
+
+    function createPeerConnection(remoteUser) {
+        const pc = new RTCPeerConnection(rtcConfig);
+        peers[remoteUser] = pc;
+
+        pc.onicecandidate = event => {
+            if (event.candidate) {
+                sendSignal({
+                    type: 'webrtc_signal',
+                    sender: username,
+                    target: remoteUser,
+                    signalType: 'candidate',
+                    candidate: event.candidate
+                });
+            }
+        };
+
+        pc.ontrack = event => {
+            addSystemMessage(`📡 Signal received from ${remoteUser}.`);
+            addRemoteVideo(event.streams[0], remoteUser);
+        };
+
+        pc.onconnectionstatechange = () => {
+            if (pc.connectionState === 'disconnected') {
+                removeRemoteVideo(remoteUser);
+                delete peers[remoteUser];
+            }
+        };
+
+        return pc;
+    }
+
+    async function handleOffer(remoteUser, sdp) {
+        const pc = createPeerConnection(remoteUser);
+        
+        // Add tracks if we have them
+        if (localStream) {
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        }
+
+        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        sendSignal({
+            type: 'webrtc_signal',
+            sender: username,
+            target: remoteUser,
+            signalType: 'answer',
+            sdp: answer
+        });
+    }
+
+    async function handleAnswer(remoteUser, sdp) {
+        if (peers[remoteUser]) {
+            await peers[remoteUser].setRemoteDescription(new RTCSessionDescription(sdp));
+        }
+    }
+
+    async function handleCandidate(remoteUser, candidate) {
+        if (peers[remoteUser]) {
+            try {
+                await peers[remoteUser].addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (e) {
+                console.error("Error adding candidate", e);
+            }
+        }
+    }
+
+    function handleWebRTCLeave(remoteUser) {
+        if (peers[remoteUser]) {
+            peers[remoteUser].close();
+            delete peers[remoteUser];
+            removeRemoteVideo(remoteUser);
+            addSystemMessage(`📹 Peer ${remoteUser} disconnected.`);
+        }
+    }
+
+    function sendSignal(payload) {
+        if (mqttClient && mqttClient.isConnected() && currentRoomName) {
+            const dest = `termos/rooms/${currentRoomName}`;
+            const msg = new Paho.MQTT.Message(JSON.stringify(payload));
+            msg.destinationName = dest;
+            mqttClient.send(msg);
+        }
+    }
+
+    // --- VIDEO UI HELPERS ---
+
+    function addLocalVideo(stream) {
+        const grid = document.getElementById('video-grid');
+        const container = document.createElement('div');
+        container.className = "video-container local relative";
+        container.id = `video-local`;
+        container.innerHTML = `
+            <video autoplay playsinline muted></video>
+            <div class="remote-label">YOU (${userProfile.name})</div>
+        `;
+        grid.appendChild(container);
+        container.querySelector('video').srcObject = stream;
+    }
+
+    function addRemoteVideo(stream, remoteUser) {
+        // Check if exists
+        if (document.getElementById(`video-${remoteUser}`)) return;
+
+        const grid = document.getElementById('video-grid');
+        const container = document.createElement('div');
+        container.className = "video-container remote relative";
+        container.id = `video-${remoteUser}`;
+        container.innerHTML = `
+            <video autoplay playsinline></video>
+            <div class="remote-label">${remoteUser}</div>
+        `;
+        grid.appendChild(container);
+        container.querySelector('video').srcObject = stream;
+    }
+
+    function removeRemoteVideo(remoteUser) {
+        const el = document.getElementById(`video-${remoteUser}`);
+        if (el) el.remove();
+    }
+
+
+    // --- REST OF APP LOGIC (Mostly Unchanged) ---
 
     function getBox() {
         let el = document.getElementById('chat-container');
@@ -496,10 +741,6 @@
         const overlay = document.getElementById('flash-overlay');
         overlay.style.opacity = '0.8';
         setTimeout(() => { overlay.style.opacity = '0'; }, 100);
-        const wrapper = document.getElementById('video-wrapper');
-        wrapper.classList.remove('video-active');
-        void wrapper.offsetWidth;
-        wrapper.classList.add('video-active');
     }
 
     function toggleMediaOverlay() {
@@ -508,12 +749,12 @@
         if (el.classList.contains('media-minimized')) {
             el.classList.remove('media-minimized');
             el.classList.add('media-expanded');
-            btn.innerText = "📺 PLAYING: ON";
+            btn.innerText = "📺 MEDIA: ON";
             btn.classList.add('text-purple-400');
         } else {
             el.classList.add('media-minimized');
             el.classList.remove('media-expanded');
-            btn.innerText = "📺 PLAYING: MIN";
+            btn.innerText = "📺 MEDIA";
             btn.classList.remove('text-purple-400');
         }
     }
@@ -556,34 +797,6 @@
             addSystemMessage("❌ Signal Lost.");
             el.querySelector('.loading-indicator').classList.add('hidden');
         });
-    }
-
-    function shareVideo() {
-        const url = document.getElementById('video-url-input').value;
-        if(!url) return;
-        playVideoUrl(url);
-        if(mqttClient && mqttClient.isConnected()) {
-            const dest = (currentRoomName) ? `termos/rooms/${currentRoomName}` : "termos/v3/chat";
-            const payload = JSON.stringify({ user: username, nick: userProfile.name, type: 'video', url: url });
-            const msg = new Paho.MQTT.Message(payload);
-            msg.destinationName = dest;
-            mqttClient.send(msg);
-            addSystemMessage(`📡 Broadcasting to ${currentRoomName ? 'Room' : 'Public'}.`);
-        }
-    }
-
-    function playVideoUrl(url) {
-        const player = document.getElementById('video-player');
-        const placeholder = document.getElementById('video-placeholder');
-        const roomLabel = document.getElementById('video-room-label');
-        triggerFlashEffect();
-        player.src = url;
-        player.classList.remove('hidden');
-        placeholder.classList.add('hidden');
-        roomLabel.classList.remove('hidden');
-        roomLabel.innerText = `ROOM: ${(currentRoomName || "PUBLIC").toUpperCase()}`;
-        if(!document.getElementById('media-video').classList.contains('hidden')) return; 
-        switchMediaTab('video');
     }
 
     function toggleCodeEditor() {
@@ -787,6 +1000,16 @@
         const name = document.getElementById('join-room-input').value.trim();
         if(!name) return;
         
+        // Clean up WebRTC if switching rooms
+        if(localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+            Object.values(peers).forEach(pc => pc.close());
+            document.getElementById('video-grid').innerHTML = '';
+            document.getElementById('video-placeholder').classList.remove('hidden');
+            document.getElementById('video-grid').classList.add('hidden');
+        }
+
         if(mqttClient && mqttClient.isConnected()) {
             if(currentRoomName) mqttClient.unsubscribe(`termos/rooms/${currentRoomName}`);
             else mqttClient.unsubscribe("termos/v3/chat");
@@ -804,8 +1027,6 @@
         document.getElementById('room-status-ui').classList.remove('hidden');
         document.getElementById('current-room-name').innerText = name.toUpperCase();
         
-        document.getElementById('video-room-label').innerText = "ROOM: " + name.toUpperCase();
-        
         closeJoinModal();
         addSystemMessage(`🔒 Joined Channel: ${name}`);
     }
@@ -813,6 +1034,17 @@
     function leaveRoom() {
         if(!currentRoomName) return;
         
+        // WebRTC Leave
+        sendSignal({ type: 'webrtc_leave', sender: username });
+        if(localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+        }
+        Object.values(peers).forEach(pc => pc.close());
+        document.getElementById('video-grid').innerHTML = '';
+        document.getElementById('video-placeholder').classList.remove('hidden');
+        document.getElementById('video-grid').classList.add('hidden');
+
         if(mqttClient && mqttClient.isConnected()) {
              const payload = JSON.stringify({ user: username, nick: userProfile.name, type: 'leave' });
              const msg = new Paho.MQTT.Message(payload);
@@ -824,7 +1056,6 @@
         currentRoomName = null;
         document.getElementById('room-display').innerText = "PUBLIC";
         document.getElementById('room-status-ui').classList.add('hidden');
-        document.getElementById('video-room-label').classList.add('hidden');
         
         connectMQTT(); 
     }
@@ -945,6 +1176,15 @@
                 const cmd = txt.split(' ')[1];
                 if (cmd === 'enable') { adminMode = true; toggleAdminMode(); addSystemMessage("🔴 ADMIN ON"); }
                 else if (cmd === 'disable') { adminMode = false; toggleAdminMode(); addSystemMessage("🟢 ADMIN OFF"); }
+                inp.value = '';
+                return;
+            }
+            
+            if(txt.startsWith('/video')) {
+                // Switch to video tab
+                switchMediaTab('video');
+                toggleMediaOverlay(); // Open if closed
+                addSystemMessage("📹 Opening Video Deck...");
                 inp.value = '';
                 return;
             }
