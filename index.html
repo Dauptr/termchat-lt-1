@@ -83,10 +83,6 @@
         @keyframes flashInput { 0% { box-shadow: inset 0 0 0 rgba(6,182,212,0); } 50% { box-shadow: inset 0 0 20px rgba(6,182,212,0.5); } 100% { box-shadow: inset 0 0 0 rgba(6,182,212,0); } }
         .editor-flash { animation: flashInput 0.3s ease-out; }
 
-        /* BUILD SCANNER ANIMATION */
-        @keyframes scanBar { 0% { width: 0%; } 100% { width: 100%; } }
-        .scanner-active { animation: scanBar 2s ease-in-out infinite alternate; }
-
         /* CODE BLOCK STYLES */
         .ai-code-block {
             background: rgba(24, 24, 27, 0.6);
@@ -175,8 +171,8 @@
             outline: none;
             border: none;
             width: 100%;
-            height: 100%;
-            padding: 20px 20px 20px 60px;
+            height: 100%; /* Full height */
+            padding: 20px 20px 20px 60px; /* Left padding for line numbers */
             border-radius: 8px;
             caret-color: #67e8f9;
         }
@@ -197,7 +193,7 @@
             opacity: 0;
             transform: translateY(-10px);
             transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 50;
+            z-index: 100; /* Higher z-index for overlay */
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         .suggestion-box.active { 
@@ -364,8 +360,8 @@
                         <span id="copilot-status" class="text-[9px] text-gray-500 px-2 py-0.5 rounded bg-white/5 hidden">Analyzing...</span>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="Rebuilder.toggleScanner()" class="tool-btn tool-btn-scanner text-[10px] font-bold" title="Toggle Build Scanner">
-                            ⚡
+                        <button onclick="Rebuilder.toggleLivePreview()" class="tool-btn tool-btn-run" title="Live Preview">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 00.368-.923-1.5l-4.366-2.351a4 4 0 00-1.491-2.628l-1.392-9.413a6.986 6.986 0 01-3.006-2.277l-.906-.938a.997.997 0 00-.925-.797 2.538-3.23V4.65a.5.5 0 00-.5.5h-2a.5.5 0 00-.5.5v1c0 .822.037 1.608.112 2.328l1.421 2.358c.06.263-.218.537-.218.818v1.236a.997.997 0 01-.218.818l-1.421 2.358c-.06.263-.218.537-.218.818z"></path></svg>
                         </button>
                         <button onclick="UI.toggleSnippets()" class="text-gray-400 hover:text-white text-xs transition-colors">📚</button>
                         <button onclick="UI.toggleCopilot()" class="text-gray-400 hover:text-white text-xs transition-colors">✖ CLOSE</button>
@@ -380,7 +376,7 @@
                     </div>
                     
                     <!-- Main Editor -->
-                    <textarea id="copilot-editor" class="copilot-editor" spellcheck="false" placeholder="// Write HTML/CSS here and click Live Preview..."></textarea>
+                    <textarea id="copilot-editor" class="copilot-editor" spellcheck="false" placeholder="// Write HTML/CSS here..."></textarea>
                     
                     <!-- Floating Suggestion -->
                     <div id="copilot-suggestion" class="suggestion-box">
@@ -396,14 +392,10 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                         </button>
                         <button onclick="ModernTools.runCode()" class="tool-btn tool-btn-run" title="Run in Terminal">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 00.368-.923.902-.828L14.752 5.11l.803-2.271a1 1 0 01-1.472-1.506l-.803-2.259a1 1 0 00-.368-1.544L5.507 10.923a1 1 0 01-.367-1.23.823-1.876L1.876 4.014a1 1 0 00-.234-.55.823-1.737l-2.35-2.35a1 1 0 00-.47-1.06l-2.35-2.35A1 1 0 000-1.414l-2.35-2.35a1 1 0 01-.47-1.06l-2.35-2.35z"></path></svg>
-                        </button>
-                        <button onclick="Rebuilder.toggleLivePreview()" class="tool-btn tool-btn-run" title="Live Preview">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-3 3 3 3 0 006 0v6a3 3 0 00-6 0v-6a3 3 0 000-3-3 3 3 0 000 6 0v-6a3 3 0 000 3 3 3 0 000 3 6z"></path></svg>
-                            LIVE PREVIEW
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 00.368-.923-1.5l-4.366-2.351a4 4 0 00-1.491-2.628l-1.392-9.413a6.986 6.986 0 01-3.006-2.277l-.906-.938a.997.997 0 00-.925-.797 2.538-3.23V4.65a.5.5 0 00-.5.5h-2a.5.5 0 00-.5.5v1c0 .822.037 1.608.112 2.328l1.421 2.358c.06.263-.218.537-.218.818v1.236a.997.997 0 01-.218.818l-1.421 2.358z"></path></svg>
                         </button>
                         <button onclick="ModernTools.saveFile()" class="tool-btn" title="Download HTML">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1m-4 0a3 3 0 00-3 3h10a3 3 0 003 3v-1"></path></svg>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4 0a3 3 0 01-3-3v2H4a2 2 0 002 2v4a2 2 0 002 2h2a2 2 0 002 2v4a2 2 0 002 2h2a2 2 0 002 2v-1m-4 0a3 3 0 003-3h10a3 3 0 003 3v1m-4 0a3 3 0 01-3-3v2H4a2 2 0 002 2v4a2 2 0 002 2h2a2 2 0 003 3h10a3 3 0 003 3v-1m-4 0a3 3 0 003 3h10a3 3 0 003 3v-1m-4 0a3 3 0 002 2v4a2 2 0 002 2v4a2 2 0 002 2h2a2 2 0 002 2v4a2 2 0 002 2v-1m-4 0a3 3 0 002 2v4a2 2 0 002 2h2a2 2 0 002 2v-1m-4 0a3 3 0 003 3h10a3 3 0 003 3v1"></path></svg>
                         </button>
                     </div>
                     <span class="text-[10px] text-gray-500 font-mono">CTRL+ENTER to Run</span>
@@ -463,8 +455,8 @@
 
 <script>
     /** 
-     * TERMOS: BUILD SCANNER EDITION
-     * Features: Live Preview, Automated Scanner, Visual Build Log
+     * TERMOS: BUILDER EDITION
+     * Features: Fixed Copilot Focus, Live Preview, Build Scanner
      */
 
     // --- CONFIG & STATE ---
@@ -479,12 +471,12 @@
                 key: ""
             },
             zhipu: {
-                model: "glm-4-flash",
+                model: "glm-4-flash", // Fast model
                 url: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
                 key: ""
             }
         },
-        activeProvider: "groq"
+        activeProvider: "groq" // Default
     };
 
     const State = {
@@ -553,7 +545,7 @@
                 scannerBtn.classList.add('active');
             } else {
                 container.style.display = 'none';
-                UI.log("⏹ Live Preview Terminated.", "system");
+                UI.log("🏹 Live Preview Terminated.", "system");
                 scannerBtn.classList.remove('active');
             }
         },
@@ -576,7 +568,6 @@
             Rebuilder.updateScannerUI("SCANNING SYNTAX...");
 
             setTimeout(() => {
-                // Extract HTML, Body, Style, Scripts
                 const fullDoc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{background:#f0f0f0;color:#333;font-family:sans-serif;padding:20px;}</style></head><body>${code}</body></html>`;
                 
                 // Inject into iframe
@@ -614,6 +605,7 @@
         init: () => {
             UI.updateStatus(false);
             UI.loadSettings();
+            UI.renderSnippets();
             
             document.getElementById('ai-provider').addEventListener('change', (e) => UI.toggleProviderSettings(e.target.value));
 
@@ -629,6 +621,7 @@
             // Copilot Event Listeners
             UI.copilotEditor.addEventListener('input', Copilot.onType);
             UI.copilotEditor.addEventListener('keydown', Copilot.onKey);
+            
             // Auto-scan on input (if scanner is active)
             UI.copilotEditor.addEventListener('input', () => {
                 if(State.scannerActive || State.livePreviewActive) {
@@ -642,10 +635,26 @@
             });
         },
 
+        renderSnippets: () => {
+            const list = document.getElementById('snippets-list');
+            list.innerHTML = '';
+            Object.keys(ModernTools.snippets).forEach(key => {
+                const item = document.createElement('div');
+                item.className = 'snippet-item';
+                item.innerHTML = `<span class="font-bold text-cyan-300">${key}</span>`;
+                item.onclick = () => ModernTools.insertSnippet(key);
+                list.appendChild(item);
+            });
+        },
+
         toggleCopilot: () => {
             UI.copilotModal.classList.toggle('hidden');
+            
+            // FIX: Added timeout to ensure focus works after display:block
             if(!UI.copilotModal.classList.contains('hidden')) {
-                UI.copilotEditor.focus();
+                setTimeout(() => {
+                    UI.copilotEditor.focus();
+                }, 50); // 50ms delay ensures DOM repaint
             } else {
                 // Turn off scanners when closing editor
                 if(Rebuilder.container) Rebuilder.container.style.display = 'none';
@@ -823,7 +832,19 @@
         const align = isMe ? "justify-end" : "justify-start";
         const bg = isMe ? "var(--msg-user-bg)" : "bg-slate-800/60 border border-white/5";
         const rounded = isMe ? "rounded-tr-none" : "rounded-tl-none";
-        const html = `<div class="flex ${align} gap-3 items-end msg-anim">${!isMe ? avatarHTML : ''}<div class="max-w-[80%]"><div class="${bg} ${rounded} p-4 shadow-lg text-sm text-white leading-relaxed break-words backdrop-blur-sm">${safeText}</div><div class="text-[9px] text-gray-500 mt-1 ${isMe ? 'text-right' : ''}">${safeName} • ${Utils.timestamp()}</div></div>${isMe ? avatarHTML : ''}</div>`;
+
+        const html = `
+            <div class="flex ${align} gap-3 items-end msg-anim">
+                ${!isMe ? avatarHTML : ''}
+                <div class="max-w-[80%]">
+                    <div class="${bg} ${rounded} p-4 shadow-lg text-sm text-white leading-relaxed break-words backdrop-blur-sm">
+                        ${safeText}
+                    </div>
+                    <div class="text-[9px] text-gray-500 mt-1 ${isMe ? 'text-right' : ''}">${safeName} • ${Utils.timestamp()}</div>
+                </div>
+                ${isMe ? avatarHTML : ''}
+            </div>
+        `;
         UI.container.insertAdjacentHTML('beforeend', html);
         UI.container.scrollTop = UI.container.scrollHeight;
     };
@@ -833,22 +854,46 @@
         const badge = isCodeMode ? "💻 CODING" : "🧠 BRAINSTORM";
         const colorClass = isCodeMode ? "text-cyan-300" : "text-purple-300";
         const providerName = Config.activeProvider.toUpperCase();
-        const html = `<div class="flex gap-3 items-start msg-anim"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 flex items-center justify-center text-sm border border-white/10 shrink-0">AI</div><div class="max-w-[90%]"><div class="bg-slate-900/80 border border-white/10 p-5 shadow-lg text-sm text-gray-200 leading-relaxed break-words backdrop-blur-md rounded-2xl"><div class="flex justify-between items-center mb-2"><div class="text-[10px] font-bold ${colorClass} uppercase tracking-wider flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-current"></span> ${badge}</div><div class="text-[9px] text-gray-600 font-mono">${providerName}</div></div><div class="prose prose-invert prose-sm max-w-none">${parsedText}</div></div></div></div>`;
+
+        const html = `
+            <div class="flex gap-3 items-start msg-anim">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 flex items-center justify-center text-sm border border-white/10 shrink-0">AI</div>
+                <div class="max-w-[90%]">
+                    <div class="bg-slate-900/80 border border-white/10 p-5 shadow-lg text-sm text-gray-200 leading-relaxed break-words backdrop-blur-md rounded-2xl">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="text-[10px] font-bold ${colorClass} uppercase tracking-wider flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-current"></span> ${badge}
+                            </div>
+                            <div class="text-[9px] text-gray-600 font-mono">${providerName}</div>
+                        </div>
+                        <div class="prose prose-invert prose-sm max-w-none">
+                            ${parsedText}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
         UI.container.insertAdjacentHTML('beforeend', html);
         UI.container.scrollTop = UI.container.scrollHeight;
     };
 
-    // --- COPILOT ENGINE ---
+    // --- COPILOT ENGINE (FIXED FOCUS) ---
     const Copilot = {
         onType: (e) => {
+            // Debounce logic
             if (State.copilot.timer) clearTimeout(State.copilot.timer);
-            State.copilot.timer = setTimeout(() => Copilot.generateSuggestion(e.target.value), 500); 
+            State.copilot.timer = setTimeout(() => {
+                Copilot.generateSuggestion(e.target.value);
+            }, 500); 
         },
 
         onKey: (e) => {
+            // FIX: Check suggestion exists before trying to accept
             if (e.key === 'Tab' && State.copilot.suggestion) {
-                e.preventDefault(); Copilot.acceptSuggestion();
+                e.preventDefault();
+                Copilot.acceptSuggestion();
             } else if (e.key !== 'Tab') {
+                // Clear suggestion if user types normally
                 document.getElementById('copilot-suggestion').classList.remove('active');
                 State.copilot.suggestion = null;
             }
@@ -861,6 +906,7 @@
             const config = Config.providers[provider];
             if(!config.key) return;
 
+            // Show "Thinking"
             document.getElementById('copilot-status').classList.remove('hidden');
             document.getElementById('copilot-suggestion').classList.remove('active');
 
@@ -881,7 +927,7 @@
                 
                 const data = await res.json();
                 document.getElementById('copilot-status').classList.add('hidden');
-                
+
                 if(data.choices && data.choices[0]) {
                     const completion = data.choices[0].message.content.trim();
                     Copilot.showSuggestion(completion, code);
@@ -894,41 +940,49 @@
 
         showSuggestion: (suggestion, currentCode) => {
             let displayText = suggestion;
+            
             const lastWord = currentCode.split(/\s+/).pop(); 
             
             if (lastWord && suggestion.startsWith(lastWord)) {
+                // Remove the overlap
                 displayText = suggestion.slice(lastWord.length);
             }
-            State.copilot.suggestion = suggestion;
+
+            State.copilot.suggestion = suggestion; 
             document.getElementById('suggestion-text').textContent = displayText;
             document.getElementById('copilot-suggestion').classList.add('active');
         },
 
         acceptSuggestion: () => {
+            if(!State.copilot.suggestion) return;
             const editor = UI.copilotEditor;
             const suggestion = State.copilot.suggestion;
-            if (!suggestion) return;
-
+            
             const cursorPos = editor.selectionStart;
             const textBefore = editor.value.substring(0, cursorPos);
             const textAfter = editor.value.substring(cursorPos, editor.value.length);
             
+            // Smart Overlap Removal Logic
             let textToInsert = suggestion;
             const lastChars = editor.value.slice(Math.max(0, cursorPos - 20), cursorPos);
             
+            // If suggestion overlaps with end of editor text
             if (suggestion.startsWith(lastChars)) {
                 textToInsert = suggestion.slice(lastChars.length);
             }
 
+            // Insert Logic
             editor.value = textBefore + textToInsert + textAfter;
             State.copilot.suggestion = null;
             document.getElementById('copilot-suggestion').classList.remove('active');
             
+            // Move cursor
             const newCursorPos = cursorPos + textToInsert.length;
             editor.selectionStart = newCursorPos;
             editor.selectionEnd = newCursorPos;
             editor.focus();
 
+            // Visual Feedback
             editor.parentElement.classList.remove('editor-flash');
             void editor.parentElement.offsetWidth; 
             editor.parentElement.classList.add('editor-flash');
@@ -957,7 +1011,10 @@
                 case '/code': AI.code(fullArgs); break;
                 case '/copilot': UI.toggleCopilot(); break;
                 case '/kernel': AI.think(); break;
-                case '/join': document.getElementById('room-name-input').value = fullArgs; UI.toggleJoinModal(); break;
+                case '/join': 
+                    document.getElementById('room-name-input').value = fullArgs; 
+                    UI.toggleJoinModal(); 
+                    break;
                 case '/leave': 
                     if(State.currentRoom) {
                         Net.send(`termos/rooms/${State.currentRoom}`, { user: Config.user, type: 'leave' });
@@ -978,7 +1035,12 @@
         query: async (systemPrompt, userPrompt, mode = 'chat') => {
             const provider = Config.activeProvider;
             const config = Config.providers[provider];
-            if(!config.key) { UI.log(`⚠️ ${provider.toUpperCase()} Key Required.`, "error"); UI.toggleAdmin(); return; }
+            
+            if(!config.key) {
+                UI.log(`⚠️ ${provider.toUpperCase()} Key Required.`, "error");
+                UI.toggleAdmin();
+                return;
+            }
 
             const id = Utils.uuid();
             const loadingTxt = mode === 'code' ? "Compiling..." : "Synthesizing...";
@@ -995,8 +1057,11 @@
                         max_tokens: 2048
                     })
                 });
+                
                 const data = await res.json();
+                
                 if(data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+                
                 const reply = data.choices[0].message.content;
                 document.getElementById(id).remove(); 
                 UI.renderAIResponse(reply, mode === 'code');
@@ -1006,22 +1071,26 @@
                 UI.log(`❌ Error: ${e.message}`, "error");
             }
         },
+
         chat: (prompt) => {
             if(!prompt) return UI.input.placeholder = "Type: /ai [question]";
             const sysPrompt = provider => `You are TermOS AI using ${provider}. Be helpful and creative.`;
             AI.query(sysPrompt(Config.activeProvider), prompt, 'chat');
         },
+
         code: (prompt) => {
             if(!prompt) return UI.input.placeholder = "Type: /code [task]";
             const sysPrompt = "You are an expert frontend engineer. Provide clean HTML/CSS/JS. Use markdown code blocks.";
             AI.query(sysPrompt, prompt, 'code');
         },
+
         think: async () => {
             const provider = Config.activeProvider;
             const config = Config.providers[provider];
             if(!config.key) return alert("API Key required.");
             const id = Utils.uuid();
             UI.log(`<span id="${id}" class="text-cyan-400 italic">Kernel thought processing...</span>`, "system");
+            
             const res = await fetch(config.url, {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${config.key}`, "Content-Type": "application/json" },
@@ -1039,9 +1108,15 @@
 
     // --- MODERN TOOLS ---
     const ModernTools = {
+        snippets: {
+            "Card": '<div class="bg-white rounded-lg p-4 shadow-lg"><h3 class="font-bold">Card</h3><p>Content...</p></div>',
+            "Button": '<button class="bg-blue-500 text-white px-4 py-2 rounded">Click Me</button>'
+        },
         formatCode: () => {
             const editor = UI.copilotEditor;
             let code = editor.value;
+            
+            // Basic JS Formatter (Prettier Lite)
             code = code.replace(/\s*([{}\[\]:,])\s*/g, ' $1');
             code = code.replace(/;\s*(?!;)/g, ';\n');
             code = code.replace(/\{(?=[^$])/g, ' {\n    ');
@@ -1050,19 +1125,24 @@
                 const regex = new RegExp(`\\b${kw}\\b`, 'gi');
                 code = code.replace(regex, kw);
             });
+
             editor.value = code;
             UI.flash();
         },
+
         runCode: () => {
             const code = UI.copilotEditor.value;
             if(!code) return;
+
             UI.log("🚀 Starting Build Process...", "system");
+            
+            // Capture Console Logs
             const originalLog = console.log;
             const originalError = console.error;
             const originalWarn = console.warn;
 
             console.log = (...args) => {
-                UI.log(`[STDOUT] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}`, "system");
+                UI.log(`[STDOUT] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}`, "sys-log");
                 originalLog(...args);
             };
             console.error = (...args) => {
@@ -1073,19 +1153,24 @@
                 UI.log(`[WARN] ${args.join(' ')}`, "system");
                 originalWarn(...args);
             };
+
             try {
-                const safeCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                // Safe execution
+                const safeCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
                 const fn = new Function(safeCode);
                 fn();
+                
                 UI.log("✅ Build Completed Successfully.", "system");
             } catch(e) {
                 UI.log(`❌ Build Failed: ${e.message}`, "error");
             } finally {
+                // Restore console
                 console.log = originalLog;
                 console.error = originalError;
                 console.warn = originalWarn;
             }
         },
+
         saveFile: () => {
             const code = UI.copilotEditor.value;
             const blob = new Blob([code], {type: "text/html"});
@@ -1095,23 +1180,18 @@
             a.download = "termos_project.html";
             a.click();
         },
+
         insertSnippet: (key) => {
             const editor = UI.copilotEditor;
             const snippet = ModernTools.snippets[key];
             const startPos = editor.selectionStart;
             const before = editor.value.substring(0, startPos);
             const after = editor.value.substring(startPos);
+            
             editor.value = before + snippet + after;
             editor.focus();
             UI.toggleSnippets();
         }
-    };
-
-    // Populate Snippets
-    ModernTools.snippets = {
-        "Card": '<div class="bg-white rounded-lg p-4 shadow-lg"><h3 class="font-bold">Card</h3><p>Content...</p></div>',
-        "Button": '<button class="bg-blue-500 text-white px-4 py-2 rounded">Click Me</button>',
-        "Loader": '<div class="w-8 h-8 border-4 border-t-cyan-500 rounded-full animate-spin"></div>'
     };
 
     // --- VISUALS ---
@@ -1135,6 +1215,7 @@
                     orb.x += orb.vx; orb.y += orb.vy;
                     if(orb.x < -orb.r) orb.x = width + orb.r; if(orb.x > width + orb.r) orb.x = -orb.r;
                     if(orb.y < -orb.r) orb.y = height + orb.r; if(orb.y > height + orb.r) orb.y = -orb.r;
+                    ctx.beginPath();
                     const g = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.r);
                     g.addColorStop(0, orb.color + '40'); g.addColorStop(1, 'rgba(0,0,0,0)');
                     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(orb.x, orb.y, orb.r, 0, Math.PI * 2); ctx.fill();
@@ -1146,6 +1227,7 @@
         }
     };
 
+    // Initialize
     window.onload = UI.init;
 
 </script>
