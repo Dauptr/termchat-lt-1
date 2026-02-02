@@ -12,7 +12,7 @@ Usage:
 import sys
 import subprocess
 import os
-import json
+import shlex
 from pathlib import Path
 
 # --- CONFIGURATION ---
@@ -21,17 +21,28 @@ PYTHON_VERSION = "3.10"
 
 # --- UTILS ---
 def run_command(cmd, check=False):
-    """Executes a shell command and returns output."""
+    """
+    Executes a shell command safely.
+    FIX: Handles list inputs by joining them into a single string to avoid 'Type error got shell'.
+    """
     try:
-        # Use shell=True to access 'conda' if it's in PATH
+        # If 'cmd' is a list, join it into a string for the shell
+        # This fixes the "Type error got shell" error when shell=True.
+        cmd_str = ' '.join(cmd) if isinstance(cmd, list) else cmd
+        
+        # Use shell=True to access 'conda'
         result = subprocess.run(
-            cmd,
+            cmd_str,
             shell=True,
             check=check,
             capture_output=True,
             text=True
         )
         return result.returncode, result.stdout, result.stderr
+    except TypeError as e:
+        # Catch specific Type errors and provide a clear log
+        print_log(f"Execution Type Error: {e}", "ERROR")
+        return 1, "", str(e)
     except Exception as e:
         return 1, "", f"Execution Error: {e}"
 
@@ -48,7 +59,8 @@ def print_log(msg, type="INFO"):
 def check_conda():
     """Checks if Conda is installed and accessible."""
     print_log("Checking for Conda installation...", "SYSTEM")
-    code, _, _ = run_command("conda --version", check=True)
+    # Using 'conda --version' is safer than just running 'conda'
+    code, stdout, stderr = run_command("conda --version")
     
     if code == 0:
         print_log("Conda found successfully.", "INFO")
@@ -64,15 +76,17 @@ def install_package(package_name, env_name=DEFAULT_ENV_NAME):
 
     print_log(f"Attempting to install '{package_name}' in environment '{env_name}'...", "SYSTEM")
     
-    # Command: conda install -n termos_galactic pandas
-    cmd = ["conda", "install", "-n", env_name, package_name, "-y"]
+    # Command: conda install -n termos_galactic -y pandas
+    # We pass the list safely now. run_command will join them.
+    cmd = ["conda", "install", "-n", env_name, "-y", package_name]
     code, stdout, stderr = run_command(cmd)
 
     if code == 0:
         print_log(f"Successfully installed {package_name}.", "INFO")
     else:
         print_log(f"Failed to install {package_name}.", "ERROR")
-        print_log(f"STDERR: {stderr}", "ERROR")
+        if stderr:
+            print_log(f"STDERR: {stderr}", "ERROR")
 
 def repair_environment(env_name=DEFAULT_ENV_NAME):
     """
@@ -84,10 +98,11 @@ def repair_environment(env_name=DEFAULT_ENV_NAME):
     if not check_conda(): return
 
     # Check if env exists
-    code, _, _ = run_command(f"conda env list | grep {env_name}", check=True, shell=True)
-    env_exists = (code == 0)
-
-    if env_exists:
+    # Use 'conda env list' and grep
+    check_cmd = f"conda env list | grep {env_name}"
+    code, _, _ = run_command(check_cmd, shell=True) # shell=True required for pipe/grep
+    
+    if code == 0:
         print_log(f"Environment '{env_name}' detected. Attempting repair...", "WARN")
         
         # Strategy: Update base packages to fix dependencies
@@ -97,8 +112,9 @@ def repair_environment(env_name=DEFAULT_ENV_NAME):
         if code == 0:
             print_log(f"Environment '{env_name}' repaired successfully.", "INFO")
         else:
-            print_log(f"Repair failed. Check logs manually.", "ERROR")
-            print_log(f"STDERR: {stderr}", "ERROR")
+            print_log("Repair failed. Check logs manually.", "ERROR")
+            if stderr:
+                print_log(f"STDERR: {stderr}", "ERROR")
     else:
         print_log(f"Environment '{env_name}' does not exist. Creating new one...", "WARN")
         create_environment(env_name, PYTHON_VERSION)
@@ -155,11 +171,11 @@ if __name__ == "__main__":
     if not check_conda():
         sys.exit(1)
 
-    # Parse Arguments
+    # Parse arguments
     args = sys.argv[1:]
 
     if len(args) == 0:
-        # Default behavior: Repair the TermOS Galactic environment
+        # Default behavior: Repair TermOS Galactic environment
         print_log("Running default repair sequence for TermOS...", "SYSTEM")
         repair_environment()
         print_log("Done.", "INFO")
