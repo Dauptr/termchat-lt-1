@@ -32,6 +32,8 @@
             font-family: 'Inter', sans-serif; 
             overflow: hidden; 
             background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile */
         }
 
         #cosmic-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
@@ -73,8 +75,8 @@
             border-color: rgba(6, 182, 212, 0.6); 
         }
         
-        .admin-hidden { display: none; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
-        .admin-visible { display: flex; opacity: 1; pointer-events: auto; }
+        .admin-hidden { display: none !important; }
+        .admin-visible { display: flex !important; }
         
         @keyframes slideUpFade {
             from { opacity: 0; transform: translateY(20px); }
@@ -136,29 +138,31 @@
         }
         .visualizer-bar { height: 4px; background: #22d3ee; width: 0%; transition: width 0.1s; border-radius: 2px; }
 
-        /* --- INTEGRATED COPILOT STYLES --- */
+        /* --- FIXED COPILOT MOBILE STYLES --- */
         .code-editor-overlay { 
             position: fixed; inset: 0; z-[70]; 
             background: #0f172a; 
             display: flex; 
             flex-direction: column; 
+            height: 100vh;
+            height: 100dvh;
         }
         .editor-header { 
-            padding: 12px 20px; 
+            padding: 12px 16px; 
             background: rgba(15, 23, 42, 0.95); 
             border-bottom: 1px solid var(--glass-border); 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
+            flex-shrink: 0; 
+            z-index: 10;
         }
         .editor-body {
             flex: 1;
             display: grid;
-            grid-template-columns: 1fr 350px; /* Editor | Copilot */
+            grid-template-columns: 1fr 350px; 
             overflow: hidden;
-        }
-        @media (max-width: 768px) {
-            .editor-body { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+            min-height: 0; 
         }
         
         .code-area { 
@@ -174,31 +178,77 @@
             line-height: 1.5;
             white-space: pre;
             overflow: auto;
+            width: 100%;
+            height: 100%;
         }
 
-        /* Copilot Sidebar Styles */
-        .copilot-sidebar {
-            background: var(--ide-sidebar);
-            border-left: 1px solid #3e3e42;
-            display: flex;
-            flex-direction: column;
+        /* --- MOBILE SPECIFIC COPILOT STYLES --- */
+        @media (max-width: 768px) {
+            .editor-body { 
+                grid-template-columns: 1fr; 
+                grid-template-rows: 1fr 1fr; /* Split screen equally */
+            }
+            
+            .copilot-sidebar {
+                border-left: none;
+                border-top: 1px solid #3e3e42;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .copilot-header { flex-shrink: 0; }
+            
+            .copilot-chat {
+                flex: 1; /* Take available space */
+                overflow-y: auto; /* Scroll */
+                min-height: 0; /* Critical for Flex scrolling */
+                padding: 12px;
+            }
+            
+            /* Input Area - Fixed at bottom of sidebar */
+            .copilot-input-area {
+                flex-shrink: 0; /* Don't shrink */
+                background: #111; /* Darker to see clearly */
+                border-top: 1px solid #333;
+                padding: 15px;
+                padding-bottom: max(15px, env(safe-area-inset-bottom));
+            }
+
+            .suggestion-box {
+                margin-top: 0;
+                margin-bottom: 10px;
+                border: 1px solid #06b6d4;
+                background: rgba(0,0,0,0.5);
+            }
         }
-        .copilot-header {
-            padding: 12px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            color: #858585;
-            border-bottom: 1px solid #3e3e42;
-            display: flex; align-items: center; gap: 8px;
+
+        /* Desktop Copilot Styles */
+        @media (min-width: 769px) {
+            .copilot-sidebar {
+                background: var(--ide-sidebar);
+                border-left: 1px solid #3e3e42;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .copilot-chat {
+                flex: 1;
+                padding: 16px;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                min-height: 0;
+            }
+            .copilot-input-area {
+                padding: 12px;
+                border-top: 1px solid #3e3e42;
+                background: #252526;
+                flex-shrink: 0;
+            }
         }
-        .copilot-chat {
-            flex: 1;
-            padding: 16px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+
         .msg-user {
             align-self: flex-end;
             background: #315b65;
@@ -208,6 +258,7 @@
             font-size: 0.85rem;
             max-width: 90%;
             color: white;
+            word-wrap: break-word;
         }
         .msg-ai {
             align-self: flex-start;
@@ -222,15 +273,12 @@
             font-size: 0.7rem; font-weight: bold; color: white;
             flex-shrink: 0;
         }
-        .msg-content { font-size: 0.85rem; color: #d4d4d4; line-height: 1.4; }
+        .msg-content { font-size: 0.85rem; color: #d4d4d4; line-height: 1.4; word-wrap: break-word; }
 
-        /* Suggestion Box */
         .suggestion-box {
             background: rgba(0,0,0,0.3);
-            border: 1px solid var(--accent-secondary);
             border-radius: 6px;
             padding: 10px;
-            margin-top: 10px;
             font-family: 'Fira Code', monospace;
             font-size: 12px;
             color: var(--accent-secondary);
@@ -244,23 +292,40 @@
             gap: 8px;
         }
 
-        .copilot-input-area {
-            padding: 16px;
-            border-top: 1px solid #3e3e42;
-        }
         .copilot-input {
             width: 100%;
             background: #3c3c3c;
             border: 1px solid transparent;
             color: white;
-            border-radius: 6px;
-            padding: 10px;
-            font-family: sans-serif;
-            font-size: 0.85rem;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 16px; /* Prevents iOS zoom */
+            line-height: 1.4;
+            min-height: 44px; /* Touch target */
+            max-height: 120px;
+            overflow-y: auto;
+            display: block;
             resize: none;
-            height: 40px;
         }
         .copilot-input:focus { border-color: var(--accent-primary); }
+
+        .send-btn-mobile {
+            width: 100%;
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 8px;
+            display: none;
+            cursor: pointer;
+        }
+        /* Show send button on mobile */
+        @media (hover: none) and (pointer: coarse) {
+            .send-btn-mobile { display: block; }
+        }
 
         .neural-msg { 
             background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(168,85,247,0.1)); 
@@ -390,9 +455,9 @@
 
                     <div id="video-grid" class="video-grid hidden"></div>
 
-                    <!-- STOP BUTTON -->
-                    <div id="video-controls" class="hidden mt-3 flex justify-center">
-                         <button onclick="stopWebRTC()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-2 px-6 rounded-full shadow-[0_0_15px_rgba(239,68,68,0.4)] animate-pulse">📞 HANG UP</button>
+                    <!-- STOP BUTTON (Larger for Touch) -->
+                    <div id="video-controls" class="hidden mt-4 flex justify-center">
+                         <button onclick="stopWebRTC()" class="bg-red-600 hover:bg-red-500 text-white text-sm font-bold py-3 px-8 rounded-full shadow-[0_0_15px_rgba(239,68,68,0.4)] animate-pulse">📞 HANG UP</button>
                     </div>
                 </div>
             </div>
@@ -456,7 +521,7 @@
         </div>
         <div class="editor-body">
             <!-- LEFT: CODE EDITOR -->
-            <div class="relative flex flex-col h-full">
+            <div class="relative flex flex-col h-full min-h-0">
                 <textarea id="code-editor-textarea" class="code-area" spellcheck="false" placeholder="// Write or ask Copilot to generate code here..."></textarea>
             </div>
 
@@ -486,7 +551,8 @@
                     </div>
                 </div>
                 <div class="copilot-input-area">
-                    <textarea id="copilot-input" class="copilot-input" placeholder="Ask Copilot... (Enter to send)"></textarea>
+                    <textarea id="copilot-input" class="copilot-input" placeholder="Ask Copilot..."></textarea>
+                    <button id="copilot-send-btn" onclick="handleCopilotRequest()" class="send-btn-mobile">SEND MESSAGE</button>
                 </div>
             </div>
         </div>
@@ -601,13 +667,23 @@
             setTimeout(() => { addSystemMessage("⚠️ API Key Required."); requestApiKey(); }, 2000);
         }
 
-        // Copilot Input Listener
+        // Copilot Auto-Resize Listener
         const copilotInput = document.getElementById('copilot-input');
         if(copilotInput) {
+            copilotInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+                if(this.value === '') this.style.height = '44px'; // Reset to min height
+            });
+            
+            // Enter key listener for desktop
             copilotInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleCopilotRequest();
+                    const btn = document.getElementById('copilot-send-btn');
+                    if(window.getComputedStyle(btn).display === 'none') {
+                        e.preventDefault();
+                        handleCopilotRequest();
+                    }
                 }
             });
         }
@@ -629,6 +705,7 @@
         chat.appendChild(userMsg);
         chat.scrollTop = chat.scrollHeight;
         inputEl.value = '';
+        inputEl.style.height = '44px'; // Reset height
 
         // Add Loading Indicator
         const loadId = 'load-' + Date.now();
@@ -640,7 +717,6 @@
         chat.scrollTop = chat.scrollHeight;
 
         try {
-            // Send only the editor content or last 2000 chars to save tokens
             const currentCode = document.getElementById('code-editor-textarea').value;
             const codeContext = currentCode.length > 2000 ? currentCode.substring(currentCode.length - 2000) : currentCode;
             const timeStr = new Date().toLocaleString();
@@ -663,7 +739,6 @@
             const reply = apiData.choices[0].message.content;
             document.getElementById(loadId).remove();
 
-            // Extract code from markdown
             let code = reply;
             if(reply.includes('```')) {
                 const parts = reply.split('```');
@@ -671,14 +746,12 @@
                 code = code.replace(/^(javascript|html|js)\n/, '');
             }
 
-            // Add AI message to chat
             const aiMsg = document.createElement('div');
             aiMsg.className = 'msg-ai';
             aiMsg.innerHTML = `<div class="msg-icon">AI</div><div class="msg-content">Here is the code.</div>`;
             chat.appendChild(aiMsg);
             chat.scrollTop = chat.scrollHeight;
 
-            // Show Suggestion
             showSuggestion(code.trim());
 
         } catch (e) {
@@ -704,7 +777,6 @@
         const end = editor.selectionEnd;
         const text = editor.value;
         
-        // Insert at cursor or append
         const newText = text.substring(0, start) + "\n" + code + "\n" + text.substring(end);
         editor.value = newText;
         
@@ -743,19 +815,15 @@
     }
 
     function stopWebRTC() {
-        // Stop tracks
         if (localStream) {
             localStream.getTracks().forEach(track => track.stop());
             localStream = null;
         }
-        // Close connections
         Object.values(peers).forEach(pc => pc.close());
         for (let key in peers) delete peers[key];
         
-        // Signal others
         sendSignal({ type: 'webrtc_leave', sender: username });
 
-        // Reset UI
         document.getElementById('video-grid').innerHTML = '';
         document.getElementById('video-placeholder').classList.remove('hidden');
         document.getElementById('video-grid').classList.add('hidden');
@@ -1032,22 +1100,13 @@
     function runCode() {
         const code = document.getElementById('code-editor-textarea').value;
         try {
-            // Extract body content for preview
             const parser = new DOMParser();
             const doc = parser.parseFromString(code, "text/html");
             const bodyContent = doc.body.innerHTML;
-            
-            // Open a simple preview window
             const win = window.open("", "Preview", "width=600,height=400");
-            win.document.write(`
-                <html><head><title>Preview</title></head><body style="margin:0; padding:20px; font-family:sans-serif;">
-                    ${bodyContent}
-                </body></html>
-            `);
+            win.document.write(`<html><head><title>Preview</title></head><body style="margin:0; padding:20px; font-family:sans-serif;">${bodyContent}</body></html>`);
             win.document.close();
-        } catch(e) {
-            alert("Preview Error: " + e.message);
-        }
+        } catch(e) { alert("Preview Error: " + e.message); }
     }
 
     function downloadCode() {
@@ -1574,8 +1633,7 @@
             if(!data.content) throw new Error("File not found.");
             let currentContent = atob(data.content);
             
-            // --- TOKEN LIMIT FIX ---
-            const MAX_INPUT_CHARS = 8000; // Safe limit for Llama 3.3
+            const MAX_INPUT_CHARS = 8000;
             let contentToSend = currentContent;
             let isTruncated = false;
 
@@ -1591,7 +1649,6 @@
                 
                 addSystemMessage("⚠️ File large. Truncating context for AI to save tokens...");
             }
-            // -------------------------
 
             addSystemMessage("🧬 MUTATING...");
             
