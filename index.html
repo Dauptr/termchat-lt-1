@@ -6,13 +6,15 @@
     <title>TermOS: Galactic</title>
     <meta name="theme-color" content="#0b0d17">
     
-    <!-- CUSTOM FAVICON: Green T on Black -->
+    <!-- FAVICON -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23000'/><text x='16' y='20' text-anchor='middle' fill='%2333ff00' font-family='monospace' font-size='16'>T</text></svg>">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    
     <style>
+        /* --- TERMOS STYLES --- */
         :root { 
             --glass-bg: rgba(15, 23, 42, 0.6); 
             --glass-border: rgba(255, 255, 255, 0.08); 
@@ -144,6 +146,260 @@
             width: 80px; height: 80px; border: 4px solid #333; border-top: 4px solid #a855f7; border-radius: 50%; animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- Z.AI COPILOT STYLES (Namespaced inside .copilot-ide-container) --- */
+        :root {
+            --copilot-bg-ide: #1e1e1e;
+            --copilot-bg-sidebar: #252526;
+            --copilot-border: #3e3e42;
+            --copilot-accent: #007acc;
+            --copilot-text-main: #d4d4d4;
+            --copilot-text-muted: #858585;
+            --copilot-ghost-color: #6e7681;
+            --copilot-font-code: 'Consolas', 'Monaco', 'Courier New', monospace;
+            --copilot-success: #10b981;
+            --copilot-tag: #569cd6;
+            --copilot-attr: #9cdcfe;
+            --copilot-val: #ce9178;
+            --copilot-comment: #6a9955;
+        }
+
+        /* Main Container for Copilot Module */
+        .copilot-ide-container {
+            position: fixed;
+            inset: 0;
+            background: var(--copilot-bg-ide);
+            color: var(--copilot-text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            z-index: 200; /* High Z to cover TermOS */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .copilot-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff5f56;
+            color: white;
+            border: none;
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .copilot-ide-header {
+            height: 40px;
+            background: var(--copilot-bg-ide);
+            border-bottom:1px solid var(--copilot-border);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            justify-content: space-between;
+            user-select: none;
+        }
+        .copilot-mac-dots { display: flex; gap: 8px; }
+        .copilot-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .copilot-dot.r { background: #ff5f56; }
+        .copilot-dot.y { background: #ffbd2e; }
+        .copilot-dot.g { background: #27c93f; }
+
+        .copilot-tab-bar { display: flex; gap: 4px; height: 100%; }
+        .copilot-tab {
+            background: var(--copilot-bg-ide);
+            color: var(--copilot-text-muted);
+            padding: 0 16px;
+            display: flex; align-items: center;
+            font-size: 0.85rem;
+            border-right:1px solid var(--copilot-border);
+            cursor: pointer;
+            border-top: 2px solid transparent;
+        }
+        .copilot-tab.active {
+            background: var(--copilot-bg-ide);
+            color: var(--copilot-text-main);
+            border-top: 2px solid var(--copilot-accent);
+        }
+
+        .copilot-ide-body {
+            flex:1;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            overflow: hidden;
+        }
+
+        .copilot-editor-container {
+            display: flex;
+            background: var(--copilot-bg-ide);
+            overflow: hidden;
+            position: relative;
+            cursor: text;
+        }
+        .copilot-line-numbers {
+            background: var(--copilot-bg-ide);
+            color: #5a5a5a;
+            padding: 16px 0;
+            text-align: right;
+            width: 50px;
+            font-family: var(--copilot-font-code);
+            font-size: 14px;
+            line-height: 1.5;
+            user-select: none;
+            border-right:1px solid var(--copilot-border);
+        }
+        .copilot-code-area {
+            flex:1;
+            position: relative;
+            font-family: var(--copilot-font-code);
+            font-size: 14px;
+            line-height: 1.5;
+            color: #9cdcfe; 
+            white-space: pre-wrap; 
+            overflow: auto;
+            padding: 16px;
+        }
+
+        /* Syntax Highlighting */
+        .token-tag { color: var(--copilot-tag); }
+        .token-attr { color: var(--copilot-attr); }
+        .token-val { color: var(--copilot-val); }
+        .token-comment { color: var(--copilot-comment); font-style: italic; }
+
+        /* Ghost Text */
+        .copilot-ghost-text {
+            color: var(--copilot-ghost-color);
+            font-style: italic;
+            opacity: 0.7;
+            background: rgba(255,255,255,0.03);
+            display: inline-block;
+        }
+
+        /* Accept Bar */
+        .copilot-accept-bar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--copilot-accent);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            display: none; 
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10;
+            cursor: pointer;
+        }
+        .copilot-accept-bar:hover { background: #0062a3; }
+        .copilot-key {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        /* Sidebar */
+        .copilot-sidebar {
+            background: var(--copilot-bg-sidebar);
+            border-left:1px solid var(--copilot-border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .copilot-header {
+            padding: 12px 16px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: flex; align-items: center; gap: 8px;
+            color: var(--copilot-text-muted);
+            border-bottom:1px solid var(--copilot-border);
+        }
+
+        .copilot-chat-history {
+            flex:1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .msg-user {
+            align-self: flex-end;
+            background: #315b65;
+            padding: 8px 12px;
+            border-radius: 12px;
+            border-bottom-right-radius: 2px;
+            font-size: 0.85rem;
+            max-width: 90%;
+        }
+        .msg-ai {
+            align-self: flex-start;
+            display: flex; gap: 10px;
+            max-width: 95%;
+        }
+        .msg-icon {
+            width: 24px; height: 24px;
+            background: var(--copilot-accent);
+            border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem; font-weight: bold; color: white;
+            flex-shrink: 0;
+        }
+        .msg-content {
+            font-size: 0.85rem;
+            color: var(--copilot-text-main);
+            line-height: 1.4;
+            white-space: pre-wrap; 
+        }
+
+        .input-area {
+            padding: 16px;
+            border-top:1px solid var(--copilot-border);
+        }
+        .copilot-input {
+            width: 100%;
+            background: #3c3c3c;
+            border:1px solid transparent;
+            color: var(--copilot-text-main);
+            border-radius: 6px;
+            padding: 10px;
+            font-family: sans-serif;
+            font-size: 0.85rem;
+            resize: none;
+            height: 40px;
+        }
+        .copilot-input:focus { border-color: var(--copilot-accent); }
+
+        /* Preview */
+        .preview-modal {
+            position: absolute;
+            bottom: 20px; left: 20px;
+            width: 300px; height: 200px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            z-index: 50;
+            display: none;
+            overflow: hidden;
+            border:1px solid var(--copilot-accent);
+        }
+        .preview-header {
+            background: #f0f0f0;
+            padding: 5px 10px;
+            font-size: 0.7rem;
+            border-bottom:1px solid #ddd;
+            display: flex; justify-content: space-between;
+            align-items: center;
+            color: #555;
+        }
+        .preview-body { width: 100%; height: calc(100% - 25px); overflow: auto; }
+        
+        .copilot-hidden { display: none !important; }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col relative">
@@ -156,7 +412,7 @@
 
     <input type="file" id="avatar-upload" class="hidden" accept="image/*">
     <canvas id="cosmic-canvas"></canvas>
-    <canvas id="matrix-canvas" class="hidden"></canvas> <!-- Hidden by default -->
+    <canvas id="matrix-canvas" class="hidden"></canvas> 
     
     <!-- FLASH OVERLAY -->
     <div id="flash-overlay"></div>
@@ -184,7 +440,6 @@
 
             <button onclick="toggleMediaOverlay()" id="media-toggle-btn" class="hidden md:flex bg-purple-900/20 hover:bg-purple-900/40 text-purple-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border border-purple-500/30 transition-all hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]">📺 PLAYING</button>
             <button onclick="triggerKernelThought()" class="hidden md:flex bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border-cyan-500/30 transition-all hover:shadow-[0_0_15px_rgba(6,182,212,0.4)]">🧠 KERNEL</button>
-            <button onclick="toggleCodeEditor()" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border-white/10 transition-all">🖋 CODE</button>
             <button onclick="openProfileModal()" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border-white/10 transition-all">👤 PROFILE</button>
             <button onclick="toggleAdminMode()" id="admin-toggle-text" class="bg-black/40 hover:bg-red-900/40 border border-white/10 hover:border-red-500 text-red-400 hover:text-white px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-2"><span>🔴</span> ADMIN</button>
             <div class="hidden md:flex flex-col items-end">
@@ -218,19 +473,14 @@
     <!-- FLOATING MEDIA OVERLAY -->
     <div id="media-overlay" class="media-overlay media-minimized glass-panel rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
         <div class="media-content p-0">
-            <!-- Controls -->
             <div class="flex justify-between items-center mb-3 px-5 pt-5">
                 <span class="text-white font-bold text-sm font-header tracking-wide">📺 MEDIA DECK</span>
                 <button onclick="toggleMediaUI()" class="text-gray-400 hover:text-white transition-colors">✖</button>
             </div>
-
-            <!-- Tabs -->
             <div class="flex border-b border-white/10 mb-3 mx-5">
                 <button onclick="switchMediaTab('radio')" id="tab-radio" class="flex-1 pb-2 text-cyan-400 border-b-2 border-cyan-400 font-mono text-sm hover:text-white transition-colors">📻 RADIO</button>
                 <button onclick="switchMediaTab('video')" id="tab-video" class="flex-1 pb-2 text-gray-500 border-b-2 border-transparent hover:text-purple-300 font-mono text-sm hover:bg-white/5 transition-colors">📺 VIDEO ROOM</button>
             </div>
-
-            <!-- Radio Content -->
             <div id="media-radio" class="space-y-3 px-5 pb-5">
                 <div class="p-4 text-center text-gray-400 text-xs border border-white/5 rounded-xl bg-white/5 backdrop-blur-sm">
                     Broadcasts to current active frequency.
@@ -252,8 +502,6 @@
                     <div class="text-cyan-400 text-xs animate-spin hidden loading-indicator absolute right-4">⟳</div>
                 </div>
             </div>
-
-            <!-- Video Room Content -->
             <div id="media-video" class="hidden space-y-3 px-5 pb-5">
                 <div class="bg-black/40 rounded-2xl p-3 border border-purple-500/20 backdrop-blur-md">
                     <div class="flex justify-between items-center mb-2">
@@ -266,9 +514,7 @@
                             <span class="text-xs text-gray-500 font-mono">AWAITING SIGNAL...</span>
                         </div>
                         <video id="video-player" class="hidden" controls autoplay playsinline></video>
-                        <!-- Overlay for Room Name -->
                         <div id="video-room-label" class="absolute top-3 left-3 bg-black/80 backdrop-blur-sm px-3 py-1 rounded text-[9px] text-cyan-400 font-mono border border-cyan-500/30 hidden">ROOM: PUBLIC</div>
-                        <!-- Tech Overlay Lines -->
                         <div class="absolute inset-0 border border-white/5 rounded-2xl pointer-events-none"></div>
                         <div class="absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-transparent via-purple-500 to-transparent opacity-50"></div>
                     </div>
@@ -276,6 +522,76 @@
                         <input type="text" id="video-url-input" placeholder="Paste Stream URL (.mp4, .m3u8)..." class="w-full bg-black/60 border border-white/10 rounded-lg p-3 text-white text-xs outline-none focus:border-purple-500 transition-colors font-mono">
                         <button onclick="shareVideo()" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-5 rounded-lg shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-all">▶ SHARE</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Z.AI COPILOT CONTAINER (Hidden by default) -->
+    <div id="copilot-ide-container" class="copilot-hidden">
+        <button class="copilot-close-btn" onclick="closeCopilot()">✕</button>
+        
+        <div class="copilot-ide-header">
+            <div class="copilot-mac-dots">
+                <div class="copilot-dot r"></div>
+                <div class="copilot-dot y"></div>
+                <div class="copilot-dot g"></div>
+            </div>
+            <div class="copilot-tab-bar">
+                <div class="copilot-tab active">index.html</div>
+                <div class="copilot-tab">styles.css</div>
+            </div>
+            <button class="btn" style="background:var(--copilot-success); border:none; color:white; padding:4px 12px; border-radius:4px; font-size:0.75rem; font-weight:bold; cursor:pointer;" onclick="togglePreview()">▶ Run</button>
+        </div>
+        
+        <div class="copilot-ide-body">
+            <!-- CODE EDITOR (LEFT) -->
+            <div class="copilot-editor-container">
+                <div class="copilot-line-numbers" id="copilot-line-numbers">
+                    <!-- Lines injected via JS -->
+                </div>
+                <div class="copilot-code-area" id="copilot-code-area" contenteditable="true" spellcheck="false">
+    <span class="token-comment">&lt;!-- Write HTML code here or ask Copilot --&gt;</span>
+    <span class="token-tag">&lt;div</span> <span class="token-attr">id</span>=<span class="token-val">"root"</span><span class="token-tag">&gt;</span>
+      <span class="token-tag">&lt;h1&gt;</span>Hello Z.AI<span class="token-tag">&lt;/h1&gt;</span>
+    <span class="token-tag">&lt;/div&gt;</span>
+    
+    <span id="suggestion-cursor"></span>
+                </div>
+                
+                <!-- Floating Accept Bar -->
+                <div class="copilot-accept-bar" id="copilot-accept-bar" onclick="acceptSuggestion()">
+                    Press <span class="copilot-key">Tab</span> to Accept
+                </div>
+
+                <!-- Preview Mini-Window -->
+                <div class="preview-modal" id="copilot-preview-modal">
+                    <div class="preview-header">
+                        <span>App Preview</span>
+                        <span style="cursor:pointer" onclick="document.getElementById('copilot-preview-modal').style.display='none'">✕</span>
+                    </div>
+                    <div class="preview-body" id="copilot-preview-content"></div>
+                </div>
+            </div>
+
+            <!-- COPILOT SIDEBAR (RIGHT) -->
+            <div class="copilot-sidebar">
+                <div class="copilot-header">
+                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.73l-1.52-.51c-.63-.21-1.05-.82-1.05-1.49 0-.67.42-1.28 1.05-1.49l1.52-.51c.9-.34 1.64-.92 1.9-1.73.4-1.23.4-2.54 0-3.77z"/></svg>
+                    Copilot Chat
+                    <div id="copilot-api-status-dot" class="copilot-dot" style="background:red; width:8px; height:8px; margin-left:auto;"></div>
+                </div>
+                <div class="copilot-chat-history" id="copilot-chat-history">
+                    <div class="msg-ai">
+                        <div class="msg-icon">AI</div>
+                        <div class="msg-content">
+                            I am your AI pair programmer. Ask me to write code, refactor functions, or explain logic.
+                            <br><br><small style="color:var(--copilot-text-muted)">(Using TermOS API Key)</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="input-area">
+                    <textarea id="copilot-user-input" class="copilot-input" placeholder="Ask Copilot to write code..."></textarea>
                 </div>
             </div>
         </div>
@@ -306,7 +622,7 @@
     <div id="admin-panel" class="admin-hidden fixed bottom-24 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border-red-500/30 shadow-2xl shadow-red-500/10">
         <h3 class="text-red-400 font-header font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> SYSTEM CONSOLE</h3>
         <div class="space-y-2">
-            <button onclick="toggleCodeEditor()" class="w-full border border-green-500/50 text-green-400 bg-green-900/10 hover:bg-green-900/20 text-xs font-bold py-2 rounded-lg mb-2 transition-colors">🖋 EDIT SYSTEM CODE</button>
+            <button onclick="SystemRebuilder.install('copilot')" class="w-full border border-purple-500/50 text-purple-400 bg-purple-900/10 hover:bg-purple-900/20 text-xs font-bold py-2 rounded-lg mb-2 transition-colors">💻 OPEN Z.AI COPILOT</button>
             <div class="border-t border-white/10 pt-2 mt-2">
                 <h4 class="text-gray-400 text-xs font-bold uppercase font-mono">Credentials</h4>
             </div>
@@ -316,20 +632,6 @@
             <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Token</label><input type="password" id="gh-token" class="w-full bg-black/40 border border-white/10 rounded p-2 text-white focus:border-red-500 outline-none text-xs"></div>
             <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-2 rounded-lg shadow-lg mt-2">🧬 PUSH TO GITHUB</button>
         </div>
-    </div>
-
-    <!-- CODE EDITOR OVERLAY -->
-    <div id="code-editor-overlay" class="code-editor-overlay admin-hidden">
-        <div class="editor-header p-4 border-b border-white/10 flex justify-between items-center bg-slate-900">
-            <h2 class="text-white font-bold text-xl font-header">🖋 SYSTEM EDITOR</h2>
-            <div class="flex gap-2">
-                <button onclick="applyCode()" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-mono text-xs font-bold shadow-lg">APPLY</button>
-                <button onclick="downloadCode()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-mono text-xs">DOWNLOAD</button>
-                <button onclick="toggleCodeEditor()" class="text-gray-400 hover:text-white px-4 py-2 rounded-lg font-mono text-xs">✖</button>
-            </div>
-        </div>
-        <textarea id="code-editor-textarea" class="code-editor" spellcheck="false"></textarea>
-        <div class="p-2 bg-slate-900 text-gray-500 text-[10px] text-center font-mono">Apply changes to DOM instantly. Be careful.</div>
     </div>
 
     <!-- JOIN ROOM MODAL -->
@@ -348,6 +650,7 @@
 <script>
     const API_MODEL = "llama-3.3-70b-versatile"; 
     
+    // --- STATE & CONFIG ---
     let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || "";
     let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
     let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "your-username";
@@ -381,17 +684,26 @@
             setTimeout(() => boot.remove(), 1000);
             initCosmos();
             startApp();
+            // Initialize Copilot line numbers
+            updateCopilotLineNumbers();
         }, 1500);
     });
 
     function startApp() {
         updateStatusDot(!!GROQ_API_KEY);
+        updateCopilotStatusDot();
         
-        if(document.getElementById('gh-token')) document.getElementById('gh-token').value = GITHUB_TOKEN;
-        if(document.getElementById('gh-owner')) document.getElementById('gh-owner').value = REPO_OWNER;
-        if(document.getElementById('gh-repo')) document.getElementById('gh-repo').value = REPO_NAME;
-        if(document.getElementById('gh-branch')) document.getElementById('gh-branch').value = REPO_BRANCH;
+        const ghToken = document.getElementById('gh-token');
+        const ghOwner = document.getElementById('gh-owner');
+        const ghRepo = document.getElementById('gh-repo');
+        const ghBranch = document.getElementById('gh-branch');
 
+        if(ghToken) ghToken.value = GITHUB_TOKEN;
+        if(ghOwner) ghOwner.value = REPO_OWNER;
+        if(ghRepo) ghRepo.value = REPO_NAME;
+        if(ghBranch) ghBranch.value = REPO_BRANCH;
+
+        // MQTT Setup
         if (typeof Paho !== 'undefined') {
             mqttClient = new Paho.MQTT.Client(MQTT_BROKER_URL, "termos_client_" + Math.random().toString(16).substr(2, 8));
             mqttClient.onConnectionLost = () => { 
@@ -434,6 +746,7 @@
         }
     }
 
+    // --- DOM UTILS ---
     function getBox() {
         let el = document.getElementById('chat-container');
         if (!el) {
@@ -444,9 +757,16 @@
         }
         return el;
     }
-    function scrollDown() { const b=getBox(); if(b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); }
-    function escapeHtml(text) { if(!text) return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+    function scrollDown() { 
+        const b = getBox(); 
+        if(b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); 
+    }
+    function escapeHtml(text) { 
+        if(!text) return ""; 
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); 
+    }
 
+    // --- VISUALS: COSMIC ENGINE ---
     let isCosmicRunning = false;
     function initCosmos() {
         const canvas = document.getElementById('cosmic-canvas');
@@ -489,7 +809,10 @@
             requestAnimationFrame(draw);
         }
         draw();
-        window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
+        window.addEventListener('resize', () => { 
+            width = canvas.width = window.innerWidth; 
+            height = canvas.height = window.innerHeight; 
+        });
     }
 
     function triggerFlashEffect() {
@@ -502,6 +825,7 @@
         wrapper.classList.add('video-active');
     }
 
+    // --- UI: MEDIA PLAYER ---
     function toggleMediaOverlay() {
         const el = document.getElementById('media-overlay');
         const btn = document.getElementById('media-toggle-btn');
@@ -586,40 +910,6 @@
         switchMediaTab('video');
     }
 
-    function toggleCodeEditor() {
-        const overlay = document.getElementById('code-editor-overlay');
-        const textarea = document.getElementById('code-editor-textarea');
-        if(overlay.classList.contains('admin-hidden')) {
-            textarea.value = document.documentElement.outerHTML;
-            overlay.classList.remove('admin-hidden');
-            overlay.classList.add('admin-visible');
-        } else {
-            overlay.classList.add('admin-hidden');
-            overlay.classList.remove('admin-visible');
-        }
-    }
-
-    function applyCode() {
-        const code = document.getElementById('code-editor-textarea').value;
-        if(confirm("⚠️ Warning: This will replace the current DOM. Continue?")) {
-            document.open();
-            document.write(code);
-            document.close();
-        }
-    }
-
-    function downloadCode() {
-        const code = document.getElementById('code-editor-textarea').value;
-        const blob = new Blob([code], {type: "text/html"});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = "termos_galactic.html";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    }
-
     function openProfileModal() {
         document.getElementById('edit-name').value = userProfile.name;
         document.getElementById('edit-avatar').value = (userProfile.avatar.startsWith('data:') ? "" : userProfile.avatar);
@@ -665,6 +955,7 @@
         } catch (e) { alert("Storage Full."); }
     }
 
+    // --- MESSAGING ---
     function addSystemMessage(txt) {
         const box = getBox();
         const d = document.createElement('div');
@@ -705,6 +996,7 @@
         scrollDown();
     }
 
+    // --- CORE COMMANDS & MODULES ---
     const SystemRebuilder = {
         install: function(name) {
             name = name.toLowerCase().trim().replace(/[^a-zA-Z0-9]/g, '');
@@ -728,6 +1020,9 @@
                         break;
                     case 'music': 
                         addSystemMessage("🎵 Audio System Ready.");
+                        break;
+                    case 'copilot':
+                        this.installCopilot();
                         break;
                     default: return addSystemMessage("Unknown: " + name);
                 }
@@ -763,9 +1058,17 @@
             document.documentElement.style.setProperty('--msg-user-bg', '#d946ef'); 
             document.documentElement.style.setProperty('--accent-primary', '#d946ef');
             document.body.style.boxShadow = "inset 0 0 50px rgba(217, 70, 239, 0.1)";
+        },
+        installCopilot: function() {
+            const container = document.getElementById('copilot-ide-container');
+            container.classList.remove('copilot-hidden');
+            updateCopilotLineNumbers();
+            updateCopilotStatusDot();
+            addSystemMessage("💻 Z.AI Copilot Module Loaded.");
         }
     };
 
+    // --- MQTT & ROOMS ---
     function connectMQTT() {
         try {
             mqttClient.connect({
@@ -829,6 +1132,7 @@
         connectMQTT(); 
     }
 
+    // --- MATRIX FALLBACK ---
     let isMatrixRunning = false;
     function initMatrix() {
         const canvas = document.getElementById('matrix-canvas');
@@ -862,7 +1166,10 @@
             } catch (e) { isMatrixRunning = false; }
         }
         requestAnimationFrame(draw);
-        window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
+        window.addEventListener('resize', () => { 
+            width = canvas.width = window.innerWidth; 
+            height = canvas.height = window.innerHeight; 
+        });
     }
 
     async function triggerKernelThought() {
@@ -908,6 +1215,7 @@
         }
     }
 
+    // --- INPUT HANDLER ---
     function handleInput() {
         try {
             let inp = document.getElementById('user-input');
@@ -983,6 +1291,14 @@
         document.getElementById('join-room-modal').classList.add('admin-hidden');
     }
 
+    function forceReset() {
+        if(confirm("⚠️ WARNING: This will wipe all API keys, user data, and rooms. Reboot to factory state?")) {
+            localStorage.clear(); // Wipes all local storage
+            location.reload(); // Reloads page
+        }
+    }
+
+    // --- XP SYSTEM ---
     function addXP(amount) {
         userStats.xp += amount;
         if(userStats.xp > (userStats.level * 100)) {
@@ -1016,10 +1332,12 @@
                 localStorage.setItem('termos_groq_key', GROQ_API_KEY);
                 addSystemMessage("✅ Key Accepted.");
                 updateStatusDot(true);
+                updateCopilotStatusDot();
             } else {
                 GROQ_API_KEY = "";
                 localStorage.removeItem('termos_groq_key');
                 updateStatusDot(false);
+                updateCopilotStatusDot();
             }
         }
     }
@@ -1128,6 +1446,7 @@
             if(!data.content) throw new Error("File not found.");
             let currentContent = atob(data.content);
             
+            // --- TOKEN LIMIT FIX START ---
             const MAX_INPUT_CHARS = 90000;
             let contentToSend = currentContent;
             let isTruncated = false;
@@ -1144,11 +1463,12 @@
                 
                 addSystemMessage("⚠️ Context Window Full. Optimizing prompt...");
             }
+            // --- TOKEN LIMIT FIX END ---
 
             addSystemMessage("🧬 MUTATING...");
             
             const systemInstruction = isTruncated 
-                ? "You are an expert coder. The provided HTML file has been truncated in middle. Apply the requested changes. For the truncated middle section, output ONLY the placeholder comment: /* [SYSTEM: MIDDLE SECTION OMITTED...] */. Do NOT hallucinate the middle content."
+                ? "You are an expert coder. The provided HTML file has been truncated in middle. Apply the requested changes. For the truncated middle section, output ONLY the placeholder comment: /* [SYSTEM: MIDDLE SECTION OMITTED...] */. Do NOT hallucinate middle content."
                 : "You are an expert coder. Return the FULL modified HTML code.";
 
             const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -1213,6 +1533,269 @@
             if(err.name === 'AbortError') addSystemMessage("❌ Timeout.");
             else addSystemMessage("❌ FAIL: " + err.message);
         }
+    }
+
+    // --- Z.AI COPILOGT MODULE LOGIC ---
+    
+    // Elements
+    const copilotCodeArea = document.getElementById('copilot-code-area');
+    const copilotChatHistory = document.getElementById('copilot-chat-history');
+    const copilotAcceptBar = document.getElementById('copilot-accept-bar');
+    const copilotSuggestionCursor = document.getElementById('suggestion-cursor');
+    const copilotPreviewContent = document.getElementById('copilot-preview-content');
+    const copilotUserInput = document.getElementById('copilot-user-input');
+    const copilotApiDot = document.getElementById('copilot-api-status-dot');
+    const copilotLineNumbers = document.getElementById('copilot-line-numbers');
+
+    let ghostCode = null;
+
+    // --- Copilot Interaction ---
+    if(copilotUserInput) {
+        copilotUserInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleCopilotRequest();
+            }
+        });
+
+        // Listen for typing in editor
+        if(copilotCodeArea) {
+            copilotCodeArea.addEventListener('input', () => {
+                cancelSuggestion();
+                updateCopilotLineNumbers();
+            });
+
+            // Listen for Tab key in editor to accept suggestion
+            copilotCodeArea.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab' && ghostCode) {
+                    e.preventDefault();
+                    acceptSuggestion();
+                }
+                // If user types, cancel suggestion
+                if (ghostCode && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+                    cancelSuggestion();
+                }
+            });
+        }
+    }
+
+    function handleCopilotRequest() {
+        const text = copilotUserInput.value.trim();
+        if (!text) return;
+
+        addCopilotMessage(text, 'user');
+        copilotUserInput.value = '';
+
+        // Show typing indicator in chat
+        const typingId = "typing-" + Date.now();
+        const typingDiv = document.createElement('div');
+        typingDiv.id = typingId;
+        typingDiv.className = "msg-ai";
+        typingDiv.innerHTML = `<div class="msg-icon">...</div><div class="msg-content">Thinking...</div>`;
+        copilotChatHistory.appendChild(typingDiv);
+        copilotChatHistory.scrollTop = copilotChatHistory.scrollHeight;
+
+        // Logic: Use Real AI if key exists, else use Mock
+        if (GROQ_API_KEY) {
+            fetchCopilot(text, typingId);
+        } else {
+            // Fallback to local mock if no API key
+            setTimeout(() => {
+                document.getElementById(typingId)?.remove();
+                const response = generateCodeMock(text);
+                addCopilotMessage(response.msg, 'ai');
+                injectGhostText(response.code);
+            }, 600);
+        }
+    }
+
+    async function fetchCopilot(prompt, typingId) {
+        try {
+            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: { 
+                    "Authorization": `Bearer ${GROQ_API_KEY}`, 
+                    "Content-Type": "application/json" 
+                },
+                body: JSON.stringify({
+                    model: API_MODEL,
+                    messages: [
+                        { role: "system", content: "You are an expert front-end developer. Provide ONLY raw HTML/CSS code snippets. No markdown, no explanation, just the code snippet." },
+                        { role: "user", content: prompt }
+                    ],
+                    temperature: 0.5,
+                    max_tokens: 1024
+                })
+            });
+
+            const data = await response.json();
+            const aiCode = data.choices[0].message.content;
+            
+            document.getElementById(typingId)?.remove();
+            addCopilotMessage(`Generated code for: ${prompt}`, 'ai');
+            injectGhostText(aiCode);
+
+        } catch (err) {
+            document.getElementById(typingId)?.remove();
+            addCopilotMessage("Error: " + err.message, 'ai');
+        }
+    }
+
+    function addCopilotMessage(text, sender) {
+        const div = document.createElement('div');
+        div.className = `msg-${sender}`;
+
+        if (sender === 'user') {
+            div.innerText = text;
+        } else {
+            // Apply syntax highlighting to chat messages too!
+            div.innerHTML = `<div class="msg-icon">AI</div><div class="msg-content">${highlightSyntax(text)}</div>`;
+        }
+        copilotChatHistory.appendChild(div);
+        copilotChatHistory.scrollTop = copilotChatHistory.scrollHeight;
+    }
+
+    // --- Syntax Highlighting Helper ---
+    function highlightSyntax(html) {
+        // Escape HTML first to prevent rendering
+        let safe = html.replace(/&/g, "&amp;")
+                       .replace(/</g, "&lt;")
+                       .replace(/>/g, "&gt;");
+
+        // Highlight Tags <tag>
+        safe = safe.replace(/(&lt;\/?)(\w+)(.*?)(\/?&gt;)/g, '<span class="token-tag">$1$2$3$4</span>');
+        
+        // Highlight Attributes attribute="value"
+        safe = safe.replace(/(\s)(\w+)(=)/g, '$1<span class="token-attr">$2</span>$3');
+
+        // Highlight Strings "value"
+        safe = safe.replace(/(=)(&quot;.*?&quot;)/g, '$1<span class="token-val">$2</span>');
+
+        return safe;
+    }
+
+    // --- Copilot Suggestion Logic ---
+    function injectGhostText(code) {
+        ghostCode = code;
+
+        // Create a span for ghost text
+        const span = document.createElement('span');
+        span.className = 'copilot-ghost-text';
+        span.id = 'ghost-suggestion';
+        // Apply syntax highlight to the ghost text too!
+        span.innerHTML = highlightSyntax(code);
+
+        // Insert it after the cursor marker
+        copilotSuggestionCursor.appendChild(span);
+
+        // Show the "Tab to Accept" bar
+        copilotAcceptBar.style.display = 'flex';
+
+        // Auto scroll to bottom
+        copilotCodeArea.scrollTop = copilotCodeArea.scrollHeight;
+    }
+
+    function acceptSuggestion() {
+        if (!ghostCode) return;
+
+        // Get the ghost span
+        const ghostSpan = document.getElementById('ghost-suggestion');
+
+        if (ghostSpan) {
+            // Convert ghost span to normal text
+            ghostSpan.classList.remove('copilot-ghost-text');
+            ghostSpan.classList.add('accepted-code');
+            ghostSpan.style.fontStyle = "normal";
+            ghostSpan.style.opacity = "1";
+            ghostSpan.style.background = "none";
+        }
+
+        // Clear state
+        ghostCode = null;
+        copilotAcceptBar.style.display = 'none';
+        
+        updateCopilotLineNumbers();
+        runPreview();
+    }
+
+    function cancelSuggestion() {
+        const ghostSpan = document.getElementById('ghost-suggestion');
+        if (ghostSpan) ghostSpan.remove();
+        ghostCode = null;
+        copilotAcceptBar.style.display = 'none';
+    }
+
+    function runPreview() {
+        // Get the innerHTML of the code area
+        let html = copilotCodeArea.innerText;
+
+        // Basic cleanup for demo
+        html = html.replace("Press  Tab  to Accept", "");
+
+        copilotPreviewContent.innerHTML = html;
+        document.getElementById('copilot-preview-modal').style.display = 'block';
+    }
+
+    function togglePreview() {
+        runPreview();
+        const modal = document.getElementById('copilot-preview-modal');
+        modal.style.display = modal.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function closeCopilot() {
+        const container = document.getElementById('copilot-ide-container');
+        container.classList.add('copilot-hidden');
+    }
+
+    // --- Utilities ---
+
+    function updateCopilotLineNumbers() {
+        if(!copilotCodeArea) return;
+        // Count newlines
+        const text = copilotCodeArea.innerText;
+        const count = (text.match(/\n/g) || []).length + 1;
+        
+        // Generate HTML for numbers
+        copilotLineNumbers.innerHTML = Array.from({length: count}, (_, i) => i + 1).join('<br>');
+    }
+
+    function updateCopilotStatusDot() {
+        if(copilotApiDot) {
+            if(GROQ_API_KEY) {
+                copilotApiDot.style.background = "#10b981"; // Green
+                copilotApiDot.style.boxShadow = "0 0 5px #10b981";
+            } else {
+                copilotApiDot.style.background = "#ffbd2e"; // Orange
+            }
+        }
+    }
+
+    // --- Mock Logic (Fallback if no API Key) ---
+    function generateCodeMock(input) {
+        const lower = input.toLowerCase();
+
+        if (lower.includes('button')) {
+            return {
+                msg: "Generating a standard HTML button component.",
+                code: `<br><br><button style="padding:10px 20px; background:blue; color:white; border:none; border-radius:4px;">Click Me</button>`
+            };
+        }
+        if (lower.includes('card')) {
+            return {
+                msg: "Creating a Bootstrap-style card.",
+                code: `<br><br><div style="border:1px solid #ddd; padding:20px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);"><h3 style="margin:0 0 10px 0;">Card Title</h3><p style="margin:0; color:#666;">Content here...</p></div>`
+            };
+        }
+        if (lower.includes('header') || lower.includes('nav')) {
+             return {
+                msg: "Building a navigation bar.",
+                code: `<br><br><nav style="background:#333; padding:10px; display:flex; gap:20px;"><a href="#" style="color:white; text-decoration:none;">Home</a><a href="#" style="color:white; text-decoration:none;">About</a></nav>`
+            };
+        }
+        return {
+            msg: "I can write HTML, CSS, or JavaScript. Try asking for a 'button' or 'card'.",
+            code: `<!-- Waiting for prompt -->`
+        };
     }
 </script>
 </body>
