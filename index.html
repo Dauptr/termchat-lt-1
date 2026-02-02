@@ -1,773 +1,1303 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="lt">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Evolution</title>
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="cache-bust" content="v1.0.1">
+    <meta name="theme-color" content="#33ff00">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
-
-    <!-- MQTT Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-
+    <meta name="apple-mobile-web-app-title" content="TermOS">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icon-192.svg">
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+    <title>TermChat LT</title>
     <style>
         :root {
-            --glass-bg: rgba(15, 23, 42, 0.6);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --accent-primary: #38bdf8;
-            --accent-secondary: #818cf8;
-            --msg-user-bg: #3b82f6;
-            --msg-ai-bg: #1e293b;
+            --term-color: #33ff00;
+            --term-font: 'Courier New', 'Monaco', 'Menlo', monospace;
+            --bg-color: #000;
+            --panel-bg: #0a0a0a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
-            background-color: #020617;
-            color: #e2e8f0;
-            font-family: 'Inter', sans-serif;
+            background: var(--bg-color);
+            color: var(--term-color);
+            font-family: var(--term-font);
+            height: 100vh;
             overflow: hidden;
+            position: relative;
         }
 
-        /* --- BACKGROUND MATRIX --- */
-        #matrix-canvas {
+        /* MONITOR BEZEL EFFECT */
+        body::before {
+            content: '';
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 0;
-            opacity: 0.15;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 20px solid #222;
+            border-radius: 15px;
+            box-shadow: 
+                inset 0 0 50px rgba(0,0,0,0.8),
+                0 0 20px rgba(51,255,0,0.1);
             pointer-events: none;
+            z-index: 1000;
         }
 
-        /* --- SCROLLBAR --- */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-
-        /* --- GLASSMORPHISM --- */
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
+        /* MAIN LAYOUT GRID */
+        #main-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            grid-template-rows: auto 1fr auto;
+            height: 100vh;
+            padding: 25px;
+            gap: 2px;
         }
 
-        /* --- ANIMATIONS --- */
-        .msg-bubble {
-            max-width: 85%;
-            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            word-wrap: break-word;
+        /* RESPONSIVE & MOBILE FIXES */
+        @media (max-width: 768px) {
+            body::before {
+                border: 10px solid #222; /* Thinner bezel on mobile */
+            }
+            
+            #main-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+                padding: 15px 5px;
+                height: 100vh;
+                height: 100dvh; /* Dynamic viewport height for mobile */
+            }
+            
+            .side-panel {
+                display: none;
+            }
+            
+            /* iOS Safari keyboard fix */
+            .input-line {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: rgba(0,0,0,0.95);
+                backdrop-filter: blur(10px);
+                z-index: 100;
+            }
+            
+            #terminal-body {
+                padding-bottom: 60px; /* Space for fixed input */
+                height: calc(100vh - 120px);
+                height: calc(100dvh - 120px);
+            }
         }
         
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+        /* Desktop specific */
+        @media (min-width: 769px) {
+            #main-layout {
+                grid-template-columns: 1fr 350px;
+            }
+            
+            #multiverse-panel.active {
+                display: block;
+            }
         }
 
-        /* --- ASCII ART --- */
-        .ascii-art {
-            font-family: 'Fira Code', monospace;
-            line-height: 0.8;
+        /* HEADER (ASCII) */
+        #room-header {
+            grid-column: 1 / -1;
+            border-bottom: 2px solid var(--term-color);
+            padding: 10px;
             white-space: pre;
-            font-size: 9px;
-            text-shadow: 0 0 2px rgba(255,255,255,0.5);
+            font-size: 0.8em;
+            text-shadow: 0 0 5px var(--term-color);
         }
 
-        /* --- AVATAR GRADIENTS --- */
-        .avatar-gradient-user { background: linear-gradient(135deg, #3b82f6, #8b5cf6); }
-        .avatar-gradient-ai { background: linear-gradient(135deg, #10b981, #059669); }
+        /* CHAT AREA */
+        #terminal-body {
+            grid-column: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 14px;
+            line-height: 1.4;
+            border: 1px solid var(--term-color);
+            background: rgba(0,0,0,0.8);
+        }
 
-        /* --- INPUT GLOW --- */
-        .input-glow:focus-within {
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
-            border-color: rgba(56, 189, 248, 0.5);
+        /* DYNAMIC PANELS */
+        #multiverse-panel {
+            grid-column: 2;
+            border-left: 2px solid var(--term-color);
+            background: var(--panel-bg);
+            padding: 10px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        #multiverse-panel.active { display: block; }
+
+        /* INPUT AREA */
+        .input-line {
+            grid-column: 1 / -1;
+            display: flex;
+            border-top: 2px solid var(--term-color);
+            padding: 10px;
+            background: rgba(0,0,0,0.9);
+        }
+
+        #chatInput {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--term-color);
+            font-family: var(--term-font);
+            font-size: 16px; /* Prevents iOS zoom */
+            outline: none;
+            padding: 5px;
+            -webkit-appearance: none; /* Remove iOS styling */
+            border-radius: 0; /* Remove iOS rounded corners */
         }
         
-        /* --- ADMIN PANEL --- */
-        .admin-hidden { display: none; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
-        .pulse-red { animation: pulse-red-2 2s infinite; }
-        @keyframes pulse-red-2 { 
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } 
+        /* iOS Safari specific fixes */
+        #chatInput:focus {
+            transform: translateZ(0); /* Force hardware acceleration */
+        }
+
+        /* THEMES */
+        .theme-living { --term-color: #33ff00; }
+        .theme-library { --term-color: #ffb000; }
+        .theme-studio { --term-color: #ff00ff; }
+        .theme-workshop { --term-color: #00ffff; }
+        .theme-think { --term-color: #00ff41; }
+        .theme-lounge { --term-color: #ff3333; }
+
+        /* MULTIVERSE OS ENHANCEMENTS */
+        .voice-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid var(--term-color);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            z-index: 500;
+            display: none;
+        }
+        
+        .voice-indicator.active {
+            display: block;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .image-placeholder {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px dashed var(--term-color);
+            padding: 20px;
+            margin: 5px 0;
+            text-align: center;
+            border-radius: 5px;
+        }
+
+        /* LOGIN SCREEN */
+        .login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+
+        .login-box {
+            border: 2px solid var(--term-color);
+            padding: 40px;
+            background: rgba(0,20,0,0.9);
+            text-align: center;
+        }
+
+        .login-box input {
+            background: var(--bg-color);
+            border: 1px solid var(--term-color);
+            color: var(--term-color);
+            width: 100%;
+            padding: 10px;
+            margin: 20px 0;
+            font-family: var(--term-font);
+            font-size: 16px;
+        }
+
+        .login-box button {
+            background: var(--term-color);
+            color: var(--bg-color);
+            width: 100%;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            font-family: var(--term-font);
+            font-size: 16px;
         }
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col relative">
-
-    <!-- 1. BACKGROUND -->
-    <canvas id="matrix-canvas"></canvas>
-
-    <!-- 2. HEADER -->
-    <header class="fixed top-0 left-0 right-0 z-20 glass-panel border-b-0 border-b-white/5 h-16 flex items-center justify-between px-4 lg:px-8 safe-area-top">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            </div>
-            <div>
-                <h1 class="font-bold text-lg tracking-wide text-white">TERMOS <span class="text-blue-400">LT</span></h1>
-                <div class="flex items-center gap-2 text-xs text-gray-400">
-                    <div id="status-dot" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span id="room-display">GLOBAL LOBBY</span>
-                </div>
-            </div>
-        </div>
-        <div class="flex items-center gap-4">
-            <div class="hidden md:flex flex-col items-end">
-                <span class="text-xs text-gray-400 font-mono">LVL <span id="lvl-disp" class="text-blue-400 font-bold">1</span></span>
-                <span class="text-[10px] text-gray-600 font-mono">XP <span id="xp-val">0</span></span>
-            </div>
-            <button id="install-btn" class="hidden bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 py-2 rounded-lg transition-all backdrop-blur-md">Install App</button>
-        </div>
-    </header>
-
-    <!-- 3. CHAT AREA -->
-    <main id="chat-container" class="flex-1 overflow-y-auto pt-20 pb-32 px-4 z-10 scroll-smooth max-w-5xl mx-auto w-full">
-        <!-- Messages injected here -->
-    </main>
-
-    <!-- 4. INPUT AREA -->
-    <div class="fixed bottom-0 left-0 w-full z-30 glass-panel border-t border-white/5 safe-area-bottom">
-        <div class="max-w-4xl mx-auto p-4 pb-6">
-            <div class="flex items-end gap-2 bg-slate-900/80 rounded-2xl p-2 border border-white/5 shadow-2xl input-glow transition-all">
-                <!-- Voice Button -->
-                <button id="voice-btn" class="p-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8h4m-4 8H8"></path></svg>
-                </button>
-                <!-- Text Input -->
-                <input type="text" id="user-input" placeholder="Type a message..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light">
-                <!-- Send Button -->
-                <button id="send-btn" class="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all transform active:scale-95 shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
-                </button>
-            </div>
-            <div class="text-center mt-2">
-                <button id="sys-install-btn" class="text-[10px] text-gray-600 hover:text-gray-400 transition-colors">
-                    System: Normal
-                </button>
-            </div>
+<body class="theme-living">
+    
+    <!-- Voice Indicator -->
+    <div id="voice-indicator" class="voice-indicator">🔊 Speaking...</div>
+    
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-box">
+            <h2>TERMOS LT</h2>
+            <input type="text" id="usernameInput" placeholder="Username" maxlength="20">
+            <button onclick="login()">ENTER</button>
         </div>
     </div>
 
-<!-- HIDDEN AUDIO -->
-<audio id="bg-music" loop>
-    <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112762.mp3" type="audio/mpeg">
-</audio>
-
-<!-- EXPOSED ADMIN BUTTON -->
-<div class="fixed top-4 right-4 z-50">
-    <button onclick="toggleAdminMode()" id="admin-toggle-text" class="bg-slate-900/50 hover:bg-red-900/50 border border-slate-700 hover:border-red-500 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-2">
-        <span>🔴</span> ADMIN
-    </button>
-</div>
-
-<!-- ADMIN CONSOLE UI (Hidden by default) -->
-<div id="admin-panel" class="admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10">
-    <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2">
-        <span class="animate-pulse">🔴</span> ADMIN CONSOLE
-    </h3>
-    <div class="space-y-3">
-        <div>
-            <label class="block text-xs text-gray-500 mb-1">GitHub Token (Classic)</label>
-            <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none">
-        </div>
-        <div class="grid grid grid-cols-2 gap-2">
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">Owner</label>
-                <input type="text" id="gh-owner" placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
-            </div>
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">Repo</label>
-                <input type="text" id="gh-repo" placeholder="repo-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
-            </div>
-        </div>
-        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors">
-            🧬 INITIATE EVOLUTION
-        </button>
-        <div class="text-[10px] text-gray-500 text-center mt-2">
-            Modifies index.html on Main branch.
+    <!-- MAIN INTERFACE -->
+    <div id="main-layout" style="display: none;">
+        <div id="room-header">TERMCHAT LT - LIVING ROOM<span class="cursor"></span></div>
+        
+        <div id="terminal-body"></div>
+        
+        <div id="multiverse-panel" class="side-panel"></div>
+        
+        <div class="input-line">
+            <span style="margin-right: 10px;">&gt;</span>
+            <input id="chatInput" type="text" placeholder="Type message..." autocomplete="off">
+            <button id="sendButton" style="margin-left: 10px; background: var(--term-color); color: #000; border: none; padding: 5px 10px; cursor: pointer;">Send</button>
         </div>
     </div>
-</div>
+    <script>
+        // --- GLOBAL STATE ---
+        let currentState = "chat"; // chat, app, game, video, tunnel, admin
+        let currentRoom = 'living_room';
+        let username = '';
+        let mqttClient = null;
+        let appData = null;
+        let gameData = null;
+        let messageHistory = [];
+        let isOnline = navigator.onLine;
+        let userStats = {
+            level: 1,
+            xp: 0,
+            linesOfCode: 0,
+            questsCompleted: 0,
+            avatar: 'default'
+        };
+        let roomId = null;
 
-<!-- =========================================================== -->
-<!--  THE EVOLUTIONARY KERNEL -->
-<!-- =========================================================== -->
-<script>
-    console.log(">> SYSTEM KERNEL STARTING...");
+        // ASCII Avatars
+        const AVATARS = {
+            'default': `
+  o_o
+  /|\\
+  / \\
+`,
+            'admin': `
+ ♔♔♔
+  o_o
+  /|\\
+  / \\
+`,
+            'hacker': `
+ /\\_/\\
+( o.o )
+ =^.^=
+`,
+            'wizard': `
+   /\\
+  /  \\
+  \\__/
+  o_o
+  /|\\
+`,
+            'robot': `
+ [===]
+  o_o
+  /|\\
+  / \\
+`,
+            'ninja': `
+   ◢◤
+  o_o
+  /|\\
+  / \\
+`
+        };
 
-    // --- 1. CONFIG & STATE ---
-    let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || "";
-    let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
-    let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "your-username";
-    let REPO_NAME = localStorage.getItem('termos_repo_name') || "termchat-lt";
-    const FILE_PATH = "index.html";
-    
-    const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
-    let username = 'User_' + Math.floor(Math.random() * 1000);
-    let mqttClient = null;
-    let currentRoom = 'global';
-    
-    let userStats = { level: 1, xp: 0, avatar: '>_<', ascii: null };
-    const LEVELS = { 3: 'Cyber', 5: 'Ghost', 8: 'Oracle' }; 
-    let installedModules = [];
-    let adminMode = false;
+        // Level system
+        const LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1500, 2100, 2800, 3600, 4500, 5500];
+        const LEVEL_TITLES = [
+            'Newbie', 'Apprentice', 'Coder', 'Hacker', 'Architect', 
+            'Wizard', 'Master', 'Guru', 'Legend', 'Arch-Mage'
+        ];
 
-    // --- 2. UNIVERSAL UI DETECTOR ---
-    function getBox() {
-        let el = document.getElementById('chat-container');
-        if (!el) el = document.getElementById('main-app');
-        if (!el) el = document.getElementById('screen');
-        if (!el) {
-            console.warn("⚠️ No chat container found. Forcing creation...");
-            el = document.createElement('div');
-            el.id = 'chat-container';
-            el.className = "flex flex-col h-full w-full p-4 overflow-y-auto z-10";
-            document.body.appendChild(el);
-        }
-        return el;
-    }
-
-    // --- 3. SYSTEM REBUILDER ---
-    const SystemRebuilder = {
-        install: function(name) {
-            name = name.toLowerCase().trim();
-            if (installedModules.includes(name)) return addSystemMessage(`Module ${name} active.`);
-            try {
-                switch(name) {
-                    case 'matrix': initMatrix(); break;
-                    case 'sound': case 'beep': this.addSound(); break;
-                    case 'neon': this.addNeon(); break;
-                    case 'music': this.playMusic(); break;
-                    default: return addSystemMessage("Unknown: " + name);
-                }
-                installedModules.push(name);
-                addSystemMessage("Installed: " + name.toUpperCase());
-            } catch (e) { addSystemMessage("ERROR: " + e.message); }
-        },
-        addSound: function() {
-            try {
-                let ctx = new (window.AudioContext||window.webkitAudioContext)();
-                let old = window.addUserMessage; 
-                window.addUserMessage = function(t) {
-                    const o = ctx.createOscillator(), g = ctx.createGain();
-                    o.connect(g); g.connect(ctx.destination);
-                    o.frequency.value = 600; o.start(); o.stop(ctx.currentTime+0.05);
-                    old(t);
-                };
-            } catch(e) { addSystemMessage("Audio init failed."); }
-        },
-        addNeon: function() {
-            document.documentElement.style.setProperty('--msg-user-bg', '#ec4899'); 
-            document.documentElement.style.setProperty('--accent-primary', '#ec4899');
-        },
-        playMusic: function() {
-            const audio = document.getElementById('bg-music');
-            audio.play().then(() => addSystemMessage("🎵 Stream active.")).catch(e => addSystemMessage("Interaction required first"));
-        }
-    };
-
-    // --- 4. MATRIX ---
-    let isMatrixRunning = false;
-
-    function initMatrix() {
-        const canvas = document.getElementById('matrix-canvas');
-        if(!canvas) {
-            canvas = document.createElement('canvas');
-            canvas.id = 'matrix-canvas';
-            canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;opacity:0.15;pointer-events:none;';
-            document.body.prepend(canvas);
-        }
-        if(isMatrixRunning) return; 
-        isMatrixRunning = true;
-
-        const ctx = canvas.getContext('2d');
-        let width = canvas.width = window.innerWidth;
-        let height = canvas.height = window.innerHeight;
-        const fontSize = window.innerWidth < 600 ? 10 : 14; 
-        const columns = Math.floor(width / fontSize);
-        const drops = Array(columns).fill(1);
-        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$#@%&';
-        
-        let lastTime = 0;
-        const fps = 30;
-        const interval = 1000 / fps;
-
-        function draw(time) {
-            requestAnimationFrame(draw);
-            const delta = time - lastTime;
-            if (delta < interval) return;
-            lastTime = time - (delta % interval);
-
-            try {
-                ctx.fillStyle = 'rgba(2, 6, 23, 0.05)'; 
-                ctx.fillRect(0, 0, width, height);
-                ctx.fillStyle = (adminMode) ? '#ef4444' : '#1e40af'; 
-                ctx.font = `${fontSize}px 'Fira Code', monospace`;
-                
-                for(let i=0; i<drops.length; i++) {
-                    const text = letters[Math.floor(Math.random()*letters.length)];
-                    ctx.fillText(text, i*fontSize, drops[i]*fontSize);
-                    if(drops[i]*fontSize > height && Math.random() > 0.975) drops[i] = 0;
-                    drops[i]++;
-                }
-            } catch (e) { isMatrixRunning = false; }
-        }
-        requestAnimationFrame(draw);
-        window.addEventListener('resize', () => {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        });
-    }
-
-    // --- 5. UI HELPERS ---
-    function addSystemMessage(txt) {
-        try {
-            const box = getBox();
-            const d = document.createElement('div');
-            d.className = "flex justify-center my-4";
-            d.innerHTML = `<span class="px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider text-gray-400 bg-slate-800/50 border border-white/5 shadow-inner">${txt}</span>`;
-            box.appendChild(d);
-            scrollDown();
-        } catch (e) { console.error("Log Error:", e); }
-    }
-
-    function addAIMessage(txt) {
-        try {
-            const d = document.createElement('div');
-            d.className = "flex gap-3 my-4";
-            d.innerHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-ai shrink-0 flex items-center justify-center shadow-lg ring-2 ring-slate-800"><span class="text-xs font-bold text-white">AI</span></div><div class="flex-1"><div class="bg-slate-800/80 backdrop-blur-md rounded-2xl rounded-tl-none p-4 border border-white/5 shadow-lg text-gray-200 text-sm leading-relaxed">${escapeHtml(txt)}</div></div></div>`;
-            getBox().appendChild(d);
-            scrollDown();
-        } catch(e) {}
-    }
-
-    function addUserMessage(txt) {
-        try {
-            const d = document.createElement('div');
-            d.className = "flex flex-row-reverse gap-3 my-4 items-end";
-            let avatarHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-user shrink-0 flex items-center justify-center shadow-lg text-xs font-bold text-white">ME</div>`;
-            if (userStats.ascii) {
-                avatarHTML = `<div class="w-10 h-10 rounded-lg bg-slate-900 border border-blue-500/50 flex items-center justify-center shrink-0 overflow-hidden p-1 shadow-lg shadow-blue-500/20">
-                    <div class="ascii-art text-center w-full">${userStats.ascii}</div>
-                </div>`;
-            }
-            d.innerHTML = `${avatarHTML}<div class="flex-1 max-w-[80%]"><div class="bg-blue-600 rounded-2xl rounded-tr-none p-4 shadow-lg shadow-blue-600/20 text-white text-sm leading-relaxed">${escapeHtml(txt)}</div><div class="text-[10px] text-gray-500 text-right mt-1 mr-1 font-mono">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div></div>`;
-            getBox().appendChild(d);
-            scrollDown();
-        } catch (e) { console.error("User Msg Error:", e); }
-    }
-
-    function scrollDown() { const b=getBox(); if(b) b.scrollTop=b.scrollHeight; }
-    function escapeHtml(text) { return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
-
-    // --- 6. AI LOGIC ---
-    async function handleAI(prompt) {
-        if(!GROQ_API_KEY) return addAIMessage("❌ API Key Missing. Type /setkey [key]");
-        
-        const thinkingId = "think-" + Date.now();
-        getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse">AI is typing...</div>`);
-        scrollDown();
-
-        try {
-            let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method:"POST",
-                headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
-                body:JSON.stringify({
-                    model:"llama3-8b-8192",
-                    messages:[{
-                        role:"system",
-                        content:"You are TermOS AI. If user asks for visual changes, return: SystemRebuilder.install('name'). If user asks for music, return: CMD: PLAY_MUSIC. Otherwise answer normally."
-                    },{role:"user",content:prompt}]
-                })
-            });
-            const reply = (await r.json()).choices[0].message.content;
-            const el = document.getElementById(thinkingId);
-            if(el) el.remove();
-            let match = reply.match(/SystemRebuilder\.install\(['"](.*?)['"]\)/);
-            if(match) { 
-                try { SystemRebuilder.install(match[1]); } catch(e) {}
-                addAIMessage("✨ System updated.");
-            }
-            else if (reply.includes("CMD: PLAY_MUSIC")) {
-                const audio = document.getElementById('bg-music');
-                if(audio) { audio.play().catch(e => {}); addAIMessage("🎵 Stream active."); }
-            }
-            else { addAIMessage(reply); }
-        } catch (e) { addAIMessage("Connection failed."); }
-    }
-
-    // --- 7. GAMIFICATION ---
-    function addXP(amount) {
-        userStats.xp += amount;
-        if(userStats.xp > (userStats.level * 100)) {
-            userStats.level++;
-            addSystemMessage(`🎉 LEVEL UP: ${userStats.level} - ${LEVELS[userStats.level] || 'MASTER'}`);
-            updateAvatar(userStats.level);
-        }
-        const lvlEl = document.getElementById('lvl-disp');
-        const xpEl = document.getElementById('xp-val');
-        if(lvlEl) lvlEl.innerText = userStats.level;
-        if(xpEl) xpEl.innerText = userStats.xp;
-        localStorage.setItem('termos_stats_modern', JSON.stringify(userStats));
-    }
-
-    function updateAvatar(lvl) {
-        if(lvl === 3) userStats.ascii = "◢◤<br>o_o<br>/|\\"; 
-        else if (lvl === 5) userStats.ascii = "🕯<br>  ☾<br>  ☽"; 
-        else if (lvl === 8) userStats.ascii = "👁<br>· ·<br>__·__"; 
-    }
-
-    // --- 8. EVOLUTION ENGINE ---
-    function toggleAdminMode() {
-        try {
-            let panel = document.getElementById('admin-panel');
-            // Dynamic creation if missing
-            if(!panel) {
-                console.log("Creating Admin Panel dynamically...");
-                panel = document.createElement('div');
-                panel.id = 'admin-panel';
-                panel.className = "admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10";
-                panel.innerHTML = `
-                <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> ADMIN CONSOLE (DYNAMIC)</h3>
-                <div class="space-y-3">
-                    <div><label class="block text-xs text-gray-500 mb-1">GitHub Token (Classic)</label><input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
-                    <div class="grid grid grid-cols-2 gap-2">
-                        <div><label class="text-xs text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div>
-                        <div><label class="text-xs text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" placeholder="repo-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div>
-                    </div>
-                    <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors">🧬 INITIATE EVOLUTION</button>
-                </div>`;
-                document.body.appendChild(panel);
-            }
-            
-            // Toggle visibility
-            if (panel.classList.contains('admin-hidden')) {
-                panel.classList.remove('admin-hidden');
-                setTimeout(() => { panel.style.opacity = "1"; }, 10);
-            } else {
-                panel.style.opacity = "0";
-                setTimeout(() => { panel.classList.add('admin-hidden'); }, 300);
-            }
-        } catch (e) { console.error("Admin Toggle Error:", e); }
-    }
-    async function initiateEvolution() {
-        try {
-            // 1. Validate Groq Key immediately
-            if (!GROQ_API_KEY) {
-                alert("CRITICAL: Missing Groq API Key.\nPlease type: /setkey your_groq_key_here");
-                return;
-            }
-
-            // 2. Get Inputs
-            const tkInput = document.getElementById('gh-token');
-            const ownInput = document.getElementById('gh-owner');
-            const repInput = document.getElementById('gh-repo');
-
-            if(!tkInput || !ownInput || !repInput) return alert("Admin Panel inputs missing.");
-            
-            const token = tkInput.value.trim();
-            const owner = ownInput.value.trim();
-            const repo = repInput.value.trim();
-
-            if (!token) return alert("Please enter your GitHub Token.");
-            if (!owner || !repo) return alert("Please enter Repo Owner and Name.");
-            
-            // Save credentials
-            localStorage.setItem('termos_github_token', token);
-            localStorage.setItem('termos_repo_owner', owner);
-            localStorage.setItem('termos_repo_name', repo);
-
-            const input = prompt("Enter your mutation request (e.g., 'Change the Matrix color to red'):");
-            if (!input) return;
-
-            addSystemMessage("🧬 INITIATING EVOLUTION SEQUENCE...");
-            addSystemMessage("📡 READING DNA FROM GITHUB...");
-            
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s Timeout
-
-            try {
-                // STEP A: Read Current Code from GitHub
-                const url = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}`;
-                const res = await fetch(url, { 
-                    headers: { 'Authorization': `token ${token}` }, signal: controller.signal 
-                });
-                
-                if (!res.ok) {
-                    const errText = await res.text();
-                    throw new Error(`GitHub Read Failed: ${res.status} - ${errText}`);
-                }
-
-                const data = await res.json();
-                const currentContent = atob(data.content);
-
-                addSystemMessage("🧬 ANALYZING DNA & MUTATING...");
-
-                // STEP B: Send to AI (Groq)
-                // Note: If the file is very large, this might hit context limits. 
-                // Try to keep your HTML file under 6000 tokens.
-                const evolutionPrompt = `You are an expert web developer. TASK: Modify the existing HTML code to fulfill "${input}". 
-                Return ONLY the full modified HTML code. Do NOT include markdown code blocks (like \`\`\`html) in your response. Just the raw code.`;
-
-                const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-                    signal: controller.signal,
-                    body: JSON.stringify({
-                        // Using 70b for better coding ability. If it fails, try 'llama3-8b-8192'
-                        model: "llama3-70b-8192", 
-                        messages: [
-                            { role: "system", content: "You are a code generator. Return ONLY raw HTML code." }, 
-                            { role: "user", content: evolutionPrompt + "\n\nCODE:\n" + currentContent }
-                        ],
-                        temperature: 0.7
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(function(registration) {
+                        console.log('SW registered: ', registration);
                     })
-                });
-                
-                const aiData = await aiReq.json();
-
-                // --- ERROR HANDLING FIX STARTS HERE ---
-                
-                // Check if Groq returned an error object instead of choices
-                if (aiData.error) {
-                    throw new Error(`Groq API Error: ${aiData.error.message} (Code: ${aiData.error.code})`);
-                }
-
-                // Check if data structure is valid
-                if (!aiData.choices || aiData.choices.length === 0) {
-                    throw new Error("Groq API returned no data (Empty choices). The model might be overloaded.");
-                }
-                
-                // Check if message content exists
-                if (!aiData.choices[0].message || !aiData.choices[0].message.content) {
-                    throw new Error("Groq API returned no content.");
-                }
-
-                let newCode = aiData.choices[0].message.content;
-                
-                // Clean up markdown artifacts just in case AI ignores instructions
-                newCode = newCode.replace(/```html/g, "").replace(/```/g, "").trim();
-
-                // --- ERROR HANDLING FIX ENDS HERE ---
-
-                // STEP C: Write Back to GitHub
-                addSystemMessage("🧬 UPLOADING MUTATED DNA...");
-                const putUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}`;
-                
-                // Encode properly for UTF-8 characters
-                const encodedContent = btoa(unescape(encodeURIComponent(newCode)));
-
-                const putBody = {
-                    message: "Evolution Update: " + input,
-                    content: encodedContent,
-                    sha: data.sha,
-                    branch: "main"
-                };
-
-                const putRes = await fetch(putUrl, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(putBody),
-                    signal: controller.signal
-                });
-
-                if (!putRes.ok) {
-                    const putErr = await putRes.json();
-                    throw new Error(`GitHub Write Failed: ${putErr.message}`);
-                }
-
-                // Success
-                clearTimeout(timeoutId);
-                addSystemMessage("🎉 EVOLUTION SUCCESS. REBOOTING...");
-                setTimeout(() => location.reload(), 2000);
-
-            } catch (err) {
-                clearTimeout(timeoutId);
-                let errorMsg = err.message;
-                if (err.name === 'AbortError') errorMsg = "Connection Timed Out (30s). Try a smaller request.";
-                addSystemMessage("❌ EVOLUTION FAILED: " + errorMsg);
-                console.error("Evolution Stack:", err);
-            }
-        } catch (err) {
-            console.error("General Error:", err);
-            addSystemMessage("❌ CRITICAL ERROR: " + err.message);
+                    .catch(function(registrationError) {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
         }
-    }  
-    // --- 9. INPUT HANDLER ---
-    function handleInput() {
-        try {
-            let inp = document.getElementById('user-input');
-            if(!inp) return; 
-            let txt = inp.value.trim(); // Fixed: Was using undefined 'input'
-            if(!txt) return;
 
-            // ADMIN COMMANDS
-            if(txt.startsWith('/admin ')) {
-                const cmd = txt.split(' ')[1];
-                if (cmd === 'enable') {
-                    adminMode = true;
-                    toggleAdminMode();
-                    addSystemMessage("🔴 ADMIN MODE ENABLED. MATRIX CRITICAL.");
-                } else if (cmd === 'disable') {
-                    adminMode = false;
-                    toggleAdminMode(); 
-                    addSystemMessage("🟢 ADMIN MODE DISABLED.");
+        // Offline/Online detection
+        window.addEventListener('online', function() {
+            isOnline = true;
+            addMessage('SYSTEM', 'Connection restored - syncing messages...');
+            syncOfflineMessages();
+        });
+        
+        window.addEventListener('offline', function() {
+            isOnline = false;
+            addMessage('SYSTEM', 'Connection lost - messages will be queued');
+        });
+
+        // --- MESSAGE PERSISTENCE ---
+        function saveMessageToLocal(user, text, room = currentRoom) {
+            const message = {
+                id: Date.now() + Math.random(),
+                user: user,
+                text: text,
+                room: room,
+                timestamp: new Date().toISOString(),
+                synced: isOnline
+            };
+            
+            messageHistory.push(message);
+            
+            // Save to localStorage for persistence
+            try {
+                const stored = JSON.parse(localStorage.getItem('termchat_messages') || '[]');
+                stored.push(message);
+                // Keep only last 1000 messages
+                if (stored.length > 1000) stored.splice(0, stored.length - 1000);
+                localStorage.setItem('termchat_messages', JSON.stringify(stored));
+            } catch (e) {
+                console.warn('Failed to save message to localStorage:', e);
+            }
+        }
+        
+        function loadMessageHistory() {
+            try {
+                const stored = JSON.parse(localStorage.getItem('termchat_messages') || '[]');
+                const roomMessages = stored.filter(msg => msg.room === currentRoom);
+                const recent = roomMessages.slice(-50); // Show last 50 messages
+                
+                recent.forEach(msg => {
+                    const div = document.createElement('div');
+                    div.style.marginBottom = '5px';
+                    div.style.opacity = '0.7'; // Indicate historical message
+                    div.style.color = msg.user === 'TERMAI' ? '#00ff41' : 'var(--term-color)';
+                    div.textContent = `[${msg.user}] ${msg.text}`;
+                    const terminalBody = document.getElementById('terminal-body');
+                    if (terminalBody) {
+                        terminalBody.appendChild(div);
+                    }
+                });
+                
+                if (recent.length > 0) {
+                    addMessage('SYSTEM', `Loaded ${recent.length} previous messages`);
                 }
-                inp.value = '';
+            } catch (e) {
+                console.warn('Failed to load message history:', e);
+            }
+        }
+        
+        function syncOfflineMessages() {
+            // Sync any unsynced messages when back online
+            const unsynced = messageHistory.filter(msg => !msg.synced);
+            unsynced.forEach(msg => {
+                if (mqttClient && mqttClient.isConnected()) {
+                    const payload = { user: msg.user, text: msg.text, timestamp: msg.timestamp };
+                    mqttClient.publish('termchat/messages', JSON.stringify(payload));
+                    msg.synced = true;
+                }
+            });
+        }
+
+        // Boot sequence
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for room sharing URL
+            const urlParams = new URLSearchParams(window.location.search);
+            roomId = urlParams.get('room');
+            
+            if (roomId) {
+                addMessage('SYSTEM', `Joining shared room: ${roomId}`);
+            }
+            
+            // Load user stats
+            loadUserStats();
+            
+            const usernameInput = document.getElementById('usernameInput');
+            if (usernameInput) {
+                usernameInput.focus();
+                usernameInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') login();
+                });
+            }
+        });
+
+        // --- USER STATS & GAMIFICATION ---
+        function loadUserStats() {
+            try {
+                const saved = localStorage.getItem('termchat_stats');
+                if (saved) {
+                    userStats = {...userStats, ...JSON.parse(saved)};
+                }
+            } catch (e) {
+                console.warn('Failed to load user stats:', e);
+            }
+        }
+        
+        function saveUserStats() {
+            try {
+                localStorage.setItem('termchat_stats', JSON.stringify(userStats));
+            } catch (e) {
+                console.warn('Failed to save user stats:', e);
+            }
+        }
+        
+        function addXP(amount, reason) {
+            userStats.xp += amount;
+            const oldLevel = userStats.level;
+            userStats.level = calculateLevel(userStats.xp);
+            
+            if (userStats.level > oldLevel) {
+                addMessage('ACHIEVEMENT', `🎉 Level up! You are now ${LEVEL_TITLES[userStats.level - 1]} (Level ${userStats.level})`);
+                unlockAvatar();
+            }
+            
+            addMessage('XP', `+${amount} XP (${reason})`);
+            saveUserStats();
+            updateUserDisplay();
+        }
+        
+        function calculateLevel(xp) {
+            for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
+                if (xp >= LEVEL_THRESHOLDS[i]) {
+                    return i + 1;
+                }
+            }
+            return 1;
+        }
+        
+        function unlockAvatar() {
+            const level = userStats.level;
+            if (level >= 3 && userStats.avatar === 'default') {
+                userStats.avatar = 'hacker';
+                addMessage('ACHIEVEMENT', '🎭 New avatar unlocked: Hacker!');
+            } else if (level >= 5) {
+                userStats.avatar = 'wizard';
+                addMessage('ACHIEVEMENT', '🧙 New avatar unlocked: Wizard!');
+            } else if (level >= 8) {
+                userStats.avatar = 'ninja';
+                addMessage('ACHIEVEMENT', '🥷 New avatar unlocked: Ninja!');
+            }
+        }
+        
+        function updateUserDisplay() {
+            const header = document.getElementById('room-header');
+            if (header) {
+                const levelTitle = LEVEL_TITLES[userStats.level - 1] || 'Unknown';
+                header.innerHTML = `TERMCHAT LT - ${currentRoom.toUpperCase()} | ${username} (Lvl ${userStats.level} ${levelTitle})<span class="cursor"></span>`;
+            }
+        }
+        function login() {
+            const input = document.getElementById('usernameInput');
+            const user = input.value.trim();
+            if (user.length >= 3) {
+                username = user;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('main-layout').style.display = 'grid';
+                
+                // Load message history first
+                loadMessageHistory();
+                
+                connectMQTT();
+                document.getElementById('chatInput').focus();
+                
+                // Setup input handler
+                const chatInput = document.getElementById('chatInput');
+                if (chatInput) {
+                    chatInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') sendMessage();
+                    });
+                }
+                const sendButton = document.getElementById('sendButton');
+                if (sendButton) {
+                    sendButton.addEventListener('click', sendMessage);
+                }
+            } else {
+                alert('Username must be at least 3 characters');
+            }
+        }
+
+        // --- PANEL MANAGER ---
+        function switchMode(mode, data) {
+            currentState = mode;
+            const panel = document.getElementById('multiverse-panel');
+            // Hide all content first
+            panel.innerHTML = '';
+            panel.classList.add('active');
+
+            if (mode === 'chat') {
+                panel.classList.remove('active'); // Hide panel, show full chat
+            }
+            else if (mode === 'app') {
+                renderAppBuilder(data);
+            }
+            else if (mode === 'game') {
+                renderGame(data);
+            }
+            else if (mode === 'video') {
+                renderVideo();
+            }
+            else if (mode === 'admin') {
+                renderAdmin();
+            }
+        }
+
+        // --- 1. APP BUILDER (Workshop) ---
+        function renderAppBuilder(data) {
+            const panel = document.getElementById('multiverse-panel');
+            panel.innerHTML = `
+                <h3 style="border-bottom:1px dashed var(--term-color)">IDE: ${data.title}</h3>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <button onclick="showFile('index.html')">HTML</button>
+                    <button onclick="showFile('style.css')">CSS</button>
+                    <button onclick="previewApp()">PREVIEW</button>
+                    <button onclick="switchMode('chat')">CLOSE</button>
+                </div>
+                <textarea id="code-area" style="width:100%; height:400px; background:#000; color:var(--term-color); border:1px solid var(--term-color); font-family:monospace;">${data.content}</textarea>
+                <div id="preview-frame" style="display:none; width:100%; height:400px; background:#fff;"></div>
+            `;
+            appData = data;
+            
+            // Award XP for app creation
+            addXP(50, 'Creating app');
+            userStats.linesOfCode += (data.content || '').split('\n').length;
+            saveUserStats();
+        }
+
+        function showFile(filename) {
+            const codeArea = document.getElementById('code-area');
+            if (appData && appData.content) {
+                codeArea.value = appData.content;
+            }
+        }
+
+        function previewApp() {
+            const codeArea = document.getElementById('code-area');
+            const previewFrame = document.getElementById('preview-frame');
+            previewFrame.style.display = 'block';
+            previewFrame.innerHTML = `<iframe srcdoc="${codeArea.value.replace(/"/g, '&quot;')}" style="width:100%; height:100%; border:none;"></iframe>`;
+        }
+
+        // --- 2. GAME CONSOLE (Lounge) ---
+        function renderGame(data) {
+            const panel = document.getElementById('multiverse-panel');
+            const options = data.options || ['Continue', 'Inventory', 'Help', 'Quit'];
+            const stats = data.stats || {hp: 100, max_hp: 100, inventory: ['Sword']};
+            
+            panel.innerHTML = `
+                <h3 style="color:red; border-bottom:1px solid red;">GAME CONSOLE</h3>
+                <button onclick="switchMode('chat')" style="float:right; background:red; color:white;">X</button>
+                <div style="font-size:1.2em; margin:20px 0;">${data.content || 'Welcome to the adventure!'}</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    ${options.map(opt => `<button onclick="sendGameAction('${opt}')" style="background:var(--term-color); color:#000; padding:10px;">${opt}</button>`).join('')}
+                </div>
+                <div style="margin-top:20px;">
+                    HP: <span style="color:red">${stats.hp}</span> / ${stats.max_hp} | INV: ${stats.inventory.join(', ')}
+                </div>
+            `;
+            gameData = data;
+            
+            // Award XP for game activities
+            addXP(30, 'Starting game');
+            userStats.questsCompleted += 1;
+            saveUserStats();
+        }
+
+        function sendGameAction(action) {
+            if (mqttClient) {
+                const msg = {
+                    id: username,
+                    msg: `game action: ${action}`,
+                    timestamp: Date.now()
+                };
+                mqttClient.publish('termchat/input', JSON.stringify(msg));
+            }
+        }
+
+        // --- 3. VIDEO CALL (Private Cabin) ---
+        function renderVideo() {
+            const panel = document.getElementById('multiverse-panel');
+            panel.innerHTML = `
+                <h3>VIDEO CALL</h3>
+                <button onclick="switchMode('chat')" style="float:right; background:red; color:white;">X</button>
+                <div style="display:flex; gap:10px; margin:20px 0;">
+                    <div style="flex:1; border:1px solid var(--term-color); height:200px;">
+                        <video id="localVid" autoplay muted playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+                    </div>
+                    <div style="flex:1; border:1px solid var(--term-color); height:200px;">
+                        <video id="remoteVid" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+                    </div>
+                </div>
+                <button onclick="startCam()">CAMERA ON</button>
+                <button onclick="stopCam()">CAMERA OFF</button>
+            `;
+        }
+
+        function startCam() {
+            navigator.mediaDevices.getUserMedia({video: true, audio: true})
+                .then(stream => {
+                    document.getElementById('localVid').srcObject = stream;
+                })
+                .catch(err => addMessage('ERROR', 'Camera access denied'));
+        }
+
+        function stopCam() {
+            const video = document.getElementById('localVid');
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+        }
+
+        // --- 4. ADMIN DASHBOARD ---
+        function renderAdmin() {
+            const panel = document.getElementById('multiverse-panel');
+            panel.innerHTML = `
+                <h3>ROOT ACCESS</h3>
+                <button onclick="switchMode('chat')" style="float:right; background:red; color:white;">X</button>
+                <div style="margin-bottom:20px;">
+                    <h4>Plugin Manager</h4>
+                    <textarea id="plugin-code" placeholder="Enter Python plugin code..." style="width:100%; height:200px; background:#000; color:var(--term-color); border:1px solid var(--term-color); font-family:monospace;"></textarea>
+                    <div style="margin:10px 0;">
+                        <input id="plugin-name" placeholder="Plugin name" style="background:#000; color:var(--term-color); border:1px solid var(--term-color); padding:5px;">
+                        <input id="plugin-triggers" placeholder="Triggers (comma-separated)" style="background:#000; color:var(--term-color); border:1px solid var(--term-color); padding:5px;">
+                        <button onclick="uploadPlugin()">UPLOAD PLUGIN</button>
+                    </div>
+                </div>
+                <div id="admin-log" style="height:200px; overflow-y:scroll; background:#000; border:1px solid var(--term-color); margin:20px 0; padding:5px;"></div>
+                <div style="display:flex; gap:10px;">
+                    <input id="admin-cmd" placeholder="Enter admin command..." style="flex:1; background:#000; color:var(--term-color); border:1px solid var(--term-color); padding:5px;">
+                    <button onclick="sendAdmin()">EXEC</button>
+                </div>
+            `;
+        }
+
+        function sendAdmin() {
+            const input = document.getElementById('admin-cmd');
+            const cmd = input.value.trim();
+            if (cmd && mqttClient && mqttClient.isConnected()) {
+                mqttClient.publish('termchat/admin', cmd);
+                input.value = '';
+                addAdminLog(`> ${cmd}`);
+            }
+        }
+
+        function addAdminLog(text) {
+            const log = document.getElementById('admin-log');
+            if (log) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                log.appendChild(div);
+                log.scrollTop = log.scrollHeight;
+            }
+        }
+        
+        function uploadPlugin() {
+            const name = document.getElementById('plugin-name').value.trim();
+            const code = document.getElementById('plugin-code').value.trim();
+            const triggers = document.getElementById('plugin-triggers').value.trim().split(',').map(t => t.trim()).filter(t => t);
+            
+            if (!name || !code) {
+                addMessage('ERROR', 'Plugin name and code are required');
                 return;
             }
-
-            // STANDARD COMMANDS
-            if(txt.startsWith('/sys install ')) {
-                if(SystemRebuilder) SystemRebuilder.install(txt.split(' ')[2]);
-            }
-            else if(txt.startsWith('/setkey ')) {
-                GROQ_API_KEY = txt.substring(8);
-                localStorage.setItem('termos_groq_key', GROQ_API_KEY);
-                addSystemMessage("Key Encrypted.");
-            }
-            else if(txt.startsWith('/ai ')) {
-                handleAI(txt.substring(4));
-            }
-            else {
-                addUserMessage(txt);
-                addXP(1);
-                if(mqttClient && mqttClient.isConnected()) {
-                    try {
-                        const message = new Paho.MQTT.Message(JSON.stringify({ user: username, text: txt }));
-                        message.destinationName = "termos/v3/chat";
-                        message.qos = 1; 
-                        mqttClient.send(message);
-                    } catch (e) {
-                        console.error("MQTT Send Error:", e);
-                        addSystemMessage("⚠️ Message failed to send.");
-                    }
-                }
-            }
-            inp.value = '';
-        } catch (e) {
-            console.error("Input Handler Error:", e);
-        }
-    }
-
-    // --- 10. ROBUST CONNECT ---
-    function connectMQTT() {
-        try {
-            const options = {
-                timeout: 10, useSSL: true, keepAliveInterval: 60,
-                onSuccess: () => {
-                    console.log("[MQTT] Connected");
-                    addSystemMessage("🟢 Neural Link Online.");
-                    mqttClient.subscribe("termos/v3/chat", { qos: 1 });
-                },
-                onFailure: () => { addSystemMessage("🔴 Connection Failed."); setTimeout(connectMQTT, 5000); }
-            };
-            mqttClient.connect(options);
-        } catch (e) {
-            console.error("MQTT Init Error:", e);
-        }
-    }
-
-    // --- 11. INITIALIZATION ---
-    window.onload = function() {
-        console.log(">> DOM LOADED. INITIALIZING APP...");
-        
-        try {
-            // 1. Diagnostics
-            if(!document.getElementById('chat-container')) {
-                console.warn("⚠️ 'chat-container' ID missing. Creating dynamically...");
-                const box = document.createElement('div');
-                box.id = 'chat-container';
-                box.className = "flex flex-col h-full w-full p-4 overflow-y-auto z-10";
-                document.body.appendChild(box);
-            }
-
-            // 2. Load Data
-            let saved = localStorage.getItem('termos_stats_modern');
-            if(saved) { 
-                try { userStats = JSON.parse(saved); if(userStats.ascii) updateAvatar(userStats.level); } 
-                catch(e) { console.warn("Stats Corrupt."); }
-            }
-
-            // 3. Load Admin Creds
-            const tkInput = document.getElementById('gh-token');
-            const ownerInput = document.getElementById('gh-owner');
-            const repoInput = document.getElementById('gh-repo');
             
-            if(tkInput && GITHUB_TOKEN) tkInput.value = GITHUB_TOKEN;
-            if(ownerInput && REPO_OWNER) ownerInput.value = REPO_OWNER;
-            if(repoInput && REPO_NAME) repoInput.value = REPO_NAME;
-
-            // 4. Start Background
-            initMatrix();
-
-            // 5. Start MQTT
-            // Fixed: Added missing quotes and undefined check
-            if (typeof Paho !== 'undefined') {
-                console.log("Paho MQTT found. Connecting...");
-                const clientId = "termos_client_" + Math.random().toString(16).substr(2, 8);
-                mqttClient = new Paho.MQTT.Client(MQTT_BROKER_URL, clientId);
-                mqttClient.onConnectionLost = () => { 
-                    addSystemMessage("⚠️ Lost. Reconnecting..."); 
-                    setTimeout(connectMQTT, 5000); 
+            if (mqttClient && mqttClient.isConnected()) {
+                const pluginData = {
+                    action: 'upload_plugin',
+                    name: name,
+                    code: code,
+                    triggers: triggers,
+                    user: username
                 };
-                mqttClient.onMessageArrived = (message) => {
-                    try {
-                        if (message.destinationName === "termos/v3/chat") {
-                            const data = JSON.parse(message.payloadString);
-                            if (data.user !== username) addUserMessage(data.text);
+                
+                mqttClient.publish('termchat/admin', JSON.stringify(pluginData));
+                addMessage('SYSTEM', `Uploading plugin: ${name}`);
+                
+                // Clear form
+                document.getElementById('plugin-name').value = '';
+                document.getElementById('plugin-code').value = '';
+                document.getElementById('plugin-triggers').value = '';
+                
+                // Award XP for plugin creation
+                addXP(100, 'Creating plugin');
+            }
+        }
+
+        function connectMQTT() {
+            console.log("[DIAG] Initializing Paho Client...");
+            // ✅ CHECK IF PAHO EXISTS
+            if (typeof Paho === 'undefined') {
+                console.error("[DIAG] ❌ Paho library failed to load!");
+                alert("Failed to load MQTT library. Check internet connection.");
+                addMessage('ERROR', 'Paho MQTT library failed to load. Please refresh the page.');
+                return; // STOP EXECUTION
+            }
+            try {
+                addMessage('SYSTEM', 'Connecting to MQTT broker...');
+                
+                // Enhanced WebSocket connection with fallback
+                const clientId = "client-" + username + "-" + Math.floor(Math.random() * 1000);
+                mqttClient = new Paho.Client("broker.emqx.io", 8084, clientId);
+                
+                // Connection options with enhanced reliability
+                const connectOptions = {
+                    onSuccess: function() {
+                        addMessage('SYSTEM', '✅ Connected to TermOS LT Multiverse!');
+                        
+                        // Subscribe to channels (including room-specific if shared)
+                        const topics = ['termchat/messages', 'termchat/output', 'termchat/admin', 'termchat/tunnel/+', 'termchat/webrtc/+'];
+                        
+                        if (roomId) {
+                            topics.push(`termchat/room/${roomId}`);
+                            addMessage('SYSTEM', `Joined shared room: ${roomId}`);
                         }
-                    } catch(e) { }
+                        
+                        topics.forEach(topic => {
+                            mqttClient.subscribe(topic);
+                            console.log('[DIAG] Subscribed to:', topic);
+                        });
+                        
+                        // Send connection announcement
+                        const connectMsg = {
+                            user: 'SYSTEM',
+                            text: `${username} joined the multiverse`,
+                            timestamp: Date.now()
+                        };
+                        
+                        const publishTopic = roomId ? `termchat/room/${roomId}` : 'termchat/messages';
+                        mqttClient.publish(publishTopic, JSON.stringify(connectMsg));
+                        
+                        // Test message
+                        addMessage('SYSTEM', 'Connection established. Try typing "ai hello" to test AI.');
+                    },
+                    onFailure: function(error) {
+                        console.error('MQTT Connection failed:', error);
+                        addMessage('ERROR', `❌ Connection failed: ${error.errorMessage || 'WebSocket blocked or broker unavailable'}`);
+                        addMessage('SYSTEM', 'Check: 1) Network connection 2) Firewall/proxy blocking WebSocket 3) Try different network');
+                        
+                        // Retry connection after 5 seconds
+                        setTimeout(() => {
+                            addMessage('SYSTEM', '🔄 Retrying connection...');
+                            connectMQTT();
+                        }, 5000);
+                    },
+                    useSSL: true,
+                    timeout: 15,
+                    keepAliveInterval: 30,
+                    cleanSession: true
                 };
-                connectMQTT();
-            } else {
-                addSystemMessage("⚠️ MQTT Library not loaded.");
+                
+                // Connection lost handler
+                mqttClient.onConnectionLost = function(responseObject) {
+                    if (responseObject.errorCode !== 0) {
+                        console.error('MQTT Connection lost:', responseObject);
+                        addMessage('ERROR', `❌ Connection lost: ${responseObject.errorMessage}`);
+                        addMessage('SYSTEM', '🔄 Attempting to reconnect...');
+                        setTimeout(() => connectMQTT(), 3000);
+                    }
+                };
+                mqttClient.onMessageArrived = function(message) {
+                    const payload = message.payloadString;
+                    const topic = message.destinationName;
+                    console.log(`[DIAG] 📩 Message from ${topic}: ${payload.substring(0, 100)}...`);
+                    
+                    // --- SMART ROUTER: ATTEMPT TO PARSE JSON ---
+                    try {
+                        const data = JSON.parse(payload);
+                        
+                        // --- APP DETECTED ---
+                        if (data.type === 'creation' && data.creation && data.creation.type === 'app') {
+                            switchMode('app', data.creation);
+                            addMessage('TERMAI', 'Created app for you!');
+                            return; // Stop processing
+                        }
+                        
+                        // --- GAME DETECTED ---
+                        if (data.type === 'creation' && data.creation && data.creation.type === 'game') {
+                            switchMode('game', data.creation);
+                            addMessage('TERMAI', 'Started game for you!');
+                            return; // Stop processing
+                        }
+                        
+                        // --- DIRECT APP/GAME (Legacy format) ---
+                        if (data.app_name && data.files) {
+                            switchMode('app', data);
+                            return; // Stop processing
+                        }
+                        if (data.scene && data.options) {
+                            switchMode('game', data);
+                            return; // Stop processing
+                        }
+                        
+                        // --- TUNNEL DETECTED ---
+                        if (data.sender && data.data) {
+                            acceptTunnel(data);
+                            return; // Stop processing
+                        }
+                        
+                        // --- VIDEO SIGNAL ---
+                        if (data.type === 'webrtc') {
+                            handleWebRTC(data);
+                            return; // Stop processing
+                        }
+                        
+                        // --- NAVIGATION ---
+                        if (data.type === 'navigation') {
+                            switchRoom(data.room);
+                            addMessage('TERMOS', data.msg);
+                            return; // Stop processing
+                        }
+                        
+                        // --- ADMIN RESPONSE ---
+                        if (data.type === 'admin') {
+                            addMessage('ADMIN', data.msg);
+                            addAdminLog(data.msg);
+                            return; // Stop processing
+                        }
+                        
+                        // --- REGULAR CHAT MESSAGES ---
+                        if (data.user && data.text) {
+                            addMessage(data.user, data.text);
+                            return; // Stop processing
+                        }
+                        if (data.id && data.msg) {
+                            addMessage(data.id, data.msg);
+                            return; // Stop processing
+                        }
+                        
+                        // --- AI FUNCTION CALLS ---
+                        if (data.action) {
+                            handleAIAction(data);
+                            return; // Stop processing
+                        }
+                        
+                    } catch (e) {
+                        // It's text, not JSON. Continue to text chat logic.
+                    }
+                    
+                    // --- TEXT CHAT LOGIC (XSS Protected) ---
+                    const chatBody = document.getElementById('terminal-body');
+                    if (chatBody) {
+                        const msgDiv = document.createElement('div');
+                        msgDiv.style.marginBottom = '5px';
+                        msgDiv.style.color = 'var(--term-color)';
+                        msgDiv.textContent = payload; // SECURE - prevents XSS
+                        chatBody.appendChild(msgDiv);
+                        chatBody.scrollTop = chatBody.scrollHeight;
+                        console.log('[DIAG] 💬 Added message to terminal:', payload.substring(0, 50));
+                    }
+                };
+                
+                // Initiate connection
+                console.log('Attempting MQTT connection to broker.emqx.io:8084 with SSL');
+                mqttClient.connect(connectOptions);
+            } catch(e) {
+                console.error('MQTT Setup Error:', e);
+                addMessage('ERROR', 'MQTT Setup Error: ' + e.message);
+                addMessage('SYSTEM', 'This might be a browser compatibility issue. Try Chrome/Firefox.');
             }
-
-            // 6. Attach Listeners
-            const sendBtn = document.getElementById('send-btn');
-            if(sendBtn) sendBtn.onclick = handleInput;
-            
-            const userInput = document.getElementById('user-input');
-            if(userInput) {
-                userInput.addEventListener('keypress',e=>{ if(e.key==='Enter') handleInput(); });
-            }
-
-            // 7. Voice
-            if ('webkitSpeechRecognition' in window) {
-                const r = new webkitSpeechRecognition();
-                const voiceBtn = document.getElementById('voice-btn');
-                if(voiceBtn) {
-                    voiceBtn.onclick = () => { r.start(); };
-                    r.onresult = (e) => { if(userInput) userInput.value = e.results[0][0].transcript; };
-                }
-            }
-
-            // 8. Install App Button Safety
-            const installBtn = document.getElementById('install-btn');
-            if(installBtn) installBtn.classList.remove('hidden');
-
-        } catch (e) {
-            console.error("INITIALIZATION FAILED:", e);
-            const d = document.createElement('div');
-            d.style.color = "white";
-            d.style.padding = "20px";
-            d.innerText = "CRITICAL ERROR: " + e.message;
-            document.body.appendChild(d);
         }
-    };
 
-    // Global Error Catcher
-    window.onerror = function(message, source, lineno, colno, error) {
-        console.error("Global Error:", message);
-    };
-</script>
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            if (!input) return;
+            const text = input.value.trim();
+            if (text && mqttClient && mqttClient.isConnected()) {
+                // Check for special commands
+                if (text === '/share') {
+                    shareRoom();
+                    input.value = '';
+                    return;
+                } else if (text === '/stats') {
+                    showStats();
+                    input.value = '';
+                    return;
+                } else if (text === '/avatar') {
+                    showAvatarMenu();
+                    input.value = '';
+                    return;
+                } else if (text === '/mute') {
+                    speechSynthesis.cancel();
+                    addMessage('SYSTEM', 'Voice synthesis muted');
+                    input.value = '';
+                    return;
+                } else if (text === '/speak') {
+                    addMessage('SYSTEM', 'Voice synthesis enabled');
+                    input.value = '';
+                    return;
+                } else if (text === '/voice') {
+                    startVoiceInput();
+                    input.value = '';
+                    return;
+                } else if (text.toLowerCase().includes('create app') || text.toLowerCase().includes('make app')) {
+                    // Will trigger AI to create app and award XP
+                } else if (text.toLowerCase().includes('start game') || text.toLowerCase().includes('play game')) {
+                    // Will trigger AI to create game and award XP
+                } else if (text.toLowerCase().includes('play music') || text.toLowerCase().includes('play radio')) {
+                    // Will trigger AI function calling for music
+                } else if (text.startsWith('![') && text.includes(']')) {
+                    // Image generation request
+                    addMessage(username, text);
+                } else if (text === '/video') {
+                    switchMode('video');
+                    input.value = '';
+                    return;
+                } else if (text === '/admin') {
+                    switchMode('admin');
+                    input.value = '';
+                    return;
+                } else if (text === '/chat') {
+                    switchMode('chat');
+                    input.value = '';
+                    return;
+                } else if (text.includes('@admin') || text.includes('admin status') || text.includes('admin')) {
+                    // Handle admin commands in main chat
+                    mqttClient.publish('termchat/admin', text);
+                    addMessage('SYSTEM', `Admin command sent: ${text}`);
+                    input.value = '';
+                    return;
+                }
+                
+                const msg = { 
+                    id: username, 
+                    msg: text,
+                    timestamp: Date.now()
+                };
+                
+                const publishTopic = roomId ? `termchat/room/${roomId}` : 'termchat/messages';
+                mqttClient.publish(publishTopic, JSON.stringify({user: username, text: text}));
+                mqttClient.publish('termchat/input', JSON.stringify(msg));
+                input.value = '';
+                input.focus();
+            } else {
+                addMessage('ERROR', 'Not connected to multiverse. Please wait for connection...');
+            }
+        }
+
+        function addMessage(user, text) {
+            const terminal = document.getElementById('terminal-body');
+            if (!terminal) return;
+            const div = document.createElement('div');
+            div.style.marginBottom = '5px';
+            
+            // Color coding
+            if (user === 'SYSTEM') div.style.color = '#00ff00';
+            else if (user === 'ERROR') div.style.color = '#ff0000';
+            else if (user === 'ACHIEVEMENT') div.style.color = '#ffff00';
+            else if (user === 'XP') div.style.color = '#00ffff';
+            else if (user === 'TERMAI') {
+                div.style.color = '#00ff41';
+                // Auto-speak TERMAI responses
+                const lang = text.includes('ą') || text.includes('ė') || text.includes('į') ? 'lt-LT' : 'en-US';
+                setTimeout(() => speakText(text, lang), 500);
+            }
+            else if (user === 'TERMOS') div.style.color = '#ffff00';
+            else div.style.color = 'var(--term-color)';
+            
+            // Process image markdown
+            const processedText = processImageMarkdown(text);
+            
+            // Add avatar for regular users
+            let displayText;
+            if (user !== 'SYSTEM' && user !== 'ERROR' && user !== 'ACHIEVEMENT' && user !== 'XP') {
+                const avatar = AVATARS[userStats.avatar] || AVATARS['default'];
+                displayText = `${avatar}[${user}] ${processedText}`;
+            } else {
+                displayText = `[${user}] ${processedText}`;
+            }
+            
+            div.textContent = displayText;
+            terminal.appendChild(div);
+            terminal.scrollTop = terminal.scrollHeight;
+            
+            // Save to persistent storage (except system messages)
+            if (user !== 'SYSTEM' && user !== 'ERROR') {
+                saveMessageToLocal(user, processedText);
+            }
+            
+            // Award XP for various activities
+            if (user === username) {
+                addXP(1, 'Sending message');
+            }
+        }
+
+        // --- VOICE TO VOICE (DUPLEX) ---
+        let isListening = false;
+        let recognition = null;
+        
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+            
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('chatInput').value = transcript;
+                addMessage('VOICE', `Heard: "${transcript}"`);
+                // Auto-send voice input
+                setTimeout(() => sendMessage(), 500);
+            };
+            
+            recognition.onerror = function(event) {
+                addMessage('ERROR', `Voice recognition error: ${event.error}`);
+                isListening = false;
+                updateVoiceIndicator();
+            };
+            
+            recognition.onend = function() {
+                isListening = false;
+                updateVoiceIndicator();
+            };
+        }
+        
+        function startVoiceInput() {
+            if (recognition && !isListening) {
+                isListening = true;
+                recognition.start();
+                updateVoiceIndicator();
+                addMessage('SYSTEM', 'Listening... Speak now!');
+            }
+        }
+        
+        function stopVoiceInput() {
+            if (recognition && isListening) {
+                recognition.stop();
+                isListening = false;
+                updateVoiceIndicator();
+            }
+        }
+        
+        function updateVoiceIndicator() {
+            const indicator = document.getElementById('voice-indicator');
+            if (isListening) {
+                indicator.textContent = '🎤 Listening...';
+                indicator.classList.add('active');
+            } else {
+                indicator.textContent = '🔊 Speaking...';
+                indicator.classList.remove('active');
+            }
+        }
+        
+        // Voice Synthesis API
+        function speakText(text, lang = 'en-US') {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = lang;
+                utterance.rate = 0.9;
+                utterance.pitch = 1.0;
+                speechSynthesis.speak(utterance);
+                return true;
+            }
+            return false;
+        }
+        
+        // Image Generation Support
+        function processImageMarkdown(text) {
+            const imageRegex = /!\[([^\]]+)\]/g;
+            return text.replace(imageRegex, (match, description) => {
+                const imageId = 'img_' + Math.random().toString(36).substr(2, 9);
+                // Request image generation from backend
+                if (mqttClient) {
+                    const imageRequest = {
+                        id: username,
+                        msg: `generate image: ${description}`,
+                        type: 'image_request',
+                        timestamp: Date.now()
+                    };
+                    mqttClient.publish('termchat/input', JSON.stringify(imageRequest));
+                }
+                return `[🎨 Generating image: ${description}...]`;
+            });
+        }
+        // --- VIRAL GROWTH FEATURES ---
+        function shareRoom() {
+            const roomCode = Math.random().toString(36).substr(2, 8).toUpperCase();
+            const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                addMessage('SYSTEM', `🔗 Room link copied! Share: ${shareUrl}`);
+                addXP(25, 'Creating shareable room');
+            }).catch(() => {
+                addMessage('SYSTEM', `🔗 Share this room: ${shareUrl}`);
+            });
+            
+            // Switch to the new room
+            roomId = roomCode;
+            if (mqttClient) {
+                mqttClient.subscribe(`termchat/room/${roomId}`);
+            }
+        }
+        
+        function showStats() {
+            const levelTitle = LEVEL_TITLES[userStats.level - 1] || 'Unknown';
+            const nextLevelXP = LEVEL_THRESHOLDS[userStats.level] || 'MAX';
+            
+            addMessage('STATS', `🏆 Your Stats:`);
+            addMessage('STATS', `Level: ${userStats.level} (${levelTitle})`);
+            addMessage('STATS', `XP: ${userStats.xp}/${nextLevelXP}`);
+            addMessage('STATS', `Lines of Code: ${userStats.linesOfCode}`);
+            addMessage('STATS', `Quests Completed: ${userStats.questsCompleted}`);
+            addMessage('STATS', `Avatar: ${userStats.avatar}`);
+        }
+        
+        function showAvatarMenu() {
+            addMessage('AVATAR', '🎭 Available Avatars:');
+            Object.keys(AVATARS).forEach(key => {
+                const unlocked = (key === 'default') || 
+                                (key === 'hacker' && userStats.level >= 3) ||
+                                (key === 'wizard' && userStats.level >= 5) ||
+                                (key === 'ninja' && userStats.level >= 8) ||
+                                (key === 'admin' && userStats.level >= 10);
+                
+                const status = unlocked ? '✅' : '🔒';
+                addMessage('AVATAR', `${status} ${key} ${unlocked ? '(type /use ' + key + ')' : '(unlock at level ' + getUnlockLevel(key) + ')'}`);
+            });
+        }
+        
+        function getUnlockLevel(avatar) {
+            const levels = {'default': 1, 'hacker': 3, 'wizard': 5, 'ninja': 8, 'admin': 10};
+            return levels[avatar] || 1;
+        }
+        function handleAIAction(action) {
+            if (action.action === 'play_music') {
+                playMusic(action.url, action.title);
+                addXP(15, 'Playing music');
+            } else if (action.action === 'open_panel') {
+                switchMode(action.panel, action.data);
+                addXP(10, 'Opening panel');
+            } else if (action.action === 'memory_stored') {
+                addMessage('SYSTEM', action.message);
+                addXP(5, 'Storing memory');
+            }
+        }
+        
+        function playMusic(url, title) {
+            // Create or update audio element
+            let audio = document.getElementById('background-audio');
+            if (!audio) {
+                audio = document.createElement('audio');
+                audio.id = 'background-audio';
+                audio.controls = true;
+                audio.style.cssText = 'position:fixed; bottom:10px; right:10px; z-index:1001;';
+                document.body.appendChild(audio);
+            }
+            
+            audio.src = url;
+            audio.play().then(() => {
+                addMessage('SYSTEM', `🎵 Now playing: ${title}`);
+            }).catch(err => {
+                addMessage('ERROR', `Failed to play music: ${err.message}`);
+            });
+        }
+        
+        function acceptTunnel(data) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.8); display: flex;
+                justify-content: center; align-items: center; z-index: 2000;
+            `;
+            modal.innerHTML = `
+                <div style="background: var(--bg-color); border: 2px solid var(--term-color); padding: 20px; text-align: center;">
+                    <h3>TUNNEL REQUEST</h3>
+                    <p>User ${data.sender} wants to connect</p>
+                    <div style="margin-top: 20px;">
+                        <button onclick="acceptTunnelConnection('${data.sender}'); this.parentElement.parentElement.parentElement.remove();">ACCEPT</button>
+                        <button onclick="this.parentElement.parentElement.parentElement.remove();">DECLINE</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function acceptTunnelConnection(sender) {
+            addMessage('SYSTEM', `Tunnel established with ${sender}`);
+            // Additional tunnel logic here
+        }
+
+        // --- WEBRTC HANDLER ---
+        function handleWebRTC(data) {
+            if (data.action === 'offer') {
+                addMessage('SYSTEM', `Video call from ${data.sender}`);
+                switchMode('video');
+            } else if (data.action === 'answer') {
+                addMessage('SYSTEM', 'Video call answered');
+            } else if (data.action === 'ice-candidate') {
+                // Handle ICE candidate
+                console.log('ICE candidate received:', data);
+            }
+        }
+        function switchRoom(room) {
+            currentRoom = room;
+            const themes = {
+                'living_room': 'theme-living',
+                'library': 'theme-library', 
+                'studio': 'theme-studio',
+                'workshop': 'theme-workshop',
+                'think_tank': 'theme-think',
+                'lounge': 'theme-lounge'
+            };
+            
+            // Update theme
+            document.body.className = themes[room] || 'theme-living';
+            
+            // Update header
+            const roomNames = {
+                'living_room': 'LIVING ROOM',
+                'library': 'LIBRARY',
+                'studio': 'STUDIO', 
+                'workshop': 'WORKSHOP',
+                'think_tank': 'THINK TANK',
+                'lounge': 'LOUNGE'
+            };
+            
+            document.getElementById('room-header').innerHTML = 
+                `TERMCHAT LT - ${roomNames[room] || 'UNKNOWN'}<span class="cursor"></span>`;
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js"></script>
 </body>
 </html>
