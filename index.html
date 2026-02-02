@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Final Integrated Edition</title>
-    <meta name="theme-color" content="#000000"> <!-- White/Daumantas Theme Color -->
+    <title>TermOS: Fixed & Integrated</title>
+    <meta name="theme-color" content="#000">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
@@ -12,477 +12,982 @@
         :root { 
             /* White/Daumantas Palette */
             --term-bg: #000000; 
-            --term-green: #00ff00; /* Bright green for terminals */
-            --term-blue: #00aaff; /* Bright blue */
-            --term-text: #e5e5e5; /* Readable gray */
-            --accent-primary: #a855f7;
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --term-green: #00ff00;
+            --term-dim: #003300;
+            --term-text: #e5e5e7;
+            --accent-primary: #a855f7; 
+            --accent-secondary: #67e8f9; 
+            --glass-bg: rgba(255, 255, 255, 0.1); 
+            --glass-border: rgba(0, 0, 0, 0.1); 
         }
         
         body { 
-            background: var(--term-bg);
-            color: var(--term-text);
+            background: var(--term-bg); 
+            color: var(--term-text); 
             font-family: 'Inter', sans-serif; 
             overflow: hidden; 
             height: 100vh;
         }
 
-        /* MATRIX CANVAS */
-        #matrix-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+        /* MATRIX RAIN (White/Daumantas) */
+        #painted-canvas { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            z-index: 0; 
+            pointer-events: none; 
+            mix-blend-mode: multiply;
+        }
         
-        /* BUILD SCANNER HUD */
-        .scanner-hud {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            width: 280px;
-            background: rgba(20, 20, 30, 0.8);
-            border: 2px solid var(--term-green);
-            padding: 12px;
-            border-radius: 6px;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0); 
-            z-index:  50;
+        /* SCANLINES */
+        body::after {
+            content: " ";
+            display: block; position: absolute; inset: 0; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 0, 0, 0.01)), rgba(0,0,0));
+            z-index: 2;
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+        
+        /* UTILITIES */
+        .glass-panel { 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(25px); 
+            -webkit-backdrop-filter: blur(25px); 
+            border: 1px solid var(--glass-border); 
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); 
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            border-radius: 16px;
+        }
+        
+        .glass-panel:hover { 
+            background: rgba(255, 255, 255, 0.1); 
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #e5e5e7; border-radius: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        
+        .font-header { font-family: 'Orbitron', sans-serif; letter-spacing: 0.05em; }
+        .font-code { font-family: 'Fira Code', monospace; }
+        .font-ui { font-family: 'Inter', sans-serif; }
+        
+        /* ANIMATIONS */
+        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); }
+        .scanline { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent, rgba(0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0,0,0));
+            background-size: 100% 4px;
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
         }
 
-        /* EDITOR */
-        .copilot-editor {
-            background: #0a0a0a;
-            border: 1px solid #333;
-            color: #00ff00;
-            font-family: 'Fira Code', monospace;
+        @keyframes scanBar { 0% { width: 0%; } 100% { width: 100%; }
+        }
+
+        /* LOGS */
+        .log-entry { 
+            margin-bottom: 8px;
             font-size: 14px;
-            line-height: 1.5;
-            resize: none;
-            outline: none;
-            width: 100%;
-            height: 100%;
-            padding: 15px;
-            white-space: pre-wrap;
-            tab-size: 4;
+            opacity: 0; 
+            animation: paintIn 0.3s ease-out forwards; 
+        }
+
+        @keyframes paintIn { to { opacity: 1; transform: translateY(10px) scale(0.95); filter: blur(10px); } 
+            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } 
         }
 
         /* MODALS */
-        .modal-overlay {
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            z-index: 100;
-        }
+        .modal-overlay { background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(10px); z-index: 999; }
         
         .modal-content {
-            background: #111;
-            border: 1px solid #444;
-            padding: 2rem;
-            max-width: 90%;
-            box-shadow: 0 0 50px rgba(0,0,0, 0.8);
+            background: #000;
+            border: 1px solid #333;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 12px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
         }
 
-        /* UTILITIES */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
-        ::-webkit-scrollbar-track { background: #000; }
+        .close-btn {
+            background: #333; color: #fff; font-weight: bold; cursor: pointer; padding: 8px 12px; border-radius: 6px; transition: all 0.2s;
+        }
+        .close-btn:hover { background: #444; }
 
-        @keyframes flashInput { 0% { box-shadow: inset 0 0 0 rgba(0, 255, 0); } 
-        @keyframes scannerBar { 0% { width: 0%; } 100% { width: 100%; } }
-        
-        .animate-pulse { animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+        /* INPUTS */
+        .input-wrapper {
+            position: fixed; bottom: 0; width: 100%;
+            background: #000;
+            padding: 10px;
+            border-top: 1px solid #333;
+        }
 
-        /* SNIPPETS */
-        .snippet-item {
+        input[type="text"] {
+            width: 100%; 
+            background: transparent;
+            border: none;
+            color: #e5e5e7;
+            font-family: 'Fira Code', monospace; 
+            outline: none;
+            font-size: 16px;
+            padding: 8px;
+            caret-color: #00ff00;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        input::placeholder { color: #444; text-transform: none; }
+
+        /* COPILOT */
+        .copilot-wrapper { z-index: 50; }
+        .copilot-editor {
+            width: 100%; 
+            height: 300px;
+            background: #050505; 
+            color: #e5e5e7;
+            border: 1px solid #333;
+            resize: vertical;
+            outline: none;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            padding: 10px;
+            overflow-y-auto;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
+
+        .code-suggestion {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            width: 220px;
+            background: rgba(0, 0, 0, 0.8); /* Slightly brighter */
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 8px 12px;
+            border-radius: 6px;
+            display: none; /* Hidden by default */
+            pointer-events: none;
+            z-index: 60;
+            backdrop-filter: blur(12px);
+        }
+
+        .code-suggestion.active {
+            display: block;
+            transform: translateY(0);
+            box-shadow: 0 0 20px rgba(0, 255, 0);
+            z-index: 60;
+        }
+
+        /* BUTTONS */
+        .tool-btn {
+            background: transparent;
+            border: 1px solid #333;
+            color: #e5e5e7;
             cursor: pointer;
-            transition: background 0.15s;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
         }
-        .snippet-item:hover { background: #1a1a1a1; }
+        .tool-btn:hover {
+            background: rgba(0, 0, 0, 0.8); /* Light hover */
+            border-color: #666;
+        }
 
+        /* MATRIX ORBS */
+        .orb { fill: rgba(255, 255, 255, 0.9); /* Slight opacity for trails */
+        }
+
+        /* SCANNER */
+        #scanner-hud {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 280px;
+            padding: 15px;
+            background: rgba(0, 0, 0.8);
+            border: 1px solid #00ff00;
+            display: none; /* Hidden by default */
+            z-index: 60;
+            backdrop-filter: blur(4px);
+        }
+
+        .scan-bar {
+            height: 4px;
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+            margin-bottom: 8px;
+            width: 0%;
+            transition: width 0.2s;
+        }
+        .scan-bar.active { width: 100%; }
+
+        .scan-text { font-size: 12px; color: #00ff00; font-family: 'Fira Code', monospace; text-align: right; margin-bottom: 4px; }
+
+        /* PREVIEW */
+        .preview-iframe {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #333;
+            background: #050505;
+            border-radius: 8px;
+            display: none; /* Hidden by default */
+        }
+        .preview-container {
+            position: absolute;
+            inset: 0;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.9);
+        }
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col relative text-sm">
+<body class="h-screen w-screen flex flex-col relative text-sm selection:bg-white/10">
 
-    <!-- MATRIX VISUALS -->
-    <canvas id="matrix-canvas"></canvas>
+    <!-- BOOT SCREEN -->
+    <div id="boot-screen">
+        <div class="loader-ring mb-8"></div>
+        <h1 class="text-4xl font-header text-white tracking-[0.3em] animate-pulse bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-cyan-400">TERMOS</h1>
+        <div class="mt-4 text-gray-400 font-mono text-xs tracking-[0.2em]">INTEGRATED SYSTEM READY</div>
+    </div>
 
-    <!-- HUD / SCANNER -->
-    <div id="scanner-hud" class="scanner-hud">
+    <!-- VISUALS (Matrix & Scanlines) -->
+    <canvas id="painted-canvas"></canvas>
+    
+    <!-- HUD SCANNER -->
+    <div id="scanner-hud">
         <div class="flex justify-between items-center mb-2">
-            <span class="text-[10px] font-bold text-green-400 font-mono tracking-wider">BUILD SCANNER</span>
-            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span class="text-[10px] font-bold font-mono tracking-widest text-green-500">BUILD SCANNER</span>
+            <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
         </div>
-        <div id="scan-bar" class="scanner-bar"></div>
+        <div class="scan-bar"></div>
+        <div id="scan-text" class="scan-text">IDLE</div>
     </div>
 
     <!-- HEADER -->
-    <header class="glass-panel border-b border-white/10 h-14 flex items-center justify-between px-4 lg:px-8 mx-4">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded bg-gray-800 flex items-center justify-center border border border-gray-600">
-                <span class="font-bold font-mono text-green-400">></span>
+    <header class="glass-panel border-b border-white/10 h-16 flex items-center justify-between px-4 lg:px-8 mx-4 mt-4 rounded-2xl">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-purple-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-[0_0_8px_rgba(168, 85, 247, 0.2)]">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
             </div>
             <div>
-                <h1 class="font-mono text-xl font-bold tracking-wider text-white">TERMOS <span class="text-green-400">WHITE DAUMANTAS</span></h1>
-                <div class="flex flex items-center gap-2 text-xs text-gray-400 font-mono">
-                    <div id="connection-status" class="w-2 h-2 rounded-full bg-red-500"></div>
-                    <span id="room-display">OFFLINE</span>
+                <h1 class="font-header font-bold text-lg text-white">TERMOS <span class="text-white">INTEGRATED</span></h1>
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-mono">
+                    <div id="status-dot" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span id="room-display">DISCONNECTED</span>
                 </div>
             </div>
         </div>
-
-        <!-- MAIN CHAT -->
-    <main id="chat-container" class="flex-1 overflow-y-auto pt-20 pb-40 px-4 max-w-5xl mx-auto w-full"></main>
-
+        <div class="flex items-center gap-2">
+            <div id="engine-badge" class="hidden px-2 py-1 bg-cyan-900/30 border border-cyan-500/30 rounded text-[9px] font-bold text-cyan-200 tracking-widest">GROQ</div>
+            <div id="room-badge" class="hidden px-3 py-1 bg-black/40 border border-purple-500/20 rounded-full text-[9px] font-bold text-purple-200 tracking-widest">PUBLIC</div>
+            <button onclick="UI.toggleCopilot()" class="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 border border border-cyan-500/30 text-white px-3 py-1 rounded-full text-xs font-bold transition-all shadow-lg shadow-cyan-900/20 flex items-center gap-2">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <span class="text-white font-bold">COPILOT</span>
+            </button>
+            <button onclick="UI.toggleAdmin()" class="bg-black/40 hover:bg-white/10 border border-white/10 hover:border-white/20 text-gray-400 hover:text-white px-3 py-1.5 rounded-full text-xs font-bold transition-all backdrop-blur-md">SETTINGS</button>
+        </div>
+    </header>
+    
+    <!-- MAIN CHAT -->
+    <main id="chat-container" class="flex-1 overflow-y-auto pt-24 pb-40 px-4 z-10 max-w-4xl mx-auto w-full space-y-6 scroll-smooth"></main>
+    
     <!-- INPUT AREA -->
-    <div class="fixed bottom-0 left-0 w-full z-30 flex justify-center pb-8 pt-4 px-4">
-        <div class="w-full max-w-4xl relative">
-            <div class="flex gap-2 bg-black/40 border border border-gray-600 rounded-lg p-1 flex items-center">
-                <button onclick="Commands.handle('/ai ')" class="bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white px-4 py-2 rounded font-mono text-xs font-bold transition-colors">AI</button>
-                <button onclick="UI.toggleCopilot()" class="bg-blue-900 hover:bg-blue-700 text-white px-3 py-2 rounded font-mono font-bold transition-colors border border border-blue-500">COPILOT</button>
-                <input type="text" id="msg-input" autocomplete="off" placeholder="Command: /ai, /copilot..." class="flex-1 bg-transparent border-none outline-none text-white text-sm p-2 font-mono placeholder-gray-500">
-                <button onclick="Commands.handle()" class="bg-green-600 hover:bg-green-500 text-white px-6 rounded font-bold transition-colors">SEND</button>
+    <div id="input-wrapper">
+        <div class="max-w-4xl w-full relative">
+            <div class="flex gap-2 bg-black/40 backdrop-blur-md rounded-2xl p-2 border border-white/5 shadow-2xl">
+                <button onclick="Commands.handle('/ai ')" class="p-3 rounded-xl text-gray-500 hover:text-purple-400 hover:bg-white/5 transition-all duration-300">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4 14h7v7l9-11h-7z"></path></svg>
+                </button>
+                <button onclick="Commands.handle('/code ')" class="p-3 rounded-xl text-gray-500 hover:text-cyan-400 hover:bg-white/5 transition-all duration-300">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4-4-4 16m4 4l4-4-4 4-4-4-16m4-4-4-4-4-4 14l4-4-4 4 4-4l-4-4-4-4-4-4-8-20l4-16 4 4 4-4-4-4-16z"></path></svg>
+                </button>
+                <input type="text" id="user-input" placeholder="Command: /ai, /code, /copilot..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-2 py-3 font-mono text-sm uppercase">
+                <button onclick="Commands.handle()" class="p-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-900/40 hover:scale-105 active:scale-95 transition-all duration-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14l-4-16m4 4-4-4-4 16m4 4-4-4-4 4-4-4 8-20l4-16m4 4-4-4-4 4-4-4-4-14z"></path></svg>
+                </button>
+            </div>
+            <div class="flex gap-2 mt-2 justify-center">
+                <button onclick="UI.toggleMedia()" class="text-[9px] text-gray-500 hover:text-purple-400 transition-colors tracking-widest">MEDIA</button>
+                <button onclick="UI.toggleCopilot()" class="text-[9px] text-gray-500 hover:text-purple-400 transition-colors tracking-widest">COPILOT</button>
             </div>
         </div>
     </div>
 
     <!-- COPILOT MODAL -->
-    <div id="copilot-modal" class="modal-overlay hidden flex items-center justify-center">
-        <div class="modal-content">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="font-mono text-xl font-bold text-green-400">CODE TERMINAL</h2>
-                <button onclick="UI.toggleCopilot()" class="text-gray-400 hover:text-white">✖ CLOSE</button>
+    <div id="copilot-modal" class="fixed inset-0 z-[90] modal-overlay hidden flex items-center justify-center">
+        <div class="glass-panel w-[90%] max-w-4xl h-[80vh] p-1 rounded-3xl border border-white/10 shadow-2xl flex flex flex-col">
+            <div class="bg-black/40 rounded-2xl flex-1 flex-col h-full overflow-hidden relative">
+                <!-- Toolbar -->
+                <div class="h-12 border-b border-white/5 flex items-center justify-between px-4 bg-slate-900/50 backdrop-blur-md z-20">
+                    <div class="flex items-center gap-3">
+                        <span class="text-cyan-400 font-mono text-xs font-bold">BUILDER TOOLKIT</span>
+                        <span id="copilot-status" class="text-[9px] text-gray-500 px-2 py-0.5 rounded bg-white/5 hidden">Analyzing...</span>
+                    <div class="flex gap-2">
+                        <button onclick="UI.toggleCopilot()" class="text-gray-400 hover:text-white text-xs font-bold transition-colors">📚</button>
+                        <button onclick="UI.toggleCopilot()" class="text-gray-400 hover:text-white text-xs font-bold transition-colors">✖ CLOSE</button>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="Rebuilder.toggleLivePreview()" class="btn tool-btn tool-btn-run" title="Live Preview">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.351a4 4 0 14 0L4-16m4 4-4-4 4 4-4-4-4-4 4-4-4-4 14z"></path></svg>
+                        <div class="ml-2">
+                            <span class="text-[10px] font-bold text-white">LIVE PREVIEW</span>
+                        </div>
+                    </div>
+                    <button onclick="ModernTools.formatCode()" class="tool-btn" title="Format Code">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <button onclick="ModernTools.saveFile()" class="tool-btn" title="Save HTML">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3.5 2.351a4 4 0 14 0L4-16m4 4-4-4 4-4-14l4-4-4-4-4-4-4-4-14z"></path></svg>
+                    </div>
+                    <div class="flex-1 flex-1 items-center gap-2">
+                        <span class="text-[10px] text-gray-400 font-mono">CTRL+ENTER to Run</span>
+                        <span id="char-count" class="text-cyan-400">0 chars</span>
+                    </div>
+                </div>
+                <!-- Tools -->
+                <div style="display: grid; grid-template-columns: 1fr; gap-2;">
+                    <button onclick="UI.toggleCopilot()" class="text-gray-400 hover:text-white text-[10px] font-bold transition-colors bg-white/10 px-3 py-2 rounded-lg shadow-lg">OPEN</button>
+                    <div style="display: grid; grid-template-columns: 2fr; gap-2;">
+                        <button onclick="Rebuilder.toggleLivePreview()" class="btn tool-btn tool-btn-run">⚡ LIVE PREVIEW</button>
+                        <button onclick="ModernTools.formatCode()" class="btn tool-btn">✨ FORMAT</button>
+                        <button onclick="ModernTools.saveFile()" class="btn tool-btn">💾 SAVE</button>
+                    </div>
+                </div>
+                <!-- Editor Area -->
+                <div class="flex-1 flex-col h-full overflow-hidden relative">
+                    <!-- Line Numbers -->
+                    <div class="absolute left-0 top-0 bottom-0 w-[50px] bg-black/20 text-gray-700 text-right pr-3 pt-4 font-mono text-xs leading-[1.6] select-none pointer-events-none z-10 overflow-hidden">
+                        1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15
+                    </div>
+                    
+                    <!-- Main Editor -->
+                    <textarea id="copilot-editor" class="copilot-editor" spellcheck="false" placeholder="// Write HTML/CSS here..."></textarea>
+                    
+                    <!-- Floating Suggestion -->
+                    <div id="copilot-suggestion" class="code-suggestion">
+                        <span class="text-[9px] font-mono text-gray-400">TAB to Accept</span>
+                        <span id="suggestion-text" class="text-white font-bold font-mono"></span>
+                    </div>
+                </div>
+
+                <!-- Scan Status -->
+                <div class="flex justify-between items-end mt-2 border-t border-white/5 pt-2">
+                    <span class="text-cyan-400 font-mono text-xs font-bold">BUILD SCANNER</span>
+                    <div id="scan-bar" class="scan-bar"></div>
+                    <div id="scan-status" class="scan-text">IDLE</div>
+                </div>
+            </div>
+            <!-- Preview -->
+            <div id="preview-container">
+                <div class="absolute top-4 left-4 z-10 pointer-events-none">
+                    <button onclick="Rebuilder.toggleLivePreview()" class="bg-black/80 hover:bg-gray-800 text-white px-2 py-1 rounded text-xs font-bold border border-gray-600 hover:border-gray-500 transition-colors">✖ EXIT PREVIEW</button>
+                </div>
+                <iframe id="preview-frame"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div id="admin-panel" class="fixed bottom-28 right-4 z-50 glass-panel w-80 p-6 rounded-2xl border border-white/5 shadow-2xl hidden transform transition-all duration-500 translate-y-4 opacity-0">
+        <h3 class="text-purple-300 font-header font-bold mb-6 text-xs flex items-center justify-between tracking-widest"><span>AI CONFIG</span> <button onclick="UI.toggleAdmin()" class="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center">✖</button></h3>
+        
+        <div class="space-y-5">
+            <!-- Provider Selector -->
+            <div class="space-y-2">
+                <label class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Active AI Provider</label>
+                <select id="ai-provider" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white focus:border-purple-500 outline-none transition-colors appearance-none cursor-pointer">
+                    <option value="groq">Groq (Llama 3.3)</option>
+                    <option value="zhipu">Zhipu AI (GLM-4)</option>
+                </select>
+            </div>
+
+            <!-- Keys -->
+            <div id="groq-settings" class="space-y-2">
+                <label class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Groq API Key</label>
+                <input type="password" id="groq-key" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white focus:border-purple-500 outline-none transition-colors placeholder-gray-600">
+            </div>
+
+            <div id="zhipu-settings" class="space-y-2 hidden">
+                <label class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Zhipu API Key</label>
+                <input type="password" id="zhipu-key" class="w-full bg-black/40 border-white/10 rounded-xl p-3 text-xs text-white focus:border-cyan-500 outline-none transition-colors placeholder-gray-600">
             </div>
             
-            <textarea id="copilot-editor" class="copilot-editor" spellcheck="false" placeholder="// Write HTML/CSS here..."></textarea>
-
-            <!-- Tools -->
-            <div class="flex gap-2 mt-4">
-                <button onclick="Rebuilder.scanAndInject()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded font-mono text-xs font-bold flex-1 border border-green-500/50 transition-colors">⚡ BUILD</button>
-                <button onclick="Rebuilder.formatCode()" class="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded font-mono text-xs font-bold border border-gray-600 flex-1">✨ FORMAT</button>
-                <button onclick="Rebuilder.download()" class="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded font-mono text-xs font-bold border-gray-600 flex-1">💾 SAVE</button>
+            <button onclick="UI.saveSettings()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2 rounded-xl text-xs tracking-wider shadow-lg">SAVE ENGINE</button>
+            
+            <div class="border-t border-white/5 pt-5 mt-5">
+                <label class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">GitHub Token (Optional)</label>
+                <input type="password" id="gh-token" class="w-full bg-black/40 border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-purple-500 outline-none transition-colors placeholder-gray-600">
             </div>
+        </div>
+    </div>
+    </div>
 
-            <!-- Scanner Status -->
-            <div class="flex items-center gap-2 mt-4">
-                <span class="text-green-400 font-mono text-xs" id="scan-status">IDLE</span>
-                <button onclick="Rebuilder.toggleScanner()" class="text-gray-400 hover:text-white font-mono text-xs border border border-gray-600 px-2 rounded">TOGGLE SCANNER</button>
+    <!-- JOIN MODAL -->
+    <div id="join-modal" class="fixed inset-0 z-[60] modal-overlay hidden flex items-center justify-center">
+        <div class="glass-panel p-6 rounded-2xl max-w-sm w-full mx-4 border-purple-500/30">
+            <h3 class="font-header font-bold text-center text-white mb-2">SECURE CHANNEL</h3>
+            <input type="text" id="room-name-input" placeholder="CHANNEL NAME" class="w-full bg-black/60 border-purple-500/30 rounded-lg p-3 text-center text-white font-mono mb-4 outline-none focus:border-purple-500">
+            <div class="flex gap-2">
+                <button onclick="Net.joinRoom()" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg text-xs font-bold transition-colors">CONNECT</button>
+                <button onclick="UI.toggleJoinModal()" class="flex-1 bg-slate-700 text-white hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors">ABORT</button>
             </div>
         </div>
     </div>
 
-    <!-- ADMIN SETTINGS -->
-    <div id="admin-modal" class="modal-overlay hidden flex items-center justify-center">
-        <div class="modal-content">
-            <h2 class="font-mono text-xl font-bold text-green-400">SYSTEM CONFIG</h2>
-            <div class="grid grid-cols-1 gap-4 mb-4">
-                <div class="flex flex-col gap-2">
-                    <label class="text-xs font-mono text-gray-400 font-bold">AI PROVIDER</label>
-                    <select id="ai-provider" class="bg-black/40 border border-gray-600 text-white px-3 py-2 rounded font-mono text-xs">
-                        <option value="groq">Groq (Fast)</option>
-                        <option value="zhipu">Zhipu (Smart)</option>
-                    </select>
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-xs font-mono text-gray-400 font-bold">API KEY</label>
-                    <input type="password" id="api-key" placeholder="Paste API Key here..." class="bg-black/40 border border-gray-600 text-white px-3 py-2 rounded font-mono text-xs outline-none focus:ring-1 focus:ring-green-500 transition-all">
-                </div>
-                <button onclick="UI.saveSettings()" class="bg-green-600 hover:bg-green-500 text-white font-mono text-xs font-bold px-4 py-2 rounded">SAVE</button>
-                <button onclick="UI.toggleAdmin()" class="text-gray-400 hover:text-white font-mono text-xs font-bold border border border-gray-600 px-3 py-2 rounded">EXIT</button>
-            </div>
-        </div>
-    </div>
+    <!-- SCROLL BUTTON (Fixed Position) -->
+    <button id="scroll-btn" class="fixed bottom-6 right-6 w-10 h-10 bg-black/40 hover:bg-white/20 border border border-gray-600 text-gray-400 transition-all opacity-0 cursor-pointer z-50 hidden" onclick="scrollToBottom()">↓</button>
 
 <script>
-    /** 
-     * TERMOS: FINAL INTEGRATED
-     * Theme: White/Daumantas (White bg, green text, mono fonts)
-     * Feature: Copilot with Scanner & Live Preview
-     * Features: Dual AI (Groq/Zhipu), MQTT Chat
-     */
+/** 
+ * TERMOS: FINAL INTEGRATED
+ * Fixed: GrqAI import fix for browser safety.
+ * Added: Copilot Logic + Scanner UI + Dual AI + Matrix visuals.
+ * Style: White/Daumantas.
+ */
 
-    // --- CONFIG & STATE ---
-    const Config = {
-        broker: "broker.emqx.io",
-        port: 8084,
-        user: `User_${Math.floor(Math.random() * 9000) + 1000}`,
-        providers: {
-            groq: {
-                model: "llama-3.3-70b-versatile",
-                url: "https://api.groq.com/openai/v1/chat/completions",
-                key: ""
-            },
-            zhipu: {
-                model: "glm-4-flash",
-                url: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-                key: ""
-            }
+// --- CONFIG & STATE ---
+const Config = {
+    broker: "broker.emqx.io",
+    port: 8084,
+    user: `User_${Math.floor(Math.random() * 9000) + 1000}`,
+    providers: {
+        groq: {
+            model: "llama-3.3-70b-versatile",
+            url: "https://api.groq.com/openai/v1/chat/completions",
+            key: ""
         },
-        activeProvider: "groq",
-        currentRoom: null,
-        stats = { level: 1, xp: 0 },
-        scanner: {
-            isActive: false,
-            interval: null,
-            bar: document.getElementById('scan-bar'),
-            text: document.getElementById('scan-status'),
-            text2: document.getElementById('scan-status')
+        zhipu: {
+            model: "glm-4-flash",
+            url: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+            key: ""
         }
-    };
-
+    },
+    currentRoom: null,
+    profile: { name: "Guest", avatar: "👤" },
+    isConnected: false,
+    github: { token: localStorage.getItem('termos_gh_token') || "" },
+    copilot: {
+        suggestion: null,
+        scannerActive: false,
+        previewActive: false
+    },
     // --- UTILS ---
-    const Utils = {
-        escapeHTML: (str) => {
-            if(!str) return "";
-            return str.replace(/[&<>'"]/g, 
-                tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&#quot;'}[tag]));
-        },
-        uuid: () => 'msg_' + Math.random().toString(36).substr(2, 9)
+const Utils = {
+    escapeHTML: (str) => {
+        if(!str) return "";
+        return str.replace(/[&<>'"]/g, 
+                tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&#39;', '"': '&quot;'}[tag]));
+    },
+    uuid: () => 'msg_' + Math.random().toString(36).substr(2, 9),
+    
+    // Safe Mock for GrqChip in case library import failure
+    const MockGrqChip = {
+        // A safe "Proxy" to the dangerous library
+        onmessageArrived: () => { console.warn("Simulating Grq message stream..."); }, // Prevent ReferenceError
+        connect: () => console.log("Simulated Grq Connect."), // Prevent network errors
+        publish: () => console.log("Simulated Publish."),
+        close: () => console.log("Simulated Grq Disconnect.")
     };
 
-    // --- UI CONTROLLER ---
-    const UI = {
-        container: document.getElementById('chat-container'),
-        input: document.getElementById('msg-input'),
-        copilotModal: document.getElementById('copilot-modal'),
-        copilotEditor: document.getElementById('copilot-editor'),
+    // --- AI LOGIC ---
+const AI = {
+    query: async (systemPrompt, userPrompt, mode = 'chat') => {
+        const provider = Config.activeProvider;
+        const config = Config.providers[provider];
         
-        init: () => {
-            UI.updateStatus(false);
-            UI.loadSettings();
-            
-            setTimeout(() => {
-                document.getElementById('boot-screen').remove(); // No long boot screen, simple app start
-                Cosmos.start();
-                Net.connect();
-            }, 1500);
+        if(!config.key) {
+            UI.log(`⚠️ ${provider.toUpperCase()} Key Required.`, 'error');
+            UI.toggleAdmin();
+            return;
+        }
 
-            // Listeners
-            input.addEventListener('keypress', (e) => {
-                if(e.key === 'Enter') Commands.handle();
-                if (e.ctrlKey && e.key === 'Enter') Rebuilder.scanAndInject();
+        const id = Utils.uuid();
+        const loadingTxt = mode === 'code' ? "Compiling..." : "Synthesizing...";
+        UI.log(`<span id="${id}" class="text-green-400 italic animate-pulse">${loadingTxt} (${provider})</span>`, "system");
+
+        try {
+            const res = await fetch(config.url, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${config.key}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    model: config.model,
+                    messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+                    temperature: 0.7,
+                    max_tokens: 2048
+                })
             });
             
-            // Copilot Listeners (Fixed focus logic)
-            UI.copilotEditor.addEventListener('keydown', (e) => {
-                if (e.key === 'Tab' && State.scanner.suggestion) {
-                    e.preventDefault();
-                    Copilot.acceptSuggestion();
-                } else if (e.key !== 'Tab') {
-                    document.getElementById('scan-status').textContent = "IDLE";
-                    document.getElementById('scan-bar').classList.remove('scanner-active');
-                    State.scanner.suggestion = null;
-                }
-            });
-            
-            // Auto-scan if scanner active
-            UI.copilotEditor.addEventListener('input', () => {
-                if(State.scanner.isActive) {
-                    if (State.scanner.timer) clearTimeout(State.scanner.timer);
-                    State.scanner.timer = setTimeout(Rebuilder.scanAndInject, 600);
-                }
-            });
+            const data = await res.json();
+            const reply = data.choices[0].message.content;
+            document.getElementById(id).remove(); 
+            UI.renderAIResponse(reply, mode === 'code');
 
-            // Chat Listeners (MQTT)
-            Net.onMessage = (data) => {
-                if (data.type === 'video') {
-                    Rebuilder.injectHTML(data.html);
-                    UI.log("📺 Signal Received from " + data.name, "system");
-                } else if (data.type === 'code') {
-                    // Render code block
-                    const codeHTML = `<div class="p-4 bg-black/80 border-l-4 border-green-500 font-mono text-sm rounded-xl overflow-x-auto"><pre class="text-green-400">${Utils.escapeHTML(data.code)}</pre></div>`;
-                    UI.renderMessage(data.code, data.name, true);
-                } else if (data.type === 'chat') {
-                    UI.renderMessage(data.text, data.name, false);
-                }
-            };
-        };
-    
-    // --- REBUILDER ENGINE ---
-    const Rebuilder = {
-        iframe: document.createElement('iframe'),
-        
-        toggleScanner: () => {
-            State.scanner.isActive = !State.scanner.isActive;
-            const hud = document.getElementById('scanner-hud');
-            
-            if(State.scanner.isActive) {
-                hud.style.display = 'block';
-                State.scanner.interval = setInterval(() => {
-                    Rebuilder.scanAndInject(); // Real-time scanning
-                }, 500);
-            } else {
-                if (State.scanner.interval) {
-                    clearInterval(State.scanner.interval);
-                State.scanner.interval = null;
-                hud.style.display = 'none';
-                document.getElementById('scan-bar').classList.remove('scanner-active');
-            }
-        },
-
-        scanAndInject: async () => {
-            const code = UI.copilotEditor.value;
-            if(!code) return;
-
-            // Visuals
-            if(Rebuilder.iframe && !State.scanner.suggestion) {
-                Rebuilder.iframe.contentWindow.location.reload(); // Soft reload if code hasn't changed
-            }
-
-            // Update HUD
-            Rebuilder.updateScannerUI("SCANNING SYNTAX...", true);
-
-            // Build HTML
-            setTimeout(() => {
-                const fullDoc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{background:#fff;margin:0;padding:20px;font-family:'Fira Code', monospace;}</style></head><body>${code}</body></html>`;
-                
-                // Inject
-                const doc = Rebuilder.iframe.contentDocument || Rebuilder.iframe.contentWindow.document;
-                doc.open();
-                doc.write(fullDoc);
-                doc.close();
-                
-                // Done
-                Rebuilder.updateScannerUI("BUILD COMPLETE", true);
-            UI.log("✅ Build finished.", "system");
-            }, 300);
-        },
-
-        updateScannerUI: (status, success) => {
-            if(!Rebuilder.text) return;
-            Rebuilder.text = status;
-            document.getElementById('scan-status').textContent = status;
-            document.getElementById('scan-bar').classList.remove('scanner-active');
-            
-            if(success) {
-                Rebuilder.text.style.color = '#00ff00';
-                document.getElementById('scan-status').style.color = '#00ff00';
-            } else {
-                Rebuilder.text.style.color = '#ffffff'; // White text for "IDLE"
-                document.getElementById('scan-status').style.color = '#e5e5e5';
-            }
-        },
-
-        toggleLivePreview: () => {
-            // Simplified for this file (no complex iframe)
-            const screen = document.getElementById('chat-container');
-            if(screen.contains('previewing')) {
-                screen.classList.remove('previewing');
-                // Remove overlay
-            } else {
-                screen.classList.add('previewing');
-                // Just log for now
-                UI.log("✨ LIVE PREVIEW ACTIVATED", "system");
-            }
-        },
-
-        formatCode: () => {
-            const editor = UI.copilot.editor;
-            let code = editor.value;
-            
-            // Simple JS Formatter
-            code = code.replace(/\s*([{}\[\]:,])\s*/g, ' $1');
-            code = code.replace(/;\s*(?!;)/g, ';\n');
-            code = code.replace(/\{(?=[^$])/g, ' {\n    ');
-            const keywords = ['function', 'const', 'let', 'var', 'if', 'else', 'return', 'class'];
-            keywords.forEach(kw => {
-                const regex = new RegExp(`\\b${kw}\\b`, 'gi');
-                code = code.replace(regex, kw);
-            });
-            editor.value = code;
-        },
-
-        runCode: () => {
-            const code = UI.copilot.editor.value;
-            if(!code) return;
-
-            UI.log("⚡ Running Build...", "system");
-            
-            // Capture Console (Simplified)
-            const originalLog = console.log;
-            console.log = (...args) => {
-                UI.log(`[STDOUT] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}`, 'system');
-                originalLog(...args);
-            };
-            console.error = (...args) => {
-                UI.log(`[ERROR] ${args.join(' ')}`, 'error');
-            originalLog(...args);
-            };
-
-            try {
-                // Safe execution
-                const safeCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                const fn = new Function(safeCode);
-                fn();
-                
-                UI.log("✅ Build Completed Successfully.", "system");
-            } catch(e) {
-                UI.log(`❌ Build Failed: ${e.message}`, "error");
-            } finally {
-                console.log = originalLog;
-                console.error = originalError;
-            }
-        },
-
-        download: () => {
-            const code = UI.copilot.editor.value;
-            const blob = new Blob([code], {type: "text/html"});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = "termos_project.html";
-            a.click();
+        } catch(e) {
+            const loader = document.getElementById(id);
+            if(loader) loader.remove();
+            UI.log(`❌ Error: ${e.message}`, "error");
         }
     };
 
     // --- COMMANDS ---
-    const Commands = {
-        handle: (manualCmd = null) => {
-            const txt = manualCmd || UI.input.value.trim();
-            if(!txt) return;
+const Commands = {
+    handle: (manualCmd = null) => {
+        const txt = manualCmd || UI.input.value.trim();
+        if(!txt) return;
 
-            if(!txt.startsWith('/')) {
-                UI.renderMessage(txt, "Me", true);
-                const topic = currentRoom ? `termos/rooms/${currentRoom}` : "termos/chat";
-                Net.send(topic, { user: username, text: txt, type: 'chat' });
-                UI.input.value = '';
-                return;
-            }
-
-            const [cmd, ...args] = txt.split(' ');
-            const fullArgs = args.join(' ');
-
-            switch(cmd.toLowerCase()) {
-                case '/ai': AI.chat(fullArgs); break;
-                case '/code': AI.code(fullArgs); break;
-                case '/kernel': AI.think(); break;
-                case '/join': 
-                    const roomName = fullArgs; 
-                    UI.log(`Joining ${roomName}...`, 'system');
-                    if (Net.joinRoom(roomName)) { /* Net.joinRoom handles logs */
-                    } else {
-                        UI.log(`Failed to join ${roomName}`, 'error');
-                    }
-                    break;
-                case '/leave': 
-                    UI.log("Leaving...", "system");
-                    Net.leaveRoom();
-                    break;
-                default: UI.log(`Unknown: ${cmd}`, "error");
-            }
+        if(!txt.startsWith('/')) {
+            UI.renderMessage(txt, "Me", State.profile.avatar, true);
+            const topic = State.currentRoom ? `termos/rooms/${State.currentRoom}` : "termos/v3/chat";
+            Net.send(topic, { user: Config.user, text: txt, name: State.profile.name, avatar: State.profile.avatar });
             UI.input.value = '';
+            return;
+        }
+
+        const [cmd, ...args] = txt.split(' ');
+        const fullArgs = args.join(' ');
+
+        switch(cmd.toLowerCase()) {
+            case '/ai': AI.chat(fullArgs); break;
+            case '/code': AI.code(fullArgs); break;
+            case '/kernel': AI.think(); break;
+            case '/join': 
+                document.getElementById('room-name-input').value = fullArgs; 
+                UI.toggleJoinModal(); 
+                break;
+            case '/leave': 
+                if(State.currentRoom) {
+                    Net.send(`termos/rooms/${State.currentRoom}`, { user: Config.user, type: 'leave' });
+                    State.currentRoom = null;
+                    document.getElementById('room-badge').classList.add('hidden');
+                    Net.subscribe("termos/v3/chat");
+                    UI.log("📢 Returned to Public Frequency", "system");
+                }
+                break;
+            default: 
+                UI.log(`Unknown command: ${cmd}`, "system");
+                UI.input.value = '';
         }
     };
 
-    // --- AI LOGIC ---
-    const AI = {
-        query: async (systemPrompt, userPrompt) => {
-            const provider = activeProvider;
-            const config = Config.providers[provider];
-            
-            if(!config.key) {
-                UI.log(`⚠️ ${provider.toUpperCase()} Key Required.`, 'error');
-                UI.toggleAdmin();
-                return;
-            }
+// --- UI CONTROLLER ---
+const UI = {
+    container: document.getElementById('chat-container'),
+    input: document.getElementById('user-input'),
+    copilotModal: document.getElementById('copilot-modal'),
+    copilotEditor: document.getElementById('copilot-editor'),
+    
+    init: () => {
+        UI.updateStatus(false);
+        UI.loadSettings();
+        
+        document.getElementById('ai-provider').addEventListener('change', (e) => UI.toggleProviderSettings(e.target.value));
 
-            const id = Utils.uuid();
-            const loadingTxt = "Synthesizing...";
-            UI.log(`<span id="${id}" class="animate-pulse italic">Thinking...</span>`, "system");
+        setTimeout(() => {
+            document.getElementById('boot-screen').style.opacity = '0';
+            setTimeout(() => document.getElementById('boot-screen').remove(), 1500);
+            Cosmos.start();
+            Net.connect();
+        }, 1500);
+
+        UI.input.addEventListener('keypress', (e) => { if(e.key === 'Enter') Commands.handle(); });
+
+        // Copilot Event Listeners
+        UI.copilotEditor.addEventListener('input', Copilot.onType);
+        UI.copilotEditor.addEventListener('keydown', Copilot.onKey);
+        // Auto-scan on input
+        UI.copilotEditor.addEventListener('input', () => {
+            if(State.copilot.scannerActive || State.copilot.previewActive) {
+                clearTimeout(Copilot.scannerInterval);
+                Copilot.scannerInterval = setTimeout(Rebuilder.scanAndInject, 800);
+            }
+        });
+
+        // UI.copilotEditor.addEventListener('input', (e) => {
+            document.getElementById('char-count').textContent = e.target.value.length + " chars";
+        });
+
+        toggleCopilot: () => {
+            UI.copilotModal.classList.toggle('hidden');
+            if(!UI.copilotModal.classList.contains('hidden')) {
+                UI.copilotEditor.focus();
+                // Turn off scanners
+                if(Rebuilder.container) Rebuilder.container.style.display = 'none';
+                if(Rebuilder.hud) Rebuilder.hud.style.display = 'none';
+                State.copilot.scannerActive = false;
+                State.copilot.previewActive = false;
+            }
+        },
+
+        toggleProviderSettings: (provider) => {
+            const groqDiv = document.getElementById('groq-settings');
+            const zhipuDiv = document.getElementById('zhipu-settings');
+            if(provider === 'zhipu') {
+                groqDiv.classList.add('hidden');
+                zhipuDiv.classList.remove('hidden');
+            } else {
+                groqDiv.classList.remove('hidden');
+                zhipuDiv.classList.add('hidden');
+            }
+        },
+
+        toggleMedia: () => {
+            const deck = document.getElementById('media-deck');
+            deck.classList.toggle('hidden');
+            if(!deck.classList.contains('hidden')) {
+                deck.classList.remove('media-minimized');
+            }
+        },
+        
+        switchTab: (tab) => {
+            document.getElementById('tab-radio').className = tab === 'radio' ? "pb-3 text-cyan-300 border-b-2 border-cyan-400 font-mono text-xs font-bold tracking-wide">RADIO</button>";
+            document.getElementById('tab-video').className = tab === 'video' ? "pb-3 text-gray-500 border-b-2 border-transparent font-mono text-xs hover:text-purple-300 tracking-wide">VIDEO</button>';
+            
+            document.getElementById('view-radio').classList.toggle('hidden', tab !== 'radio');
+            document.getElementById('view-video').classList.toggle('hidden', tab !== 'video');
+        },
+
+        toggleJoinModal: () => {
+            document.getElementById('join-modal').classList.toggle('hidden');
+        },
+
+        loadSettings: () => {
+            const savedGroq = localStorage.getItem('termos_groq') || "";
+            const savedZhipu = localStorage.getItem('termos_zhipu') || "";
+            document.getElementById('groq-key').value = savedGroq;
+            document.getElementById('zhipu-key').value = savedZhipu;
+            document.getElementById('gh-token').value = State.github.token;
+            
+            Config.providers.groq.key = savedGroq;
+            Config.providers.zhipu.key = savedZhipu;
+            
+            const savedProvider = localStorage.getItem('termos_provider') || 'groq';
+            const select = document.getElementById('ai-provider');
+            select.value = savedProvider;
+            Config.activeProvider = savedProvider;
+            UI.toggleProviderSettings(savedProvider);
+
+            const badge = document.getElementById('engine-badge');
+            badge.classList.remove('hidden');
+            badge.textContent = savedProvider.toUpperCase();
+            badge.className = savedProvider === 'zhipu' ? "px-2 py-0.5 bg-cyan-900/30 border border-cyan-500/30 rounded text-[9px] font-bold text-cyan-200 tracking-wider">ZHIPU</button> : "px-2 py-0.5 bg-purple-900/30 border-purple-500/30 rounded text-[9px] font-bold text-purple-200 tracking-wider">GROQ</button>;
+            badge.className = savedProvider === 'zhipu' ? "px-2 py-0.5 bg-cyan-900/30 border-cyan-500/30 rounded text-[9px] font-bold text-cyan-200 tracking-wider">ZHIPU</button> : "px-2 py-0.5 bg-purple-900/30 border-purple-500/30 rounded text-[9px] font-bold text-purple-200 tracking-wider">GROQ</button>
+        },
+
+        flash: () => {
+            const el = document.getElementById('flash-overlay');
+            el.style.opacity = '0.8';
+            setTimeout(() => el.style.opacity = '0', 150);
+        },
+
+        toggleMedia: () => {
+            const deck = document.getElementById('media-deck');
+            deck.classList.toggle('hidden');
+            if(!deck.classList.contains('hidden')) {
+                deck.classList.remove('media-minimized');
+            }
+        },
+
+        renderMessage: (text, name, avatar, isMe) => {
+            const safeText = Utils.escapeHTML(text);
+            const safeName = Utils.escapeHTML(name || "Unknown");
+            const avatarHTML = `<div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-sm border border-white/10 shrink-0">${avatar}</div>`;
+            const align = isMe ? "justify-end" : "justify-start";
+            const bg = isMe ? "var(--msg-user-bg)" : "bg-slate-800/60 border border-white/5";
+            const rounded = isMe ? "rounded-tr-none" : "rounded-tl-none";
+
+            const html = `
+                <div class="flex ${align} gap-3 items-end msg-anim">
+                    ${!isMe ? avatarHTML : ''}
+                    <div class="max-w-[80%]">
+                        <div class="${bg} ${rounded} p-4 shadow-lg text-sm text-white leading-relaxed break-words backdrop-blur-sm">
+                            ${safeText}
+                        </div>
+                        <div class="text-[9px] text-gray-500 mt-1 ${isMe ? 'text-right' : ''}">${safeName} • ${Utils.timestamp()}</div>
+                    </div>
+                    ${isMe ? avatarHTML : ''}
+                </div>
+            `;
+            UI.container.insertAdjacentHTML('beforeend', html);
+            UI.container.scrollTop = UI.container.scrollHeight;
+        },
+
+        renderAIResponse: (text, isCodeMode) => {
+            const parsedText = Utils.parseMarkdown(text);
+            const badge = isCodeMode ? "💻 CODING" : "🧠 BRAINSTORM";
+            const colorClass = isCodeMode ? "text-cyan-300" : "text-purple-300";
+            const providerName = Config.activeProvider.toUpperCase();
+
+            const html = `
+                <div class="flex gap-3 items-start msg-anim">
+                    <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-sm border border-white/10 shrink-0">AI</div>
+                    <div class="max-w-[90%]">
+                        <div class="bg-slate-900/80 border border-white/10 p-5 shadow-lg text-sm text-gray-200 leading-relaxed break-words backdrop-blur-md rounded-2xl">
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-bold text-cyan-300 font-mono tracking-widest flex items-center gap-1">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-current-color shadow-[0_0_8px_rgba(6,182,212, 0.8)]"></span>
+                                        <span class="font-bold ${colorClass} uppercase tracking-wider flex items-center gap-2">
+                                            ${badge}
+                                            ${providerName}
+                                        </span>
+                                        <div class="text-[9px] text-gray-600 font-mono">.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-[9px] text-gray-500 font-mono text-gray-400">${parsedText}</div>
+                                <div class="text-[9px] text-gray-500 font-mono text-gray-400">${Utils.timestamp()}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            UI.container.insertAdjacentHTML('beforeend', html);
+            UI.container.scrollTop = UI.container.scrollHeight;
+        },
+
+        toggleAdmin: () => {
+            const panel = document.getElementById('admin-panel');
+            if(panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                setTimeout(() => panel.classList.remove('translate-y-4', 'opacity-0'), 10);
+            } else {
+                panel.classList.add('translate-y-4', 'opacity-0');
+                setTimeout(() => panel.classList.add('hidden'), 300);
+            }
+        },
+
+        saveSettings: () => {
+            const provider = document.getElementById('ai-provider').value;
+            const groqKey = document.getElementById('groq-key').value.trim();
+            const zhipuKey = document.getElementById('zhipu-key').value.trim();
+            const token = document.getElementById('gh-token').value.trim();
+
+            Config.activeProvider = provider;
+            localStorage.setItem('termos_provider', provider);
+            Config.providers.groq.key = groqKey;
+            localStorage.setItem('termos_groq', groqKey);
+            localStorage.setItem('termos_zhipu', zhipuKey);
+            localStorage.setItem('termos_gh_token', token);
+
+            const badge = document.getElementById('engine-badge');
+            badge.classList.remove('hidden');
+            badge.textContent = provider.toUpperCase();
+            badge.className = provider === 'zhipu' ? "px-2 py-0.5 bg-cyan-900/30 border border-cyan-500/30 rounded text-[9px] font-bold text-cyan-200 tracking-wider">ZHIPU</button> : "px-2 py-0.5 bg-purple-900/30 border-purple-500/30 rounded text-[9px] font-bold text-purple-200 tracking-wider">GROQ</button>";
+        },
+
+        loadSettings: () => {
+            const savedGroq = localStorage.getItem('termos_groq') || "";
+            const savedZhipu = localStorage.getItem('termos_zhipu') || "";
+            document.getElementById('groq-key').value = savedGroq;
+            document.getElementById('zhipu-key').value = savedZhipu;
+            document.getElementById('gh-token').value = State.github.token;
+            Config.providers.groq.key = savedGroq;
+            Config.providers.zhipu.key = savedZhipu;
+            localStorage.setItem('termos_groq', groqKey);
+            localStorage.setItem('termos_zhipu', zhipuKey);
+            localStorage.setItem('termos_gh_token', token);
+
+            const badge = document.getElementById('engine-badge');
+            badge.classList.remove('hidden');
+            badge.textContent = savedProvider.toUpperCase();
+            badge.className = savedProvider === 'zhipu' ? "px-2 py-0.5 bg-cyan-900/30 border-cyan-500/30 rounded text-[9px] font-bold text-cyan-200 tracking-wider">ZHIPU</button> : "px-2 py-0.5 bg-purple-900/30 border-purple-500/30 rounded text-[9px] font-bold text-purple-200 tracking-wider">GROQ</button>';
+        },
+
+        toggleMedia: () => {
+            const deck = document.getElementById('media-deck');
+            deck.classList.toggle('hidden');
+            if(!deck.classList.contains('hidden')) {
+                deck.classList.remove('media-minimized');
+            }
+        },
+
+        switchTab: (tab) => {
+            document.getElementById('tab-radio').className = tab === 'radio' ? "pb-3 text-cyan-300 border-b-2 border-cyan-400 font-mono text-xs font-bold tracking-wide">RADIO</button>
+            document.getElementById('tab-video').className = tab === 'video' ? "pb-3 text-gray-500 border-b-2 border-transparent font-mono text-xs hover:text-purple-300 tracking-wide">VIDEO</button>';
+            
+            document.getElementById('view-radio').classList.toggle('hidden', tab !== 'radio');
+            document.getElementById('view-video').classList.toggle('hidden', tab !== 'video');
+        },
+
+        toggleJoinModal: () => {
+            const name = document.getElementById('room-name-input').value.trim();
+            if(!name) return;
+            
+            if(State.currentRoom) Net.unsubscribe(`termos/rooms/${State.currentRoom}`);
+            else Net.unsubscribe("termos/v3/chat");
+            
+            State.currentRoom = name;
+            Net.subscribe(`termos/rooms/${name}`);
+            Net.send(`termos/rooms/${name}`, { user: Config.user, type: 'join', name: State.profile.name });
+            
+            UI.updateStatus(true);
+            document.getElementById('room-badge').innerText = name.toUpperCase();
+            document.getElementById('room-badge').classList.remove('hidden');
+            UI.toggleJoinModal();
+            UI.log(`🔒 Joined Channel: ${name}`, "system");
+        },
+
+        flash: () => {
+            const el = document.getElementById('flash-overlay');
+            el.style.opacity = '0.8';
+            setTimeout(() => el.style.opacity = '0', 150);
+        }
+    };
+
+// --- NETWORKING (MQTT) ---
+const Net = {
+    client: null,
+
+    connect: () => {
+        if (typeof Paho === 'undefined') return;
+        try {
+            State.mqttClient = new Paho.MQTT.Client(Config.broker, Config.port, `termos_${Config.user}`);
+            State.mqttClient.onConnectionLost = Net.onLost;
+            State.mqttClient.onMessageArrived = Net.onMessage;
+            State.mqttClient.connect({
+                onSuccess: Net.onConnect,
+                onFailure: () => setTimeout(Net.connect, 3000),
+                useSSL: true
+            });
+        },
+    onConnect: () => { UI.log("📡 Neural Link Established.", "system"); UI.updateStatus(true); Net.subscribe("termos/v3/chat"); },
+    onLost: () => { UI.updateStatus(false); setTimeout(Net.connect, 3000); },
+    
+    subscribe: (topic) => { if(State.mqttClient && State.mqttClient.isConnected()) State.mqttClient.subscribe(topic, { qos: 1 }); },
+    unsubscribe: (topic) => { if(State.mqttClient && State.mqttClient.isConnected()) State.mqttClient.unsubscribe(topic); },
+    send: (topic, payload) => {
+        if(State.mqttClient && State.mqttClient.isConnected()) { 
+            const msg = new Paho.MQTT.Message(JSON.stringify(payload)); 
+            msg.destinationName = topic;
+            State.mqttClient.send(msg);
+        },
+    onMessage: (msg) => {
+        try {
+            const data = JSON.parse(msg.payloadString);
+            const isMe = data.user === Config.user;
+
+            if(msg.destinationName === "termos/v3/chat" && !State.currentRoom && !isMe) {
+                UI.renderMessage(data.text, data.name, data.avatar, false);
+            } else if (msg.destinationName === `termos/rooms/${State.currentRoom}`) {
+                if(data.type === 'video' && !isMe) {
+                    Media.playVideo(data.url);
+                    UI.log(`📺 Transmission from ${data.name}`, "system");
+                } else if (!isMe && data.type !== 'video') {
+                    UI.renderMessage(data.text, data.name, data.avatar, false);
+                }
+            }
+        } catch(e) {}
+    },
+
+    joinRoom: () => {
+        const name = document.getElementById('room-name-input').value.trim();
+        if(!name) return;
+
+        if(State.currentRoom) Net.unsubscribe(`termos/rooms/${State.currentRoom}`);
+        else Net.unsubscribe("termos/v3/chat");
+        
+        State.currentRoom = name;
+        Net.subscribe(`termos/rooms/${name}`);
+        Net.send(`termos/rooms/${name}`, { user: Config.user, type: 'join', name: State.profile.name });
+        
+        UI.updateStatus(true);
+        document.getElementById('room-badge').innerText = name.toUpperCase();
+        document.getElementById('room-badge').classList.remove('hidden');
+        UI.toggleJoinModal();
+        UI.log(`🔒 Joined Channel: ${name}`, "system");
+    },
+
+    // --- MESSAGING ---
+UI.renderMessage = (text, name, avatar, isMe) => {
+    const safeText = Utils.escapeHTML(text);
+    const safeName = Utils.escapeHTML(name || "Unknown");
+    const avatarHTML = `<div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-sm border border-white/10 shrink-0">${avatar}</div>`;
+    const align = isMe ? "justify-end" : "justify-start";
+    const bg = isMe ? "var(--msg-user-bg)" : "bg-slate-800/60 border border-white/5";
+    const rounded = isMe ? "rounded-tr-none" : "rounded-tl-none";
+
+    const html = `
+        <div class="flex ${align} gap-3 items-end msg-anim">
+                ${!isMe ? avatarHTML : ''}
+                <div class="max-w-[80%]">
+                    <div class="${bg} ${rounded} p-4 shadow-lg text-sm text-white leading-relaxed break-words backdrop-blur-sm">
+                        ${safeText}
+                    </div>
+                    <div class="text-[9px] text-gray-500 mt-1 ${isMe ? 'text-right' : ''}">${safeName} • ${Utils.timestamp()}</div>
+                </div>
+                ${isMe ? avatarHTML : ''}
+            </div>
+        `;
+    UI.container.insertAdjacentHTML('beforeend', html);
+    UI.container.scrollTop = UI.container.scrollHeight;
+};
+
+UI.renderAIResponse = (text, isCodeMode) => {
+    const parsedText = Utils.parseMarkdown(text);
+    const badge = isCodeMode ? "💻 CODING" : "🧠 BRAINSTORM";
+    const colorClass = isCodeMode ? "text-cyan-300" : "text-purple-300";
+    const providerName = Config.activeProvider.toUpperCase();
+
+    const html = `
+            <div class="flex gap-3 items-start msg-anim">
+                <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-sm border border-white/10 shrink-0">AI</div>
+                <div class="max-w-[90%]">
+                    <div class="bg-slate-900/80 border border-white/10 p-5 shadow-lg text-sm text-gray-200 leading-relaxed break-words backdrop-blur-md rounded-2xl">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-bold text-cyan-300 font-mono tracking-widest flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-current-color shadow-[0_0_8px_rgba(6,182,212, 0.8)]"></span>
+                                    <span class="font-bold ${colorClass} uppercase tracking-wider flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-current-color shadow-[0_0_8px_rgba(168, 85, 247, 0.8)]"></span>
+                                        <span class="font-bold ${colorClass} uppercase tracking-wider flex items-center gap-2">
+                                            ${badge}
+                                            ${providerName}
+                                        </span>
+                                        <div class="text-[9px] text-gray-600 font-mono">.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <span class="text-[10px] text-gray-500 font-mono text-gray-400">${parsedText}</div>
+                                <div class="text-[9px] text-gray-500 font-mono text-gray-400">${Utils.timestamp()}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    UI.container.insertAdjacentHTML('beforeend', html);
+        UI.container.scrollTop = UI.container.scrollHeight;
+    };
+
+    // --- COPILOT ENGINE ---
+const Copilot = {
+        onType: (e) => {
+            if (State.copilot.timer) clearTimeout(State.copilot.timer);
+            State.copilot.timer = setTimeout(() => {
+                Copilot.generateSuggestion(e.target.value);
+            }, 500); 
+        },
+
+        onKey: (e) => {
+            if (e.key === 'Tab' && State.copilot.suggestion) {
+                e.preventDefault();
+                Copilot.acceptSuggestion();
+            } else if (e.key !== 'Tab') {
+                document.getElementById('copilot-suggestion').classList.remove('active');
+                State.copilot.suggestion = null;
+            }
+        },
+
+        generateSuggestion: async (code) => {
+            if (code.length < 3) return;
+            
+            const provider = Config.activeProvider;
+            const config = Config.providers[provider];
+            if(!config.key) return;
+
+            // Show "Thinking"
+            document.getElementById('copilot-status').classList.remove('hidden');
+            document.getElementById('copilot-suggestion').classList.remove('active');
 
             try {
                 const res = await fetch(config.url, {
@@ -491,177 +996,176 @@
                     body: JSON.stringify({
                         model: config.model,
                         messages: [
-                            { role: "system", content: systemPrompt },
-                            { role: "user", content: userPrompt }
+                            { role: "system", content: "You are a code completion AI. Complete the user's code. Return ONLY the new completion string. Do not wrap in markdown. Do not repeat the user's last word." },
+                            { role: "user", content: code }
                         ],
-                        temperature: 0.7,
-                        max_tokens: 1024
+                        temperature: 0.2,
+                        max_tokens: 50
                     })
                 });
                 
                 const data = await res.json();
+                document.getElementById('copilot-status').classList.add('hidden');
                 
-                if(data.error) throw new Error(data.error.message);
-                
-                const reply = data.choices[0].message.content;
-                document.getElementById(id).remove(); 
-                UI.log(reply, 'ai');
-            } catch(e) {
-                const loader = document.getElementById(id);
-                if(loader) loader.remove();
-                UI.log(`❌ Error: ${e.message}`, 'error');
-            }
-        },
-
-        chat: (prompt) => {
-            if(!prompt) return UI.input.placeholder = "Type: /ai [question]";
-            AI.query("You are TermOS AI (White Edition). Be helpful and creative.", prompt);
-        },
-
-        code: (prompt) => {
-            if(!prompt) return UI.input.placeholder = "Type: /code [task]";
-            AI.query("You are a Frontend Architect (White Edition). Provide clean code.", prompt);
-        },
-
-        think: async () => {
-            AI.query("You are TermOS Kernel. Suggest 1 creative idea.");
-        }
-    };
-
-    // --- NETWORKING (MQTT) ---
-    let currentRoom = null; // Global state variable for room
-
-    const Net = {
-        connect: () => {
-            if (typeof Paho === 'undefined') return;
-            try {
-                const client = new Paho.MQTT.Client(Config.broker, Config.port, "web_" + username);
-                client.onConnectionLost = (responseObject) => {
-                    document.getElementById('status-dot').className = "w-2 h-2 rounded-full bg-red-500";
-                    document.getElementById('room-display').innerText = "OFFLINE";
-                };
-                client.onMessageArrived = (message) => {
-                    const data = JSON.parse(message.payloadString);
-                    if (data.type === 'join') {
-                        currentRoom = data.id;
-                        document.getElementById('room-display').innerText = data.id.toUpperCase();
-                        document.getElementById('status-dot').className = "w-2 h-2 rounded-full bg-green-500";
-                        document.getElementById('room-display').innerText = `ROOM: ${data.id.toUpperCase()}`;
-                    } else if (data.type === 'video') {
-                        Rebuilder.injectHTML(data.html);
-                        UI.log(`📺 Transmission from ${data.name}`, "system");
-                    } else {
-                        UI.renderMessage(data.text, data.name, false);
-                    }
+                if(data.choices && data.choices[0]) {
+                    const completion = data.choices[0].message.content.trim();
+                    Copilot.showSuggestion(completion, code);
                 }
-            };
-            
-            client.connect({
-                onSuccess: () => {
-                    document.getElementById('boot-screen').style.opacity = '0';
-                    setTimeout(() => document.getElementById('boot-screen').remove(), 1000);
-                    document.getElementById('status-dot').className = "w-2 h-2 rounded-full bg-green-500";
-                    document.getElementById('room-display').innerText = "ONLINE";
-                    
-                    // Subscribe to public by default
-                    client.subscribe("termos/chat");
-                },
-                onFailure: () => setTimeout(Net.connect, 3000)
-            });
-        },
-
-        joinRoom: (roomName) => {
-            if(!roomName) return;
-            if (currentRoom) client.unsubscribe(`termos/rooms/${currentRoom}`);
-            client.subscribe(`termos/rooms/${roomName}`);
-            
-            // Announce join
-            const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'join', id: roomName }));
-            client.send(msg);
-            
-            // Update UI
-            document.getElementById('room-display').innerText = roomName.toUpperCase();
-        },
-
-        leaveRoom: () => {
-            if(!currentRoom) return;
-            client.unsubscribe(`termos/rooms/${currentRoom}`);
-            
-            // Announce leave
-            const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'leave', id: currentRoom }));
-            client.send(msg);
-
-            // Reset UI
-            currentRoom = null;
-            document.getElementById('room-display').innerText = "ONLINE";
-        },
-
-        send: (topic, payload) => {
-            if(client && client.isConnected()) {
-                const msg = new Paho.MQTT.Message(JSON.stringify(payload));
-                msg.destinationName = topic;
-                client.send(msg);
+            } catch (e) {
+                const loader = document.getElementById('copilot-status');
+                if(loader) loader.remove();
+                document.getElementById('copilot-suggestion').classList.remove('active');
             }
+        },
+
+        showSuggestion: (suggestion, currentCode) => {
+            let displayText = suggestion;
+            
+            const lastWord = currentCode.split(/\s+/).pop(); 
+            
+            // Smart Overlap Removal Logic
+            if (lastWord && suggestion.startsWith(lastWord)) {
+                displayText = suggestion.slice(lastWord.length);
+            }
+
+            State.copilot.suggestion = suggestion; 
+            document.getElementById('suggestion-text').textContent = displayText;
+            document.getElementById('copilot-suggestion').classList.add('active');
+        },
+
+        acceptSuggestion: () => {
+            if(!State.copilot.suggestion) return;
+            const editor = UI.copilotEditor;
+            const suggestion = State.copilot.suggestion;
+            
+            const cursorPos = editor.selectionStart;
+            const textBefore = editor.value.substring(0, cursorPos);
+            const textAfter = editor.value.substring(cursorPos, editor.value.length);
+            
+            // Smart Overlap Removal Logic
+            let textToInsert = suggestion;
+            const lastChars = editor.value.slice(Math.max(0, cursorPos - 20), cursorPos);
+            
+            if (suggestion.startsWith(lastChars)) {
+                // If they are identical or close enough, strip the prefix
+                textToInsert = suggestion.slice(lastChars.length);
+            }
+
+            // Insert Logic
+            editor.value = textBefore + textToInsert + textAfter;
+            State.copilot.suggestion = null;
+            document.getElementById('copilot-suggestion').classList.remove('active');
+            
+            // Move cursor
+            const newCursorPos = cursorPos + textToInsert.length;
+            editor.selectionStart = newCursorPos;
+            editor.selectionEnd = newCursorPos;
+            editor.focus();
+            UI.flash();
         }
     };
 
-    // --- VISUALS ---
-    const Cosmos = {
-        start: () => {
-            const canvas = document.getElementById('matrix-canvas');
-            const ctx = canvas.getContext('2d');
-            let width = canvas.width = window.innerWidth;
-            let height = canvas.height = window.innerHeight;
-            const fontSize = 14;
-            const columns = Math.floor(width / fontSize);
-            const drops = Array(50).fill().map(() => ({
-                x: Math.random() * width,
-                y: Math.random() * height,
-                v: (Math.random() - 0.5) * 2,
-                char: String.fromCharCode(0x30A0 + (Math.random() * 60)),
-                color: '#00ff00',
-                value: Math.random()
-            }));
+// --- COMMANDS ---
+const Commands = {
+    handle: (manualCmd = null) => {
+        const txt = manualCmd || UI.input.value.trim();
+        if(!txt) return;
 
-            function draw() {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0)'; 
-                ctx.fillRect(0, 0, width, height);
+        if(!txt.startsWith('/')) {
+            UI.renderMessage(txt, "Me", State.profile.avatar, true);
+            const topic = State.currentRoom ? `termos/rooms/${State.currentRoom}` : "termos/v3/chat";
+            Net.send(topic, { user: Config.user, text: txt, name: State.profile.name, avatar: State.profile.avatar });
+            UI.input.value = '';
+            return;
+        }
+
+        const [cmd, ...args] = txt.split(' ');
+        const fullArgs = args.join(' ');
+
+        switch(cmd.toLowerCase()) {
+            case '/ai': AI.chat(fullArgs); break;
+            case '/code': AI.code(fullArgs); break;
+            case '/kernel': AI.think(); break;
+            case '/join': document.getElementById('room-name-input').value = fullArgs; UI.toggleJoinModal(); break;
+            case '/leave': 
+                if(State.currentRoom) {
+                    Net.send(`termos/rooms/${State.currentRoom}`, { user: Config.user, type: 'leave' });
+                    State.currentRoom = null;
+                    document.getElementById('room-badge').classList.add('hidden');
+                    Net.subscribe("termos/v3/chat");
+                    UI.log("📢 Returned to Public Frequency", "system");
+                }
+                break;
+            default: UI.log(`Unknown command: ${cmd}`, "system");
+            UI.input.value = '';
+        }
+    };
+
+    // --- MODERN BUILD SCANNER ---
+const Rebuilder = {
+    container: document.getElementById('build-preview-container'),
+    iframe: document.getElementById('build-iframe'),
+    hud: document.getElementById('scanner-hud'),
+    scanBar: document.getElementById('scan-bar'),
+    scanText = document.getElementById('scan-text'),
+    scanTimer: null,
+
+    toggleLivePreview: () => {
+        State.copilot.previewActive = !State.copilot.previewActive;
+        const container = document.getElementById('build-preview-container');
+        
+        const scannerBtn = document.querySelector('.tool-btn-scanner'); 
+        if(State.copilot.previewActive) {
+            container.style.display = 'block';
+            if (State.copilot.scanner.isActive) {
+                Rebuilder.scanAndInject();
+                scannerBtn.classList.add('active');
+            } else {
+                hud.style.display = 'none';
+                document.getElementById('scan-bar').classList.remove('scanner-active');
+            }
+        },
+
+        scanAndInject: async () => {
+            const code = UI.copilotEditor.value;
+            
+            // Visual Feedback
+            Rebuilder.updateScannerUI("SCANNING SYNTAX...");
+            setTimeout(() => {
+                // Create wrapper HTML
+                const fullDoc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"><title>Preview</title>
+                <style>body{background:#0f0f0f0;color:#333;font-family:sans-serif;padding:20px;}</style></head></head><body>${code}</body></html>`;
                 
-                drops.forEach(drop => {
-                    drop.y += drop.v;
-                    if(drop.y > height) {
-                        drop.y = -height;
-                        drop.x = Math.random() * width;
-                    }
-                    
-                    // Draw character
-                    ctx.fillStyle = drop.color;
-                    ctx.font = `${fontSize}px monospace`;
-                    ctx.fillText(drop.char, drop.x, drop.y);
-                    
-                    // Fade tail
-                    ctx.fillStyle = drop.value;
-                    ctx.globalAlpha = 0.3;
-                    ctx.fillRect(drop.x, drop.y, width, 2); 
-                });
-                requestAnimationFrame(draw);
+                // Inject into iframe
+                const doc = Rebuilder.iframe.contentDocument || Rebuilder.iframe.contentWindow.document;
+                doc.open();
+                doc.write(fullDoc);
+                doc.close();
+                
+                Rebuilder.updateScannerUI("BUILD COMPLETE", true);
+                UI.log(`⚡ Build finished. [${code.length} chars]`, "system");
+            }, 300);
+        },
+
+        updateScannerUI: (status, success) => {
+            if(!Rebuilder.text) return;
+            Rebuilder.text = status;
+            Rebuilder.scanText.textContent = status;
+            Rebuilder.scanText.style.color = success ? '#00ff00' : '#ffff00';
+            Rebuilder.scanText.style.textShadow = success ? '0 0 10px #00ff00' : 'none';
+            
+            if(Rebuilder.scanBar) {
+                Rebuilder.scanBar.classList.remove('active');
+                Rebuilder.scanBar.classList.remove('scanner-active');
+            } 
+            if(Rebuilder.scanBar) {
+                Rebuilder.scanBar.classList.add('active');
             }
-            draw();
-            window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
         }
     };
 
-    // --- MAIN ENTRY ---
-    window.onload = () => {
-        // Hide boot screen (simple logic)
-        const boot = document.getElementById('boot-screen');
-        if(boot) boot.remove();
-
-        // Start systems
-        UI.init();
-        Cosmos.start();
-        Net.connect();
-    };
+// --- COPIL
+    window.onload = UI.init;
 
 </script>
 </body>
