@@ -25,7 +25,7 @@
             --accent-glow: rgba(212, 175, 55, 0.15);
             --text-primary: #e5e5e5;
             --text-secondary: #888888;
-            --glass-bg: rgba(10, 10, 10, 0.85);
+            --glass-bg: rgba(10, 10, 10, 0.9);
             --glass-border: rgba(255, 255, 255, 0.08);
             --msg-user-bg: #111111; 
             --ide-bg: #050505;
@@ -76,10 +76,13 @@
             font-family: var(--font-body);
             letter-spacing: 1px;
             text-transform: uppercase;
-            font-size: 0.7rem;
+            font-size: 0.6rem;
             cursor: pointer;
             position: relative;
             overflow: hidden;
+        }
+        @media (min-width: 768px) {
+            .btn-fashion { font-size: 0.7rem; }
         }
         .btn-fashion:hover {
             border-color: var(--accent-color);
@@ -140,15 +143,35 @@
             opacity: 0; pointer-events: none; z-index: 100; transition: opacity 0.5s;
         }
 
-        /* Media Overlay */
+        /* --- MEDIA DECK MOVED TO TOP LEFT --- */
         .media-overlay {
-            position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 600px; z-index: 40; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: fixed; 
+            top: 80px; /* Below Header */
+            left: 20px; /* Left aligned */
+            bottom: auto;
+            right: auto;
+            width: 300px; /* Fixed width for compactness */
+            max-height: 70vh;
+            z-index: 40; 
+            transform: none;
+            transition: all 0.3s ease;
+            overflow-y: auto;
         }
         .media-minimized {
-            bottom: 20px; right: 20px; left: auto; width: 50px; height: 50px; transform: none;
-            padding: 0; background: transparent; border: none; box-shadow: none;
+            top: 75px;
+            left: 20px;
+            bottom: auto;
+            right: auto;
+            width: 40px; 
+            height: 40px; 
+            transform: none;
+            padding: 0; 
+            background: #0a0a0a; 
+            border: 1px solid #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            overflow: hidden;
         }
+
         .video-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100%, 1fr)); gap: 10px; }
         .video-container {
             background: #000; border-radius: 8px; overflow: hidden; position: relative;
@@ -190,7 +213,6 @@
             flex-shrink: 0; 
         }
         
-        /* The Typing Line (Copilot Input) */
         #copilot-input { 
             width: 100%; 
             background: #0a0a0a; 
@@ -211,19 +233,26 @@
             background: #0f0f0f;
         }
 
-        /* Mobile Responsive for Editor */
         @media (max-width: 768px) {
             .editor-body { display: flex; flex-direction: column; }
             .code-area { flex: 0 0 45%; min-height: 250px; border-bottom: 1px solid #222; }
             .copilot-sidebar { flex: 1; border-left: none; }
-            .media-overlay { width: 95%; }
+            .media-overlay { 
+                width: 90%; 
+                left: 5%; 
+                top: 70px; 
+            }
+            .media-minimized {
+                width: 30px; 
+                height: 30px; 
+                top: 65px;
+            }
         }
 
         .hidden-custom { display: none !important; }
         .admin-hidden { display: none !important; }
         .admin-visible { display: flex !important; }
 
-        /* Loaders */
         .loader-ring {
             width: 40px; height: 40px; border: 2px solid #333;
             border-top: 2px solid var(--accent-color); border-radius: 50%;
@@ -237,7 +266,7 @@
     <!-- BOOT SCREEN -->
     <div id="boot-screen" class="fixed inset-0 bg-black z-[999] flex flex-col items-center justify-center transition-opacity duration-1000">
         <div class="loader-ring mb-6"></div>
-        <h1 class="font-header text-3xl text-white tracking-[0.3em] mb-2">TERMIOS</h1>
+        <h1 class="font-header text-3xl text-white tracking-[0.3em] mb-2">TERMOS</h1>
         <div class="text-[10px] text-[#D4AF37] font-mono tracking-[0.5em] uppercase">Initializing</div>
     </div>
 
@@ -247,41 +276,45 @@
     <div id="flash-overlay"></div>
 
     <!-- HEADER -->
-    <header class="h-20 border-b border-white/5 flex items-center justify-between px-4 md:px-8 bg-black/40 backdrop-blur-xl z-20 shrink-0">
-        <!-- LEFT SIDE: Logo + Title + Media Deck -->
-        <div class="flex items-center gap-4">
-            <div class="w-10 h-10 rounded-full border border-[#D4AF37] flex items-center justify-center bg-[#0a0a0a] text-[#D4AF37] shadow-[0_0_15pxrgba(212,175,55,0.1)]">
-                <span class="font-header font-bold text-lg">T</span>
+    <header class="h-16 md:h-20 border-b border-white/5 flex items-center justify-between px-2 md:px-8 bg-black/40 backdrop-blur-xl z-20 shrink-0">
+        <!-- LEFT SIDE -->
+        <div class="flex items-center gap-2 md:gap-4">
+            <div class="w-8 h-8 md:w-10 md:h-10 rounded-full border border-[#D4AF37] flex items-center justify-center bg-[#0a0a0a] text-[#D4AF37] shadow-[0_0_15pxrgba(212,175,55,0.1)]">
+                <span class="font-header font-bold text-sm md:text-lg">T</span>
             </div>
             <div class="hidden md:block">
                 <h1 class="font-header text-xl italic tracking-wide text-white leading-none">TermOS</h1>
                 <span class="text-[9px] text-[#D4AF37] tracking-[0.3em] block mt-1">CLEAN EDITION</span>
             </div>
             
-            <!-- MEDIA DECK BUTTON MOVED HERE -->
-            <button onclick="toggleMediaOverlay()" class="btn-fashion px-3 py-2 rounded-full flex items-center gap-2" title="Open Media Deck">
-                <span class="text-lg">📺</span> <span class="hidden md:inline">MEDIA</span>
+            <!-- MEDIA DECK BUTTON (TOP LEFT) -->
+            <button onclick="toggleMediaOverlay()" class="btn-fashion px-2 py-1 md:px-3 md:py-2 rounded-full flex items-center gap-1 md:gap-2" title="Open Media Deck">
+                <span class="text-lg md:text-xl">📺</span> <span class="hidden md:inline">MEDIA</span>
             </button>
         </div>
         
-        <!-- RIGHT SIDE: Status & Tools -->
-        <div class="flex items-center gap-2 md:gap-3">
-            <!-- Status Indicator -->
+        <!-- RIGHT SIDE (Menu Buttons - Visible on All Devices) -->
+        <div class="flex items-center gap-1 md:gap-3">
+            <!-- Status Indicator (Desktop Only) -->
             <div class="hidden md:flex items-center gap-2 px-3 py-1 border border-white/10 rounded-full bg-black/20">
                 <div id="status-dot" class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
                 <span id="room-display" class="text-[9px] text-gray-400 uppercase tracking-widest font-mono">OFFLINE</span>
             </div>
 
-            <button onclick="toggleCodeEditor()" class="btn-fashion px-2 md:px-4 py-2 rounded-none hidden md:flex">🖋 IDE</button>
-            <button onclick="openSettings()" class="btn-fashion primary px-2 md:px-4 py-2 rounded-none flex items-center gap-2">
-                <span>⚙️</span> <span class="hidden md:inline">SETUP</span>
+            <!-- IDE Button -->
+            <button onclick="toggleCodeEditor()" class="btn-fashion px-2 py-1 md:px-4 md:py-2 rounded-none flex flex-col md:flex-row items-center gap-1">
+                <span>🖋</span> <span class="text-[9px] md:text-[10px]">IDE</span>
+            </button>
+
+            <!-- Setup Button -->
+            <button onclick="openSettings()" class="btn-fashion primary px-2 py-1 md:px-4 md:py-2 rounded-none flex flex-col md:flex-row items-center gap-1">
+                <span>⚙️</span> <span class="text-[9px] md:text-[10px]">SETUP</span>
             </button>
         </div>
     </header>
 
     <!-- MAIN CHAT -->
-    <main id="chat-container" class="flex-1 overflow-y-auto pt-24 pb-36 px-4 md:px-12 space-y-6 scroll-smooth max-w-5xl mx-auto w-full z-10">
-        <!-- Clean Start State (No Atelier branding) -->
+    <main id="chat-container" class="flex-1 overflow-y-auto pt-20 pb-36 px-4 md:px-12 space-y-6 scroll-smooth max-w-5xl mx-auto w-full z-10">
         <div class="text-center mt-16 mb-10 opacity-90 select-none">
             <h2 class="font-header text-2xl md:text-4xl text-white mb-4 tracking-widest">SYSTEM READY</h2>
             <p class="font-mono text-xs md:text-sm text-gray-500 tracking-[0.4em] uppercase">Waiting for input.</p>
@@ -294,7 +327,7 @@
             <!-- MAIN INPUT ROW -->
             <div class="flex items-end gap-3 bg-black/60 rounded-2xl p-2 border border-white/5 shadow-[0_0_30pxrgba(0,0,0,0.5)] input-glow transition-all">
                 
-                <!-- Kernel/Copilot Shortcut (Toggles Bottom Input) -->
+                <!-- Kernel/Copilot Shortcut -->
                 <button onclick="toggleBottomCopilot()" class="p-3 rounded-xl text-[#D4AF37] hover:text-white hover:bg-[#D4AF37]/10 transition-colors shrink-0" title="Toggle Copilot String">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
                 </button>
@@ -308,7 +341,7 @@
                 </button>
             </div>
 
-            <!-- BOTTOM COPILOT STRING (Hidden by default) -->
+            <!-- BOTTOM COPILOT STRING -->
             <div id="bottom-copilot-container" class="hidden-custom mt-3 overflow-hidden transition-all duration-300">
                 <div class="flex gap-2 items-end relative">
                     <div class="flex-1 bg-black/40 rounded-xl border border-white/10 focus-within:border-[#D4AF37] transition-colors">
@@ -383,8 +416,8 @@
         </div>
     </div>
 
-    <!-- MEDIA OVERLAY -->
-    <div id="media-overlay" class="media-overlay media-minimized glass-panel rounded-3xl border border-white/10 shadow-[0_20px_50pxrgba(0,0,0,0.5)]">
+    <!-- MEDIA OVERLAY (Top Left) -->
+    <div id="media-overlay" class="media-overlay media-minimized glass-panel rounded-2xl border border-white/10 shadow-[0_20px_50pxrgba(0,0,0,0.5)]">
         <div class="p-0">
             <div class="flex justify-between items-center mb-3 px-5 pt-5">
                 <span class="text-white font-bold text-sm font-header tracking-wide">📺 MEDIA DECK</span>
@@ -513,12 +546,10 @@
             btnTestApi: document.getElementById('btn-test-api'),
             sendBtn: document.getElementById('send-btn'),
             codeEditorTextarea: document.getElementById('code-editor-textarea'),
-            // Bottom Copilot
             bottomCopilotContainer: document.getElementById('bottom-copilot-container'),
             copilotBottomInput: document.getElementById('copilot-bottom-input')
         };
 
-        // --- BOOT SEQUENCE ---
         window.addEventListener('load', () => {
             setTimeout(() => {
                 els.boot.style.opacity = '0'; 
@@ -531,20 +562,14 @@
 
         function startApp() {
             updateStatusDot(!!(state.groqKey || state.zhipuKey));
-            
-            // Bind Main Input
             els.sendBtn.onclick = handleInput;
             els.input.addEventListener('keypress',e=>{ if(e.key==='Enter') handleInput(); });
             els.input.focus();
 
-            // Bind Bottom Copilot Input
             els.copilotBottomInput.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'Enter') {
-                    sendCopilotBottom();
-                }
+                if (e.ctrlKey && e.key === 'Enter') { sendCopilotBottom(); }
             });
 
-            // Bind IDE Copilot Input
             els.copilotInput.addEventListener('keypress', (e) => { 
                 if (e.key === 'Enter' && !e.shiftKey) { 
                     e.preventDefault(); 
@@ -554,14 +579,10 @@
 
             els.avatarFileInput.addEventListener('change', handleFileSelect);
 
-            // ESCAPE KEY LISTENER
             document.addEventListener('keydown', (e) => {
-                if(e.key === 'Escape' && isKernelOpen) {
-                    toggleCodeEditor(); 
-                }
+                if(e.key === 'Escape' && isKernelOpen) { toggleCodeEditor(); }
             });
 
-            // MQTT Connection
             if(typeof Paho !== 'undefined') {
                 mqttClient = new Paho.MQTT.Client('wss://broker.emqx.io:8084/mqtt', "termos_client_" + Math.random().toString(16).substr(2, 8));
                 mqttClient.onConnectionLost = () => { updateStatusDot(false); setTimeout(connectMQTT, 5000); };
@@ -594,15 +615,9 @@
         async function sendCopilotBottom() {
             const txt = els.copilotBottomInput.value.trim();
             if(!txt) return;
-
-            // Add user message to chat from bottom input
             addMessage('user', txt);
             els.copilotBottomInput.value = '';
-            
-            // Process AI
             processAIRequest(txt, true);
-            
-            // Hide input after sending (optional, but good for "string" feel)
             els.bottomCopilotContainer.classList.add('hidden-custom');
         }
 
@@ -627,7 +642,6 @@
         }
 
         // --- CORE FUNCTIONS ---
-
         function handleFileSelect(e) {
             const file = e.target.files[0]; if(!file) return;
             const reader = new FileReader();
@@ -663,7 +677,8 @@
         // --- SETTINGS LOGIC ---
         function openSettings() { 
             els.nameInput.value = state.userName;
-            els.apiKeyInput.value = state.provider === 'groq' ? state.groqKey : state.zhipiKey;
+            // FIXED: Use correct variable
+            els.apiKeyInput.value = state.provider === 'groq' ? state.groqKey : state.zhipuKey;
             els.avatarEmojiInput.value = (state.userAvatar.startsWith('data:') ? "" : state.userAvatar);
             updateAvatarPreview(state.userAvatar);
             document.getElementById('gh-owner').value = state.github.owner;
@@ -717,15 +732,10 @@
                       .replace(/\n/g, '<br>');
         }
 
-        // --- COMMAND HANDLING ---
         function handleInput() {
             const txt = els.input.value.trim(); if(!txt) return;
             if(txt === '/clear') {
-                els.chat.innerHTML = `
-                <div class="text-center mt-16 mb-10 opacity-90 select-none">
-                    <h2 class="font-header text-2xl md:text-4xl text-white mb-4 tracking-widest">SYSTEM READY</h2>
-                    <p class="font-mono text-xs md:text-sm text-gray-500 tracking-[0.4em] uppercase">Waiting for input.</p>
-                </div>`;
+                els.chat.innerHTML = `<div class="text-center mt-16 mb-10 opacity-90 select-none"><h2 class="font-header text-2xl md:text-4xl text-white mb-4 tracking-widest">SYSTEM READY</h2><p class="font-mono text-xs md:text-sm text-gray-500 tracking-[0.4em] uppercase">Waiting for input.</p></div>`;
                 els.input.value = ''; return;
             }
             if(txt.startsWith('/join')) { document.getElementById('join-room-input').value = txt.substring(6); document.getElementById('join-room-modal').classList.remove('hidden-custom'); els.input.value = ''; return; }
@@ -744,7 +754,9 @@
         // --- AI LOGIC ---
         async function generateZhipuToken(apiKey) {
             try {
-                const [id, secret] = apiKey.split('.'); const now = Date.now();
+                const [id, secret] = apiKey.split('.'); 
+                if (!id || !secret) throw new Error("Invalid Zhipu Key Format. Expected id.secret");
+                const now = Date.now();
                 const header = { alg: "HS256", sign_type: "SIGN" }; const payload = { api_key: id, exp: now + 1000 * 60 * 5, timestamp: now };
                 const strToBase64Url = (str) => btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
                 const bufferToBase64Url = (buffer) => { let binary = ''; const bytes = new Uint8Array(buffer); for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]); return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
@@ -752,7 +764,7 @@
                 const keyData = new TextEncoder().encode(secret); const cryptoKey = await crypto.subtle.importKey("raw", keyData, {name: "HMAC", hash: "SHA-256"}, false, ["sign"]);
                 const signature = await crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(dataToSign)); const encodedSignature = bufferToBase64Url(signature);
                 return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
-            } catch (e) { throw new Error("Zhipu Token Error: Check key format (id.secret)."); }
+            } catch (e) { throw new Error("Zhipu Token Error: " + e.message); }
         }
 
         async function processAIRequest(prompt, showThinking) {
@@ -777,11 +789,24 @@
                     body = JSON.stringify({ model: "glm-4", messages: [{role: "system", content: "You are TermOS AI."}, {role: "user", content: prompt}], temperature: 0.6 });
                 }
                 const res = await fetch(url, { method: "POST", headers, body });
-                if (!res.ok) throw new Error("API Error");
+                if (!res.ok) {
+                    // Better Error Handling
+                    const errText = await res.text();
+                    let msg = `API Error (${res.status})`;
+                    try {
+                        const errJson = JSON.parse(errText);
+                        if(errJson.error && errJson.error.message) msg = errJson.error.message;
+                    } catch(e) {}
+                    throw new Error(msg);
+                }
                 const data = await res.json(); const reply = data.choices[0].message.content;
                 if(thinkId) document.getElementById(thinkId)?.remove();
                 addMessage('assistant', reply);
-            } catch (e) { if(thinkId) document.getElementById(thinkId)?.remove(); addMessage('system', `⚠️ ${e.message}`); }
+            } catch (e) { 
+                console.error(e);
+                if(thinkId) document.getElementById(thinkId)?.remove(); 
+                addMessage('system', `⚠️ ${e.message}`); 
+            }
         }
 
         async function handleCopilotRequest() {
@@ -822,9 +847,15 @@
 
                 const res = await fetch(url, {method:"POST", headers, body});
                 const loadEl = document.getElementById(loadingId); if(loadEl) loadEl.remove();
+                if(!res.ok) {
+                    const errText = await res.text();
+                    let msg = "Error";
+                    try { const j = JSON.parse(errText); msg = j.error?.message || errText; } catch(e){ msg = errText; }
+                    els.copilotChat.innerHTML += `<div class="text-red-400 text-xs mt-2">${msg}</div>`;
+                    return;
+                }
                 const data = await res.json();
-                if(data.error) throw new Error(data.error.message);
-
+                
                 let code = data.choices[0].message.content;
                 if(code.includes('```')) {
                     const parts = code.split('```');
@@ -1014,7 +1045,6 @@
              } catch(e) { addMessage('system',"❌ FAIL: "+e.message); }
         }
         
-        // --- UTILS ---
         function addSystemMessage(txt) { addMessage('system', txt); }
         function handleAICommand(text) { processAIRequest(text, false); }
         function forceReset() { if(confirm("Reset System?")) { localStorage.clear(); location.reload(); } }
