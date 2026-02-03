@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"> 
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -40,7 +40,7 @@
             overflow: hidden; 
             background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
             height: 100vh;
-            height: 100dvh; /* Dynamic viewport height for mobile */
+            height: 100dvh;
         }
 
         #cosmic-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
@@ -198,13 +198,12 @@
                 flex-direction: column; 
             }
             
-            /* The Sidebar now holds the Chat AND the Fixed Input */
             .copilot-sidebar {
-                position: relative; /* Anchor for absolute input */
-                flex: 1; /* Take remaining height */
+                position: relative;
+                flex: 1;
                 border-left: none;
                 border-top: 1px solid #444;
-                overflow: hidden; /* Important for scroll */
+                overflow: hidden;
                 display: flex;
                 flex-direction: column;
                 background: #000;
@@ -217,35 +216,31 @@
                 border-bottom: 1px solid #333;
             }
             
-            /* Chat Area - needs padding so text isn't hidden behind input */
             .copilot-chat {
                 flex: 1;
                 overflow-y: auto;
                 padding: 15px;
-                padding-bottom: 180px; /* SPACE FOR THE FIXED FOOTER */
+                padding-bottom: 180px; 
                 -webkit-overflow-scrolling: touch;
             }
             
-            /* The Fixed Footer Area (Input + Suggestions) */
             .copilot-input-area, #suggestion-area {
                 position: absolute;
                 bottom: 0;
                 left: 0;
                 width: 100%;
-                background: #000; /* Solid black to cover scrolling text */
+                background: #000;
                 border-top: 1px solid #444;
                 z-index: 50;
-                padding-bottom: env(safe-area-inset-bottom); /* iPhone Home Bar */
+                padding-bottom: env(safe-area-inset-bottom);
             }
             
-            /* Suggestion area sits on top of input area visually */
             #suggestion-area {
-                bottom: auto; /* Reset */
-                position: relative; /* Let it flow naturally inside the sidebar before input */
+                bottom: auto;
+                position: relative;
                 z-index: 1;
             }
             
-            /* Styling the Input specifically */
             .copilot-input {
                 background: #1a1a1a;
                 color: white;
@@ -283,7 +278,6 @@
             }
         }
 
-        /* Message Bubbles */
         .msg-user {
             align-self: flex-end;
             background: #315b65;
@@ -310,7 +304,6 @@
         }
         .msg-content { font-size: 0.85rem; color: #d4d4d4; line-height: 1.4; word-wrap: break-word; }
 
-        /* Suggestion Box */
         .suggestion-box {
             background: rgba(0,0,0,0.3);
             border-radius: 6px;
@@ -330,7 +323,6 @@
             gap: 8px;
         }
 
-        /* Input Styling */
         .copilot-input {
             width: 100%;
             background: #3c3c3c;
@@ -339,9 +331,9 @@
             border-radius: 8px;
             padding: 12px;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 16px; /* Prevents iOS zoom */
+            font-size: 16px;
             line-height: 1.4;
-            min-height: 44px; /* Touch target */
+            min-height: 44px;
             max-height: 120px;
             overflow-y: auto;
             display: block;
@@ -361,7 +353,6 @@
             display: none;
             cursor: pointer;
         }
-        /* Show send button on mobile */
         @media (hover: none) and (pointer: coarse) {
             .send-btn-mobile { display: block; }
         }
@@ -391,7 +382,7 @@
 
     <input type="file" id="avatar-upload" class="hidden" accept="image/*">
     <canvas id="cosmic-canvas"></canvas>
-    <canvas id="matrix-canvas" class="hidden"></canvas> <!-- Hidden by default -->
+    <canvas id="matrix-canvas" class="hidden"></canvas>
     
     <!-- FLASH OVERLAY -->
     <div id="flash-overlay"></div>
@@ -432,20 +423,24 @@
     <!-- MAIN CHAT -->
     <main id="chat-container" class="flex-1 overflow-y-auto pt-24 pb-36 px-4 z-10 scroll-smooth max-w-5xl mx-auto w-full"></main>
     
-    <!-- INPUT AREA -->
+    <!-- INPUT AREA (NOW A BUTTON) -->
     <div class="fixed bottom-0 left-0 w-full z-30 glass-panel border-t border-white/10 pb-8 pt-6 px-4 rounded-t-3xl">
-        <div class="max-w-4xl mx-auto">
-            <div class="flex items-end gap-3 bg-black/60 rounded-2xl p-2 border border-white/5 shadow-[0_0_30pxrgba(0,0,0,0.5)] input-glow transition-all">
-                <button id="voice-btn" class="p-3 rounded-xl text-gray-400 hover:text-cyan-400 hover:bg-white/5 transition-colors shrink-0">
+        <div class="max-w-4xl mx-auto space-y-3">
+            <!-- MAIN KERNEL TRIGGER BUTTON -->
+            <button onclick="openKernelInput()" class="w-full group relative overflow-hidden rounded-2xl p-4 border border-white/10 bg-black/60 shadow-[0_0_30pxrgba(0,0,0,0.5)] transition-all hover:border-purple-500/50 hover:shadow-[0_0_30pxrgba(168,85,247,0.3)] active:scale-[0.99]">
+                <div class="flex items-center justify-center gap-3 pointer-events-none">
+                    <svg class="w-6 h-6 text-purple-400 group-hover:text-white transition-colors animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    <span class="text-gray-300 font-mono text-sm tracking-wider font-bold group-hover:text-white transition-colors">INITIATE KERNEL COPILOT</span>
+                </div>
+                <div class="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-cyan-600/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            </button>
+
+            <!-- UTILITY ROW -->
+            <div class="flex justify-between items-center px-2">
+                <button id="voice-btn" class="text-gray-500 hover:text-cyan-400 transition-colors" title="Voice Command (Visual Only)">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7m0 0H8m4 0h4m-4 8H8"></path></svg>
                 </button>
-                <input type="text" id="user-input" placeholder="Command: /join [room], /video [start], /kernel..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light font-sans">
-                <button id="send-btn" class="p-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-900/50 transition-all transform active:scale-95 shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 5l-7 7 5 14z"></path></svg>
-                </button>
-            </div>
-            <div class="text-center mt-3">
-                <button onclick="forceReset()" class="text-[9px] text-red-500/40 hover:text-red-400 transition-colors tracking-widest">⚠️ EMERGENCY RESET</button>
+                <button onclick="forceReset()" class="text-[9px] text-red-500/40 hover:text-red-400 transition-colors tracking-widest font-mono">⚠️ EMERGENCY RESET</button>
             </div>
         </div>
     </div>
@@ -693,14 +688,8 @@
             };
             connectMQTT();
         }
-
-        const sendBtn = document.getElementById('send-btn');
-        if(sendBtn) sendBtn.onclick = handleInput;
-        const userInput = document.getElementById('user-input');
-        if(userInput) {
-            userInput.addEventListener('keypress',e=>{ if(e.key==='Enter') handleInput(); });
-            userInput.focus();
-        }
+        
+        // Removed bottom input listeners since it is now a button
         
         if(!GROQ_API_KEY) {
             setTimeout(() => { addSystemMessage("⚠️ API Key Required."); requestApiKey(); }, 2000);
@@ -726,6 +715,26 @@
                 }
             });
         }
+    }
+
+    // --- OPEN KERNEL INPUT LOGIC ---
+    function openKernelInput() {
+        const overlay = document.getElementById('code-editor-overlay');
+        const copilotInput = document.getElementById('copilot-input');
+        
+        // If overlay is hidden, open it
+        if (overlay.classList.contains('admin-hidden')) {
+            toggleCodeEditor();
+        }
+
+        // Focus the input after a slight delay to allow transitions
+        setTimeout(() => {
+            copilotInput.focus();
+            // Ensure mobile keyboard is triggered on tap
+            if (copilotInput.scrollIntoView) {
+                copilotInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 100);
     }
 
     // --- COPILOT LOGIC ---
@@ -1443,73 +1452,11 @@
         }
     }
 
+    // Input handling is now delegated to Copilot.
+    // We keep this function for legacy / utility commands triggered via Copilot prompts or other mechanisms.
     function handleInput() {
-        try {
-            let inp = document.getElementById('user-input');
-            if(!inp) return; 
-            let txt = inp.value.trim(); 
-            if(!txt) return;
-
-            if(txt.startsWith('/evolve')) {
-                let prompt = (txt === '/evolve') ? prompt("Describe change:") : txt.substring(8);
-                if(prompt) handleLocalEvolution(prompt);
-                inp.value = '';
-                return;
-            }
-
-            if(txt.startsWith('/kernel') || txt.startsWith('/think')) {
-                triggerKernelThought();
-                inp.value = '';
-                return;
-            }
-
-            if(txt.startsWith('/join')) {
-                document.getElementById('join-room-input').value = txt.substring(6);
-                document.getElementById('join-room-modal').classList.remove('admin-hidden');
-                inp.value = '';
-                return;
-            }
-
-            if(txt === '/leave') {
-                leaveRoom();
-                inp.value = '';
-                return;
-            }
-
-            if(txt.startsWith('/admin ')) {
-                const cmd = txt.split(' ')[1];
-                if (cmd === 'enable') { adminMode = true; toggleAdminMode(); addSystemMessage("🔴 ADMIN ON"); }
-                else if (cmd === 'disable') { adminMode = false; toggleAdminMode(); addSystemMessage("🟢 ADMIN OFF"); }
-                inp.value = '';
-                return;
-            }
-            
-            if(txt.startsWith('/video')) {
-                switchMediaTab('video');
-                toggleMediaOverlay();
-                addSystemMessage("📹 Opening Video Deck...");
-                inp.value = '';
-                return;
-            }
-
-            if(txt.startsWith('/sys install ')) SystemRebuilder.install(txt.split(' ')[2]);
-            else if(txt.startsWith('/setkey ')) requestApiKey();
-            else if(txt.startsWith('/ai ')) handleAI(txt.substring(4));
-            else {
-                addUserMessage(txt);
-                addXP(1);
-                if(mqttClient && mqttClient.isConnected()) {
-                    try {
-                        const payload = JSON.stringify({ user: username, text: txt, nick: userProfile.name, avatar: userProfile.avatar });
-                        const msg = new Paho.MQTT.Message(payload);
-                        msg.destinationName = (currentRoomName) ? `termos/rooms/${currentRoomName}` : "termos/v3/chat";
-                        msg.qos = 1; 
-                        mqttClient.send(msg);
-                    } catch (e) {}
-                }
-            }
-            inp.value = '';
-        } catch (e) { console.error(e); }
+        // This function is no longer attached to the bottom bar (which is a button).
+        // It can be used if we want to parse commands from the Copilot input to affect the main chat.
     }
 
     function toggleAdminMode() {
@@ -1679,7 +1626,6 @@
                 currentContent = atob(data.content);
                 sha = data.sha;
             } else if (res.status === 404) {
-                // File doesn't exist, create a fresh one
                 currentContent = `<!DOCTYPE html><html><head><title>TermOS</title></head><body><h1>TermOS Generated</h1></body></html>`;
                 sha = null;
                 addSystemMessage("⚠️ File not found. Creating new file...");
@@ -1688,7 +1634,6 @@
                 throw new Error(`GitHub Read Failed (${res.status}): ${errText.message}`);
             }
             
-            // --- TOKEN LIMIT HANDLING ---
             const MAX_INPUT_CHARS = 8000;
             let contentToSend = currentContent;
             let isTruncated = false;
@@ -1698,14 +1643,9 @@
                 const keepStart = 4000; 
                 const keepEnd = 4000;
                 const middlePlaceholder = "\n\n/* [SYSTEM: MIDDLE SECTION OMITTED TO SAVE TOKENS. PRESERVE EXISTING LOGIC HERE] */\n\n";
-                
-                contentToSend = currentContent.substring(0, keepStart) + 
-                               middlePlaceholder + 
-                               currentContent.substring(currentContent.length - keepEnd);
-                
+                contentToSend = currentContent.substring(0, keepStart) + middlePlaceholder + currentContent.substring(currentContent.length - keepEnd);
                 addSystemMessage("⚠️ File large. Truncating context for AI to save tokens...");
             }
-            // -------------------------
 
             addSystemMessage("🧬 MUTATING...");
             
@@ -1755,7 +1695,6 @@
             addSystemMessage("🧬 UPLOADING...");
             const putUrl = `https://api.github.com/repos/${owner}/${repo}/contents/index.html`;
             
-            // Better Base64 Encoding for UTF-8
             const encodedContent = btoa(encodeURIComponent(newCode).replace(/%([0-9A-F]{2})/g,
                 function toSolidBytes(match, p1) {
                     return String.fromCharCode('0x' + p1);
@@ -1766,14 +1705,8 @@
                 content: encodedContent
             };
             
-            // Only add SHA if we are updating (file existed)
-            if (sha) {
-                payloadBody.sha = sha;
-            }
-            // Only add branch if it's not default 'main', though GitHub API usually needs it explicitly
-            if (branch !== 'main') {
-                payloadBody.branch = branch;
-            }
+            if (sha) payloadBody.sha = sha;
+            if (branch !== 'main') payloadBody.branch = branch;
 
             const putRes = await fetch(putUrl, {
                 method: 'PUT',
@@ -1787,9 +1720,7 @@
                 if (putRes.status === 403 && errJson.message.includes("protected branch")) {
                     throw new Error("Branch Protected: Cannot push directly to '" + branch + "'. Disable branch protection or push to a different branch.");
                 }
-                if (putRes.status === 409) {
-                    throw new Error("Conflict: The file was modified by another process. Try again.");
-                }
+                if (putRes.status === 409) throw new Error("Conflict: The file was modified by another process. Try again.");
                 if (putRes.status === 401 || putRes.status === 403) {
                     throw new Error("Permission Denied: Check your Token Scopes (Needs 'repo' or 'Contents: Read/Write').");
                 }
