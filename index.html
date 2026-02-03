@@ -6,22 +6,23 @@
     <title>TermOS: Galactic</title>
     <meta name="theme-color" content="#0b0d17">
     
-    <!-- CUSTOM FAVICON: Green T on Black -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23000'/><text x='16' y='20' text-anchor='middle' fill='%2333ff00' font-family='monospace' font-size='16'>T</text></svg>">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    
     <style>
         :root { 
-            --glass-bg: rgba(15, 23, 42, 0.6); 
-            --glass-border: rgba(255, 255, 255, 0.08); 
-            --accent-primary: #a855f7; /* Purple */
-            --accent-secondary: #06b6d4; /* Cyan */
+            --glass-bg: rgba(15, 23, 42, 0.7); 
+            --glass-border: rgba(255, 255, 255, 0.1); 
+            --accent-primary: #a855f7; 
+            --accent-secondary: #06b6d4; 
             --msg-user-bg: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); 
-            --msg-ai-bg: rgba(30, 41, 59, 0.8);
-            --neural-color: #22d3ee;
             --neon-glow: 0 0 20px rgba(168, 85, 247, 0.3);
+            --ide-bg: #1e1e1e;
+            --ide-sidebar: #252526;
+            --ghost-color: #6e7681;
         }
         
         body { 
@@ -30,6 +31,8 @@
             font-family: 'Inter', sans-serif; 
             overflow: hidden; 
             background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
+            height: 100vh;
+            height: 100dvh;
         }
 
         #cosmic-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
@@ -71,8 +74,8 @@
             border-color: rgba(6, 182, 212, 0.6); 
         }
         
-        .admin-hidden { display: none; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
-        .admin-visible { display: flex; opacity: 1; pointer-events: auto; }
+        .admin-hidden { display: none !important; }
+        .admin-visible { display: flex !important; }
         
         @keyframes slideUpFade {
             from { opacity: 0; transform: translateY(20px); }
@@ -104,7 +107,6 @@
         }
         .media-content { display: flex; flex-direction: column; }
         
-        /* VIDEO GRID STYLES */
         .video-grid { 
             display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(100%, 1fr)); 
@@ -112,9 +114,7 @@
             width: 100%; 
             min-height: 200px; 
         }
-        @media (min-width: 640px) {
-            .video-grid { grid-template-columns: repeat(2, 1fr); }
-        }
+        @media (min-width: 640px) { .video-grid { grid-template-columns: repeat(2, 1fr); } }
         
         .video-container { 
             background: #000; 
@@ -125,38 +125,231 @@
             border: 1px solid rgba(168, 85, 247, 0.3); 
             aspect-ratio: 16/9;
         }
-        .video-container.local {
-            border: 2px solid #a855f7;
-            box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
-        }
-        .video-container.remote {
-            border: 1px solid #06b6d4;
-        }
+        .video-container.local { border: 2px solid #a855f7; box-shadow: 0 0 15px rgba(168, 85, 247, 0.4); }
+        .video-container.remote { border: 1px solid #06b6d4; }
         
-        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); /* Mirror effect */ }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
         .remote-label {
             position: absolute; bottom: 8px; left: 8px;
             background: rgba(0,0,0,0.7); color: #22d3ee;
             padding: 2px 6px; border-radius: 4px; font-size: 10px; font-family: monospace;
             z-index: 10;
         }
-
-        .video-active {
-            animation: pulse-border 2s infinite;
-            border: 2px solid #a855f7;
-            box-shadow: 0 0 60px rgba(168, 85, 247, 0.6), inset 0 0 20px rgba(168, 85, 247, 0.2);
-        }
-        @keyframes pulse-border {
-            0% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.4); }
-            50% { box-shadow: 0 0 80px rgba(168, 85, 247, 0.7); }
-            100% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.4); }
-        }
-
         .visualizer-bar { height: 4px; background: #22d3ee; width: 0%; transition: width 0.1s; border-radius: 2px; }
 
-        .code-editor-overlay { position: fixed; inset: 0; z-[70]; background: #0f172a; display: flex; flex-direction: column; }
-        .code-editor { flex: 1; background: #020617; color: #a855f7; font-family: 'Fira Code', monospace; font-size: 13px; padding: 1rem; border: none; resize: none; outline: none; }
+        /* --- CODE EDITOR LAYOUT --- */
+        .code-editor-overlay { 
+            position: fixed; inset: 0; z-[100]; /* Higher than bottom bar (z-30) */
+            background: #0f172a; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh;
+            height: 100dvh;
+        }
+        .editor-header { 
+            padding: 12px 16px; 
+            background: rgba(15, 23, 42, 0.95); 
+            border-bottom: 1px solid var(--glass-border); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-shrink: 0; 
+            z-index: 10;
+        }
         
+        /* DESKTOP LAYOUT */
+        .editor-body {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 350px; 
+            overflow: hidden;
+            min-height: 0; 
+        }
+        
+        .code-area { 
+            flex: 1; 
+            background: var(--ide-bg); 
+            color: #d4d4d4; 
+            font-family: 'Fira Code', monospace; 
+            font-size: 13px; 
+            padding: 1rem; 
+            border: none; 
+            resize: none; 
+            outline: none; 
+            line-height: 1.5;
+            white-space: pre;
+            overflow: auto;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- MOBILE COPILOT FIX --- */
+        @media (max-width: 768px) {
+            .editor-body { 
+                display: flex;
+                flex-direction: column; 
+            }
+            
+            .copilot-sidebar {
+                position: relative;
+                flex: 1;
+                border-left: none;
+                border-top: 1px solid #444;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                background: #000;
+            }
+
+            .copilot-header { 
+                flex-shrink: 0;
+                padding: 10px 15px;
+                background: #111;
+                border-bottom: 1px solid #333;
+            }
+            
+            .copilot-chat {
+                flex: 1;
+                overflow-y: auto;
+                padding: 15px;
+                padding-bottom: 180px; /* Space for fixed footer */
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* FIXED FOOTER AREA FOR COPILOT INPUT */
+            .copilot-input-area, #suggestion-area {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                background: #000;
+                border-top: 1px solid #444;
+                z-index: 50;
+                padding-bottom: env(safe-area-inset-bottom); /* iPhone Home Bar FIX */
+            }
+            
+            #suggestion-area {
+                bottom: auto;
+                position: relative;
+                z-index: 1;
+            }
+            
+            .copilot-input {
+                background: #1a1a1a;
+                color: white;
+                border: 1px solid #444;
+            }
+            .copilot-input:focus {
+                background: #222;
+                border-color: var(--accent-primary);
+            }
+        }
+
+        /* DESKTOP STYLES */
+        @media (min-width: 769px) {
+            .copilot-sidebar {
+                background: var(--ide-sidebar);
+                border-left: 1px solid #3e3e42;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .copilot-chat {
+                flex: 1;
+                padding: 16px;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                min-height: 0;
+            }
+            .copilot-input-area {
+                padding: 12px;
+                border-top: 1px solid #3e3e42;
+                background: #252526;
+                flex-shrink: 0;
+            }
+        }
+
+        .msg-user {
+            align-self: flex-end;
+            background: #315b65;
+            padding: 8px 12px;
+            border-radius: 12px;
+            border-bottom-right-radius: 2px;
+            font-size: 0.85rem;
+            max-width: 90%;
+            color: white;
+            word-wrap: break-word;
+        }
+        .msg-ai {
+            align-self: flex-start;
+            display: flex; gap: 10px;
+            max-width: 95%;
+        }
+        .msg-icon {
+            width: 24px; height: 24px;
+            background: var(--accent-primary);
+            border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem; font-weight: bold; color: white;
+            flex-shrink: 0;
+        }
+        .msg-content { font-size: 0.85rem; color: #d4d4d4; line-height: 1.4; word-wrap: break-word; }
+
+        .suggestion-box {
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+            padding: 10px;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            color: var(--accent-secondary);
+            position: relative;
+            border: 1px solid #06b6d4;
+            margin-bottom: 10px;
+        }
+        .ghost-code { color: var(--ghost-color); font-style: italic; }
+        .suggestion-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 8px;
+            gap: 8px;
+        }
+
+        .copilot-input {
+            width: 100%;
+            background: #3c3c3c;
+            border: 1px solid transparent;
+            color: white;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 16px;
+            line-height: 1.4;
+            min-height: 44px;
+            max-height: 120px;
+            overflow-y: auto;
+            display: block;
+            resize: none;
+        }
+        .copilot-input:focus { border-color: var(--accent-primary); outline: none; }
+
+        .send-btn-mobile {
+            width: 100%;
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 8px;
+            display: none;
+            cursor: pointer;
+        }
+        @media (hover: none) and (pointer: coarse) {
+            .send-btn-mobile { display: block; }
+        }
+
         .neural-msg { 
             background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(168,85,247,0.1)); 
             border-left: 3px solid #22d3ee; 
@@ -173,7 +366,6 @@
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col relative">
-    <!-- BOOT LOADER -->
     <div id="boot-screen">
         <div class="loader-ring mb-4"></div>
         <h1 class="text-3xl font-header text-white tracking-widest animate-pulse">TERMOS <span class="text-purple-500">GALACTIC</span></h1>
@@ -182,9 +374,7 @@
 
     <input type="file" id="avatar-upload" class="hidden" accept="image/*">
     <canvas id="cosmic-canvas"></canvas>
-    <canvas id="matrix-canvas" class="hidden"></canvas> <!-- Hidden by default -->
-    
-    <!-- FLASH OVERLAY -->
+    <canvas id="matrix-canvas" class="hidden"></canvas>
     <div id="flash-overlay"></div>
     
     <!-- HEADER -->
@@ -203,14 +393,14 @@
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <div id="room-status-ui" class="hidden md:flex items-center gap-1 mr-2 px-2 py-1 bg-purple-900/30 border border-purple-500/30 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.2)]">
+            <div id="room-status-ui" class="hidden md:flex items-center gap-1 mr-2 px-2 py-1 bg-purple-900/30 border border-purple-500/30 rounded-full shadow-[0_0_10pxrgba(168,85,247,0.2)]">
                 <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
                 <span id="current-room-name" class="text-[10px] text-purple-200 font-mono font-bold">PUBLIC</span>
             </div>
 
             <button onclick="toggleMediaOverlay()" id="media-toggle-btn" class="hidden md:flex bg-purple-900/20 hover:bg-purple-900/40 text-purple-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border border-purple-500/30 transition-all hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]">📺 MEDIA</button>
-            <button onclick="triggerKernelThought()" class="hidden md:flex bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border-cyan-500/30 transition-all hover:shadow-[0_0_15px_rgba(6,182,212,0.4)]">🧠 KERNEL</button>
-            <button onclick="toggleCodeEditor()" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border-white/10 transition-all">🖋 CODE</button>
+            <button onclick="triggerKernelThought()" class="hidden md:flex bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border-cyan-500/30 transition-all hover:shadow-[0_0_15pxrgba(6,182,212,0.4)]">🧠 KERNEL</button>
+            <button onclick="toggleCodeEditor()" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border-white/10 transition-all">🖋 IDE</button>
             <button onclick="openProfileModal()" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-[10px] font-mono px-3 py-1 rounded-full border-white/10 transition-all">👤 PROFILE</button>
             <button onclick="toggleAdminMode()" id="admin-toggle-text" class="bg-black/40 hover:bg-red-900/40 border border-white/10 hover:border-red-500 text-red-400 hover:text-white px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-2"><span>🔴</span> ADMIN</button>
             <div class="hidden md:flex flex-col items-end">
@@ -223,34 +413,38 @@
     <!-- MAIN CHAT -->
     <main id="chat-container" class="flex-1 overflow-y-auto pt-24 pb-36 px-4 z-10 scroll-smooth max-w-5xl mx-auto w-full"></main>
     
-    <!-- INPUT AREA -->
-    <div class="fixed bottom-0 left-0 w-full z-30 glass-panel border-t border-white/10 pb-8 pt-6 px-4 rounded-t-3xl">
+    <!-- HYBRID INPUT AREA -->
+    <div class="fixed bottom-0 left-0 w-full z-30 glass-panel border-t border-white/10 pb-8 pt-4 px-4 rounded-t-3xl">
         <div class="max-w-4xl mx-auto">
-            <div class="flex items-end gap-3 bg-black/60 rounded-2xl p-2 border border-white/5 shadow-[0_0_30px_rgba(0,0,0,0.5)] input-glow transition-all">
-                <button id="voice-btn" class="p-3 rounded-xl text-gray-400 hover:text-cyan-400 hover:bg-white/5 transition-colors shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7m0 0H8m4 0h4m-4 8H8"></path></svg>
+            <div class="flex items-end gap-3 bg-black/60 rounded-2xl p-2 border border-white/5 shadow-[0_0_30pxrgba(0,0,0,0.5)] input-glow transition-all">
+                
+                <!-- KERNEL TOGGLE BUTTON (New) -->
+                <button onclick="openKernelInput()" class="p-3 rounded-xl text-cyan-400 hover:text-white hover:bg-cyan-900/30 transition-colors shrink-0" title="Open Kernel Copilot">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
                 </button>
+
+                <!-- MAIN CHAT INPUT (Restored) -->
                 <input type="text" id="user-input" placeholder="Command: /join [room], /video [start], /kernel..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light font-sans">
+                
+                <!-- SEND BUTTON -->
                 <button id="send-btn" class="p-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-900/50 transition-all transform active:scale-95 shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 5l-7 7 5 14z"></path></svg>
                 </button>
             </div>
-            <div class="text-center mt-3">
-                <button onclick="forceReset()" class="text-[9px] text-red-500/40 hover:text-red-400 transition-colors tracking-widest">⚠️ EMERGENCY RESET</button>
+            <div class="text-center mt-2">
+                <button onclick="forceReset()" class="text-[9px] text-red-500/40 hover:text-red-400 transition-colors tracking-widest font-mono">⚠️ EMERGENCY RESET</button>
             </div>
         </div>
     </div>
 
     <!-- FLOATING MEDIA OVERLAY -->
-    <div id="media-overlay" class="media-overlay media-minimized glass-panel rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+    <div id="media-overlay" class="media-overlay media-minimized glass-panel rounded-3xl border border-white/10 shadow-[0_20px_50pxrgba(0,0,0,0.5)]">
         <div class="media-content p-0">
-            <!-- Controls -->
             <div class="flex justify-between items-center mb-3 px-5 pt-5">
                 <span class="text-white font-bold text-sm font-header tracking-wide">📺 MEDIA DECK</span>
                 <button onclick="toggleMediaUI()" class="text-gray-400 hover:text-white transition-colors">✖</button>
             </div>
 
-            <!-- Tabs -->
             <div class="flex border-b border-white/10 mb-3 mx-5">
                 <button onclick="switchMediaTab('radio')" id="tab-radio" class="flex-1 pb-2 text-cyan-400 border-b-2 border-cyan-400 font-mono text-sm hover:text-white transition-colors">📻 RADIO</button>
                 <button onclick="switchMediaTab('video')" id="tab-video" class="flex-1 pb-2 text-gray-500 border-b-2 border-transparent hover:text-purple-300 font-mono text-sm hover:bg-white/5 transition-colors">📹 VIDEO ROOM</button>
@@ -258,28 +452,20 @@
 
             <!-- Radio Content -->
             <div id="media-radio" class="space-y-3 px-5 pb-5">
-                <div class="p-4 text-center text-gray-400 text-xs border border-white/5 rounded-xl bg-white/5 backdrop-blur-sm">
-                    Broadcasts to current active frequency.
-                </div>
+                <div class="p-4 text-center text-gray-400 text-xs border border-white/5 rounded-xl bg-white/5 backdrop-blur-sm">Broadcasts to current active frequency.</div>
                 <div class="radio-station active p-4 rounded-xl border border-white/5 bg-white/5 flex items-center justify-between relative overflow-hidden group cursor-pointer hover:bg-white/10 transition-all" onclick="playRadio('https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3', this)">
-                    <div class="relative z-10">
-                        <div class="text-white font-bold font-header text-sm">🎵 Lofi Beats</div>
-                        <div class="text-[10px] text-gray-400 mt-1">Chill vibes</div>
-                    </div>
+                    <div class="relative z-10"><div class="text-white font-bold font-header text-sm">🎵 Lofi Beats</div><div class="text-[10px] text-gray-400 mt-1">Chill vibes</div></div>
                     <div class="visualizer-bar bg-cyan-400"></div>
                     <div class="text-cyan-400 text-xs animate-spin hidden loading-indicator absolute right-4">⟳</div>
                 </div>
                 <div class="radio-station p-4 rounded-xl border border-white/5 bg-white/5 flex items-center justify-between relative overflow-hidden group cursor-pointer hover:bg-white/10 transition-all" onclick="playRadio('https://streams.ilovemusic.com/iloveradio1599.mp3', this)">
-                    <div class="relative z-10">
-                        <div class="text-white font-bold font-header text-sm">📻 Cyber Radio</div>
-                        <div class="text-[10px] text-gray-400 mt-1">Synthwave</div>
-                    </div>
+                    <div class="relative z-10"><div class="text-white font-bold font-header text-sm">📻 Cyber Radio</div><div class="text-[10px] text-gray-400 mt-1">Synthwave</div></div>
                     <div class="visualizer-bar bg-cyan-400"></div>
                     <div class="text-cyan-400 text-xs animate-spin hidden loading-indicator absolute right-4">⟳</div>
                 </div>
             </div>
 
-            <!-- Video Room Content (UPDATED FOR WEBRTC) -->
+            <!-- Video Room Content -->
             <div id="media-video" class="hidden space-y-3 px-5 pb-5">
                 <div class="bg-black/40 rounded-2xl p-3 border border-purple-500/20 backdrop-blur-md">
                     <div class="flex justify-between items-center mb-2">
@@ -290,13 +476,13 @@
                     <div id="video-placeholder" class="bg-black/90 rounded-xl border border-white/5 p-6 flex flex-col items-center justify-center text-center min-h-[200px]">
                         <div class="text-4xl mb-2">📡</div>
                         <p class="text-gray-400 text-xs mb-4 max-w-[200px]">Join a room first, then enable camera to start P2P video link.</p>
-                        <button id="start-video-btn" onclick="startWebRTC()" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-all">
-                            📹 ENABLE CAMERA
-                        </button>
+                        <button id="start-video-btn" onclick="startWebRTC()" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-[0_0_15pxrgba(168,85,247,0.4)] transition-all">📹 ENABLE CAMERA</button>
                     </div>
 
-                    <div id="video-grid" class="video-grid hidden">
-                        <!-- Local and Remote videos will be injected here -->
+                    <div id="video-grid" class="video-grid hidden"></div>
+
+                    <div id="video-controls" class="hidden mt-4 flex justify-center">
+                         <button onclick="stopWebRTC()" class="bg-red-600 hover:bg-red-500 text-white text-sm font-bold py-3 px-8 rounded-full shadow-[0_0_15pxrgba(239,68,68,0.4)] animate-pulse">📞 HANG UP</button>
                     </div>
                 </div>
             </div>
@@ -305,7 +491,7 @@
 
     <!-- PROFILE MODAL -->
     <div id="profile-modal" class="admin-hidden fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center">
-        <div class="glass-panel p-6 rounded-2xl border border-white/10 max-w-sm w-full mx-4 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+        <div class="glass-panel p-6 rounded-2xl border border-white/10 max-w-sm w-full mx-4 shadow-[0_0_50pxrgba(0,0,0,0.5)]">
             <h3 class="text-white font-header font-bold mb-4 text-lg text-center">USER IDENTITY</h3>
             <div class="space-y-4">
                 <div><label class="block text-xs text-gray-400 mb-1 font-mono">NICKNAME</label><input type="text" id="edit-name" class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-purple-500 outline-none transition-colors"></div>
@@ -328,7 +514,7 @@
     <div id="admin-panel" class="admin-hidden fixed bottom-24 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border-red-500/30 shadow-2xl shadow-red-500/10">
         <h3 class="text-red-400 font-header font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> SYSTEM CONSOLE</h3>
         <div class="space-y-2">
-            <button onclick="toggleCodeEditor()" class="w-full border border-green-500/50 text-green-400 bg-green-900/10 hover:bg-green-900/20 text-xs font-bold py-2 rounded-lg mb-2 transition-colors">🖋 EDIT SYSTEM CODE</button>
+            <button onclick="toggleCodeEditor()" class="w-full border border-green-500/50 text-green-400 bg-green-900/10 hover:bg-green-900/20 text-xs font-bold py-2 rounded-lg mb-2 transition-colors">🖋 OPEN IDE</button>
             <div class="border-t border-white/10 pt-2 mt-2">
                 <h4 class="text-gray-400 text-xs font-bold uppercase font-mono">Credentials</h4>
             </div>
@@ -340,23 +526,66 @@
         </div>
     </div>
 
-    <!-- CODE EDITOR OVERLAY -->
+    <!-- CODE EDITOR & COPILOT OVERLAY -->
     <div id="code-editor-overlay" class="code-editor-overlay admin-hidden">
-        <div class="editor-header p-4 border-b border-white/10 flex justify-between items-center bg-slate-900">
-            <h2 class="text-white font-bold text-xl font-header">🖋 SYSTEM EDITOR</h2>
+        <div class="editor-header">
+            <div class="flex items-center gap-2">
+                <div class="flex gap-1.5">
+                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                </div>
+                <h2 class="text-white font-bold text-lg font-header ml-2">SYSTEM EDITOR</h2>
+            </div>
             <div class="flex gap-2">
-                <button onclick="applyCode()" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-mono text-xs font-bold shadow-lg">APPLY</button>
-                <button onclick="downloadCode()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-mono text-xs">DOWNLOAD</button>
-                <button onclick="toggleCodeEditor()" class="text-gray-400 hover:text-white px-4 py-2 rounded-lg font-mono text-xs">✖</button>
+                <button onclick="runCode()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-xs font-bold">▶ RUN</button>
+                <button onclick="applyCode()" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1 rounded text-xs font-bold">APPLY TO DOM</button>
+                <button onclick="downloadCode()" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded text-xs">DOWNLOAD</button>
+                <button onclick="toggleCodeEditor()" class="text-gray-400 hover:text-white px-3 py-1 rounded text-xs">✖</button>
             </div>
         </div>
-        <textarea id="code-editor-textarea" class="code-editor" spellcheck="false"></textarea>
-        <div class="p-2 bg-slate-900 text-gray-500 text-[10px] text-center font-mono">Apply changes to DOM instantly. Be careful.</div>
+        <div class="editor-body">
+            <!-- LEFT: CODE EDITOR -->
+            <div class="relative flex flex-col h-full min-h-0">
+                <textarea id="code-editor-textarea" class="code-area" spellcheck="false" placeholder="// Write or ask Copilot to generate code here..."></textarea>
+            </div>
+
+            <!-- RIGHT: COPILOT SIDEBAR -->
+            <div class="copilot-sidebar">
+                <div class="copilot-header">
+                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.73l-1.52-.51c-.63-.21-1.05-.82-1.05-1.49 0-.67.42-1.28 1.05-1.49l1.52-.51c.9-.34 1.64-.92 1.9-1.73.4-1.23.4-2.54 0-3.77z"/></svg>
+                    KERNEL COPILOT
+                </div>
+                <div class="copilot-chat" id="copilot-chat">
+                    <div class="msg-ai">
+                        <div class="msg-icon">AI</div>
+                        <div class="msg-content">
+                            I can help you write JavaScript, HTML, or modify the TermOS core. Ask me to create a function or style an element.
+                        </div>
+                    </div>
+                </div>
+                <!-- Suggestion Box -->
+                <div id="suggestion-area" class="px-4 pb-2 hidden">
+                    <div class="suggestion-box">
+                        <div class="text-[10px] text-gray-500 mb-1 uppercase font-bold tracking-wider">Suggestion</div>
+                        <div id="suggestion-code" class="whitespace-pre-wrap font-mono text-xs text-cyan-300"></div>
+                        <div class="suggestion-actions">
+                            <button onclick="applySuggestion()" class="bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold px-2 py-1 rounded">APPLY</button>
+                            <button onclick="dismissSuggestion()" class="text-gray-400 hover:text-white text-[10px] px-2">DISMISS</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="copilot-input-area">
+                    <textarea id="copilot-input" class="copilot-input" placeholder="Ask Copilot..."></textarea>
+                    <button id="copilot-send-btn" onclick="handleCopilotRequest()" class="send-btn-mobile">SEND MESSAGE</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- JOIN ROOM MODAL -->
     <div id="join-room-modal" class="admin-hidden fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center">
-        <div class="glass-panel p-8 rounded-2xl border border-purple-500/30 max-w-sm w-full mx-4 text-center shadow-[0_0_50px_rgba(168,85,247,0.3)]">
+        <div class="glass-panel p-8 rounded-2xl border border-purple-500/30 max-w-sm w-full mx-4 text-center shadow-[0_0_50pxrgba(168,85,247,0.3)]">
             <h3 class="text-white font-header font-bold mb-2 text-xl">🔒 SECURE CHANNEL</h3>
             <p class="text-xs text-gray-400 mb-6 font-mono">Enter frequency to establish link.</p>
             <input type="text" id="join-room-input" placeholder="CHANNEL NAME" class="w-full bg-black/60 border border-purple-500/30 rounded-xl p-4 text-white text-center mb-6 font-mono text-lg focus:border-purple-500 outline-none shadow-inner">
@@ -390,7 +619,6 @@
     let mqttClient = null;
     
     let currentRoomName = null;
-    
     let userStats = { level: 1, xp: 0, avatar: '>_<', ascii: null };
     const LEVELS = { 3: 'Cyber', 5: 'Ghost', 8: 'Oracle' }; 
     let installedModules = [];
@@ -398,7 +626,7 @@
 
     // --- WEBRTC VARIABLES ---
     let localStream = null;
-    const peers = {}; // key: remoteUsername, value: RTCPeerConnection
+    const peers = {}; 
     const rtcConfig = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -435,21 +663,10 @@
                 try {
                     const data = JSON.parse(message.payloadString);
                     
-                    // --- WEBRTC SIGNALING HANDLER ---
-                    if (data.type === 'webrtc_signal') {
-                        handleWebRTCSignal(data);
-                        return;
-                    }
-                    if (data.type === 'webrtc_join') {
-                        handleWebRTCJoin(data);
-                        return;
-                    }
-                    if (data.type === 'webrtc_leave') {
-                        handleWebRTCLeave(data.sender);
-                        return;
-                    }
+                    if (data.type === 'webrtc_signal') { handleWebRTCSignal(data); return; }
+                    if (data.type === 'webrtc_join') { handleWebRTCJoin(data); return; }
+                    if (data.type === 'webrtc_leave') { handleWebRTCLeave(data.sender); return; }
 
-                    // --- CHAT HANDLER ---
                     if (message.destinationName === "termos/v3/chat" && !currentRoomName) {
                         if (data.user !== username) addUserMessage(data.text, data.nick, data.avatar);
                     }
@@ -461,6 +678,7 @@
             connectMQTT();
         }
 
+        // Restore main chat input listeners
         const sendBtn = document.getElementById('send-btn');
         if(sendBtn) sendBtn.onclick = handleInput;
         const userInput = document.getElementById('user-input');
@@ -472,59 +690,198 @@
         if(!GROQ_API_KEY) {
             setTimeout(() => { addSystemMessage("⚠️ API Key Required."); requestApiKey(); }, 2000);
         }
+
+        // Copilot Auto-Resize Listener
+        const copilotInput = document.getElementById('copilot-input');
+        if(copilotInput) {
+            copilotInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+                if(this.value === '') this.style.height = '44px';
+            });
+            
+            copilotInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    const btn = document.getElementById('copilot-send-btn');
+                    if(window.getComputedStyle(btn).display === 'none') {
+                        e.preventDefault();
+                        handleCopilotRequest();
+                    }
+                }
+            });
+        }
+    }
+
+    // --- OPEN KERNEL INPUT LOGIC ---
+    function openKernelInput() {
+        const overlay = document.getElementById('code-editor-overlay');
+        const copilotInput = document.getElementById('copilot-input');
+        
+        // If overlay is hidden, open it
+        if (overlay.classList.contains('admin-hidden')) {
+            toggleCodeEditor();
+        }
+
+        // Focus the input after a slight delay to allow transitions
+        setTimeout(() => {
+            copilotInput.focus();
+            if (copilotInput.scrollIntoView) {
+                copilotInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 100);
+    }
+
+    // --- COPILOT LOGIC ---
+    async function handleCopilotRequest() {
+        const inputEl = document.getElementById('copilot-input');
+        const text = inputEl.value.trim();
+        if (!text) return;
+        
+        if(!GROQ_API_KEY) return requestApiKey();
+
+        const chat = document.getElementById('copilot-chat');
+        const userMsg = document.createElement('div');
+        userMsg.className = 'msg-user';
+        userMsg.innerText = text;
+        chat.appendChild(userMsg);
+        chat.scrollTop = chat.scrollHeight;
+        inputEl.value = '';
+        inputEl.style.height = '44px';
+
+        const loadId = 'load-' + Date.now();
+        const loadingMsg = document.createElement('div');
+        loadingMsg.className = 'msg-ai';
+        loadingMsg.id = loadId;
+        loadingMsg.innerHTML = `<div class="msg-icon">...</div><div class="msg-content text-gray-500 italic">Thinking...</div>`;
+        chat.appendChild(loadingMsg);
+        chat.scrollTop = chat.scrollHeight;
+
+        try {
+            const currentCode = document.getElementById('code-editor-textarea').value;
+            const codeContext = currentCode.length > 2000 ? currentCode.substring(currentCode.length - 2000) : currentCode;
+            const timeStr = new Date().toLocaleString();
+
+            let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method:"POST",
+                headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
+                body:JSON.stringify({
+                    model: API_MODEL,
+                    messages:[
+                        { role:"system", content: `You are an expert JS/HTML coder. Time: ${timeStr}. Return ONLY the code block. Do not explain. Wrap code in \`\`\`javascript or \`\`\`html.` },
+                        { role:"user", content: `Context:\n${codeContext}\n\nRequest: ${text}` }
+                    ]
+                })
+            });
+
+            const apiData = await r.json();
+            if (apiData.error) throw new Error(apiData.error.message);
+
+            const reply = apiData.choices[0].message.content;
+            document.getElementById(loadId).remove();
+
+            let code = reply;
+            if(reply.includes('```')) {
+                const parts = reply.split('```');
+                code = parts[1] || parts[2] || reply;
+                code = code.replace(/^(javascript|html|js)\n/, '');
+            }
+
+            const aiMsg = document.createElement('div');
+            aiMsg.className = 'msg-ai';
+            aiMsg.innerHTML = `<div class="msg-icon">AI</div><div class="msg-content">Here is the code.</div>`;
+            chat.appendChild(aiMsg);
+            chat.scrollTop = chat.scrollHeight;
+
+            showSuggestion(code.trim());
+
+        } catch (e) {
+            document.getElementById(loadId).remove();
+            const errMsg = document.createElement('div');
+            errMsg.className = 'msg-ai';
+            errMsg.innerHTML = `<div class="msg-icon">!</div><div class="msg-content text-red-400">Error: ${e.message}</div>`;
+            chat.appendChild(errMsg);
+        }
+    }
+
+    function showSuggestion(code) {
+        const area = document.getElementById('suggestion-area');
+        const codeBox = document.getElementById('suggestion-code');
+        area.classList.remove('hidden');
+        codeBox.innerText = code;
+    }
+
+    function applySuggestion() {
+        const code = document.getElementById('suggestion-code').innerText;
+        const editor = document.getElementById('code-editor-textarea');
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        const text = editor.value;
+        
+        const newText = text.substring(0, start) + "\n" + code + "\n" + text.substring(end);
+        editor.value = newText;
+        
+        dismissSuggestion();
+        addSystemMessage("✅ Copilot suggestion applied.");
+    }
+
+    function dismissSuggestion() {
+        document.getElementById('suggestion-area').classList.add('hidden');
+        document.getElementById('suggestion-code').innerText = '';
     }
 
     // --- WEBRTC LOGIC ---
 
     async function startWebRTC() {
-        if (!currentRoomName) {
-            alert("Please join a room first using /join [room]");
-            return;
-        }
-        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-            alert("WebRTC requires HTTPS or Localhost.");
-            return;
-        }
+        if (!currentRoomName) { alert("Please join a room first using /join [room]"); return; }
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') { alert("WebRTC requires HTTPS or Localhost."); return; }
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             localStream = stream;
             
-            // UI Updates
             document.getElementById('video-placeholder').classList.add('hidden');
             document.getElementById('video-grid').classList.remove('hidden');
+            document.getElementById('video-controls').classList.remove('hidden');
             document.getElementById('video-status-text').innerText = "LIVE";
             document.getElementById('video-status-text').classList.add('text-red-500', 'animate-pulse');
             
-            // Add Local Video
             addLocalVideo(stream);
-
-            // Announce join to room
             sendSignal({ type: 'webrtc_join', sender: username, nick: userProfile.name });
-            
-            // If anyone else is already in the room, we can't know easily without a presence list.
-            // In a simple MQTT mesh, we announce join, and existing users (who see this) will send us OFFERS.
             addSystemMessage("📹 Uplink Established. Waiting for peers...");
-
         } catch (err) {
             console.error(err);
             addSystemMessage("❌ Camera Access Denied: " + err.message);
         }
     }
 
+    function stopWebRTC() {
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+        }
+        Object.values(peers).forEach(pc => pc.close());
+        for (let key in peers) delete peers[key];
+        
+        sendSignal({ type: 'webrtc_leave', sender: username });
+
+        document.getElementById('video-grid').innerHTML = '';
+        document.getElementById('video-placeholder').classList.remove('hidden');
+        document.getElementById('video-grid').classList.add('hidden');
+        document.getElementById('video-controls').classList.add('hidden');
+        document.getElementById('video-status-text').innerText = "STANDBY";
+        document.getElementById('video-status-text').classList.remove('text-red-500', 'animate-pulse');
+        
+        addSystemMessage("📹 Uplink Terminated.");
+    }
+
     function handleWebRTCJoin(data) {
-        if (!localStream) return; // We are not in video mode
-        if (data.sender === username) return; // Ignore self
+        if (!localStream) return; 
+        if (data.sender === username) return;
 
         addSystemMessage(`📹 Peer detected: ${data.nick}. Negotiating...`);
-        
-        // Create Peer Connection
         const pc = createPeerConnection(data.sender);
-        
-        // Add local tracks
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-        // Create Offer
         pc.createOffer()
             .then(offer => pc.setLocalDescription(offer))
             .then(() => {
@@ -540,18 +897,13 @@
     }
 
     function handleWebRTCSignal(data) {
-        if (!localStream) return; // Ignore if we aren't in video mode
-        if (data.target !== username) return; // Not for us
-
+        if (!localStream) return;
+        if (data.target !== username) return;
         const { sender, signalType, sdp, candidate } = data;
 
-        if (signalType === 'offer') {
-            handleOffer(sender, sdp);
-        } else if (signalType === 'answer') {
-            handleAnswer(sender, sdp);
-        } else if (signalType === 'candidate') {
-            handleCandidate(sender, candidate);
-        }
+        if (signalType === 'offer') handleOffer(sender, sdp);
+        else if (signalType === 'answer') handleAnswer(sender, sdp);
+        else if (signalType === 'candidate') handleCandidate(sender, candidate);
     }
 
     function createPeerConnection(remoteUser) {
@@ -587,38 +939,20 @@
 
     async function handleOffer(remoteUser, sdp) {
         const pc = createPeerConnection(remoteUser);
-        
-        // Add tracks if we have them
-        if (localStream) {
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-        }
-
+        if (localStream) localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
         await pc.setRemoteDescription(new RTCSessionDescription(sdp));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-
-        sendSignal({
-            type: 'webrtc_signal',
-            sender: username,
-            target: remoteUser,
-            signalType: 'answer',
-            sdp: answer
-        });
+        sendSignal({ type: 'webrtc_signal', sender: username, target: remoteUser, signalType: 'answer', sdp: answer });
     }
 
     async function handleAnswer(remoteUser, sdp) {
-        if (peers[remoteUser]) {
-            await peers[remoteUser].setRemoteDescription(new RTCSessionDescription(sdp));
-        }
+        if (peers[remoteUser]) await peers[remoteUser].setRemoteDescription(new RTCSessionDescription(sdp));
     }
 
     async function handleCandidate(remoteUser, candidate) {
         if (peers[remoteUser]) {
-            try {
-                await peers[remoteUser].addIceCandidate(new RTCIceCandidate(candidate));
-            } catch (e) {
-                console.error("Error adding candidate", e);
-            }
+            try { await peers[remoteUser].addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) {}
         }
     }
 
@@ -633,40 +967,29 @@
 
     function sendSignal(payload) {
         if (mqttClient && mqttClient.isConnected() && currentRoomName) {
-            const dest = `termos/rooms/${currentRoomName}`;
             const msg = new Paho.MQTT.Message(JSON.stringify(payload));
-            msg.destinationName = dest;
+            msg.destinationName = `termos/rooms/${currentRoomName}`;
             mqttClient.send(msg);
         }
     }
-
-    // --- VIDEO UI HELPERS ---
 
     function addLocalVideo(stream) {
         const grid = document.getElementById('video-grid');
         const container = document.createElement('div');
         container.className = "video-container local relative";
         container.id = `video-local`;
-        container.innerHTML = `
-            <video autoplay playsinline muted></video>
-            <div class="remote-label">YOU (${userProfile.name})</div>
-        `;
+        container.innerHTML = `<video autoplay playsinline muted></video><div class="remote-label">YOU</div>`;
         grid.appendChild(container);
         container.querySelector('video').srcObject = stream;
     }
 
     function addRemoteVideo(stream, remoteUser) {
-        // Check if exists
         if (document.getElementById(`video-${remoteUser}`)) return;
-
         const grid = document.getElementById('video-grid');
         const container = document.createElement('div');
         container.className = "video-container remote relative";
         container.id = `video-${remoteUser}`;
-        container.innerHTML = `
-            <video autoplay playsinline></video>
-            <div class="remote-label">${remoteUser}</div>
-        `;
+        container.innerHTML = `<video autoplay playsinline></video><div class="remote-label">${remoteUser}</div>`;
         grid.appendChild(container);
         container.querySelector('video').srcObject = stream;
     }
@@ -676,8 +999,7 @@
         if (el) el.remove();
     }
 
-
-    // --- REST OF APP LOGIC (Mostly Unchanged) ---
+    // --- REST OF APP LOGIC ---
 
     function getBox() {
         let el = document.getElementById('chat-container');
@@ -700,25 +1022,19 @@
         const ctx = canvas.getContext('2d');
         let width = canvas.width = window.innerWidth;
         let height = canvas.height = window.innerHeight;
-        
         const starCount = 800;
         const stars = Array(starCount).fill().map(() => ({
             x: (Math.random() - 0.5) * width * 2,
             y: (Math.random() - 0.5) * height * 2,
             z: Math.random() * width
         }));
-
         function draw() {
             ctx.fillStyle = 'rgba(5, 5, 10, 0.4)'; 
             ctx.fillRect(0, 0, width, height);
             ctx.fillStyle = "#FFF";
             stars.forEach(star => {
                 star.z -= 2; 
-                if(star.z <= 0) {
-                    star.z = width;
-                    star.x = (Math.random() - 0.5) * width * 2;
-                    star.y = (Math.random() - 0.5) * height * 2;
-                }
+                if(star.z <= 0) { star.z = width; star.x = (Math.random() - 0.5) * width * 2; star.y = (Math.random() - 0.5) * height * 2; }
                 const k = 128.0 / star.z;
                 const px = star.x * k + width / 2;
                 const py = star.y * k + height / 2;
@@ -821,6 +1137,18 @@
         }
     }
 
+    function runCode() {
+        const code = document.getElementById('code-editor-textarea').value;
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(code, "text/html");
+            const bodyContent = doc.body.innerHTML;
+            const win = window.open("", "Preview", "width=600,height=400");
+            win.document.write(`<html><head><title>Preview</title></head><body style="margin:0; padding:20px; font-family:sans-serif;">${bodyContent}</body></html>`);
+            win.document.close();
+        } catch(e) { alert("Preview Error: " + e.message); }
+    }
+
     function downloadCode() {
         const code = document.getElementById('code-editor-textarea').value;
         const blob = new Blob([code], {type: "text/html"});
@@ -882,7 +1210,7 @@
         const box = getBox();
         const d = document.createElement('div');
         d.className = "flex justify-center my-4 z-10 msg-anim";
-        d.innerHTML = `<span class="px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider text-purple-200 bg-purple-900/30 border border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.2)]">${txt}</span>`;
+        d.innerHTML = `<span class="px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider text-purple-200 bg-purple-900/30 border border-purple-500/30 shadow-[0_0_10pxrgba(168,85,247,0.2)]">${txt}</span>`;
         box.appendChild(d);
         scrollDown();
     }
@@ -1000,22 +1328,12 @@
         const name = document.getElementById('join-room-input').value.trim();
         if(!name) return;
         
-        // Clean up WebRTC if switching rooms
-        if(localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-            localStream = null;
-            Object.values(peers).forEach(pc => pc.close());
-            document.getElementById('video-grid').innerHTML = '';
-            document.getElementById('video-placeholder').classList.remove('hidden');
-            document.getElementById('video-grid').classList.add('hidden');
-        }
+        if(localStream) stopWebRTC();
 
         if(mqttClient && mqttClient.isConnected()) {
             if(currentRoomName) mqttClient.unsubscribe(`termos/rooms/${currentRoomName}`);
             else mqttClient.unsubscribe("termos/v3/chat");
-            
             mqttClient.subscribe(`termos/rooms/${name}`, { qos: 1 });
-            
             const payload = JSON.stringify({ user: username, nick: userProfile.name, avatar: userProfile.avatar, type: 'join' });
             const msg = new Paho.MQTT.Message(payload);
             msg.destinationName = `termos/rooms/${name}`;
@@ -1026,25 +1344,13 @@
         document.getElementById('room-display').innerText = "ROOM: " + name.toUpperCase();
         document.getElementById('room-status-ui').classList.remove('hidden');
         document.getElementById('current-room-name').innerText = name.toUpperCase();
-        
         closeJoinModal();
         addSystemMessage(`🔒 Joined Channel: ${name}`);
     }
 
     function leaveRoom() {
         if(!currentRoomName) return;
-        
-        // WebRTC Leave
-        sendSignal({ type: 'webrtc_leave', sender: username });
-        if(localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-            localStream = null;
-        }
-        Object.values(peers).forEach(pc => pc.close());
-        document.getElementById('video-grid').innerHTML = '';
-        document.getElementById('video-placeholder').classList.remove('hidden');
-        document.getElementById('video-grid').classList.add('hidden');
-
+        stopWebRTC();
         if(mqttClient && mqttClient.isConnected()) {
              const payload = JSON.stringify({ user: username, nick: userProfile.name, type: 'leave' });
              const msg = new Paho.MQTT.Message(payload);
@@ -1052,11 +1358,9 @@
              mqttClient.send(msg);
              mqttClient.unsubscribe(`termos/rooms/${currentRoomName}`);
         }
-
         currentRoomName = null;
         document.getElementById('room-display').innerText = "PUBLIC";
         document.getElementById('room-status-ui').classList.add('hidden');
-        
         connectMQTT(); 
     }
 
@@ -1104,7 +1408,8 @@
         scrollDown();
 
         try {
-            const systemContext = `Gen: ${systemGeneration}, Lvl: ${userStats.level}, Room: ${(currentRoomName || "Public")}.`;
+            const timeStr = new Date().toLocaleString();
+            const systemContext = `Gen: ${systemGeneration}, Lvl: ${userStats.level}, Room: ${(currentRoomName || "Public")}, Time: ${timeStr}.`;
             
             let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method:"POST",
@@ -1181,9 +1486,8 @@
             }
             
             if(txt.startsWith('/video')) {
-                // Switch to video tab
                 switchMediaTab('video');
-                toggleMediaOverlay(); // Open if closed
+                toggleMediaOverlay();
                 addSystemMessage("📹 Opening Video Deck...");
                 inp.value = '';
                 return;
@@ -1239,7 +1543,7 @@
         const dot = document.getElementById('api-status-dot');
         if(dot) {
             if(active) {
-                dot.className = "w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]";
+                dot.className = "w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8pxrgba(74,222,128,0.8)]";
                 document.getElementById('room-display').innerText = (currentRoomName ? "ROOM: "+currentRoomName : "ONLINE");
             } else {
                 dot.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
@@ -1313,6 +1617,7 @@
         getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse pl-11 msg-anim">Processing...</div>`);
         scrollDown();
         try {
+            const timeStr = new Date().toLocaleString();
             let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method:"POST",
                 headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
@@ -1320,7 +1625,7 @@
                     model: API_MODEL,
                     messages:[{ 
                         role:"system", 
-                        content:`You are TermOS AI. Suggest SystemRebuilder.install('name') for changes.` 
+                        content:`You are TermOS AI. Current Time: ${timeStr}. Suggest SystemRebuilder.install('name') for changes.` 
                     },{role:"user",content:prompt}]
                 })
             });
@@ -1360,29 +1665,39 @@
         addSystemMessage("🧬 CLONING SOURCE...");
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000); 
+        
         try {
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/index.html?ref=${branch}`;
             const res = await fetch(url, { headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }, signal: controller.signal });
-            if (!res.ok) { const errText = await res.json(); throw new Error(`Read: ${errText.message}`); }
-            const data = await res.json();
-            if(!data.content) throw new Error("File not found.");
-            let currentContent = atob(data.content);
             
-            const MAX_INPUT_CHARS = 90000;
+            let currentContent = "";
+            let sha = null;
+
+            if (res.ok) {
+                const data = await res.json();
+                if(!data.content) throw new Error("File found but has no content.");
+                currentContent = atob(data.content);
+                sha = data.sha;
+            } else if (res.status === 404) {
+                currentContent = `<!DOCTYPE html><html><head><title>TermOS</title></head><body><h1>TermOS Generated</h1></body></html>`;
+                sha = null;
+                addSystemMessage("⚠️ File not found. Creating new file...");
+            } else {
+                const errText = await res.json();
+                throw new Error(`GitHub Read Failed (${res.status}): ${errText.message}`);
+            }
+            
+            const MAX_INPUT_CHARS = 8000;
             let contentToSend = currentContent;
             let isTruncated = false;
 
             if (currentContent.length > MAX_INPUT_CHARS) {
                 isTruncated = true;
-                const keepStart = 45000; 
-                const keepEnd = 40000;
+                const keepStart = 4000; 
+                const keepEnd = 4000;
                 const middlePlaceholder = "\n\n/* [SYSTEM: MIDDLE SECTION OMITTED TO SAVE TOKENS. PRESERVE EXISTING LOGIC HERE] */\n\n";
-                
-                contentToSend = currentContent.substring(0, keepStart) + 
-                               middlePlaceholder + 
-                               currentContent.substring(currentContent.length - keepEnd);
-                
-                addSystemMessage("⚠️ Context Window Full. Optimizing prompt...");
+                contentToSend = currentContent.substring(0, keepStart) + middlePlaceholder + currentContent.substring(currentContent.length - keepEnd);
+                addSystemMessage("⚠️ File large. Truncating context for AI to save tokens...");
             }
 
             addSystemMessage("🧬 MUTATING...");
@@ -1420,8 +1735,8 @@
             if (isTruncated) {
                 const placeholder = "/* [SYSTEM: MIDDLE SECTION OMITTED TO SAVE TOKENS. PRESERVE EXISTING LOGIC HERE] */";
                 if (newCode.includes(placeholder)) {
-                    const middleStart = 45000;
-                    const middleEnd = currentContent.length - 40000;
+                    const middleStart = 4000;
+                    const middleEnd = currentContent.length - 4000;
                     const originalMiddle = currentContent.substring(middleStart, middleEnd);
                     newCode = newCode.replace(placeholder, originalMiddle);
                     addSystemMessage("🧬 Stitching code...");
@@ -1432,19 +1747,39 @@
             
             addSystemMessage("🧬 UPLOADING...");
             const putUrl = `https://api.github.com/repos/${owner}/${repo}/contents/index.html`;
-            const encodedContent = btoa(unescape(encodeURIComponent(newCode)));
+            
+            const encodedContent = btoa(encodeURIComponent(newCode).replace(/%([0-9A-F]{2})/g,
+                function toSolidBytes(match, p1) {
+                    return String.fromCharCode('0x' + p1);
+                }));
+
+            const payloadBody = {
+                message: "Evolution: " + input,
+                content: encodedContent
+            };
+            
+            if (sha) payloadBody.sha = sha;
+            if (branch !== 'main') payloadBody.branch = branch;
+
             const putRes = await fetch(putUrl, {
                 method: 'PUT',
                 headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: "Evolution: " + input,
-                    content: encodedContent,
-                    sha: data.sha,
-                    branch: branch
-                }),
+                body: JSON.stringify(payloadBody),
                 signal: controller.signal
             });
-            if (!putRes.ok) throw new Error(`GitHub Write Failed: ${putRes.statusText}`);
+
+            if (!putRes.ok) {
+                const errJson = await putRes.json().catch(() => ({ message: "Unknown error" }));
+                if (putRes.status === 403 && errJson.message.includes("protected branch")) {
+                    throw new Error("Branch Protected: Cannot push directly to '" + branch + "'. Disable branch protection or push to a different branch.");
+                }
+                if (putRes.status === 409) throw new Error("Conflict: The file was modified by another process. Try again.");
+                if (putRes.status === 401 || putRes.status === 403) {
+                    throw new Error("Permission Denied: Check your Token Scopes (Needs 'repo' or 'Contents: Read/Write').");
+                }
+                throw new Error(`GitHub Write Failed (${putRes.status}): ${errJson.message}`);
+            }
+
             clearTimeout(timeoutId);
             addSystemMessage("🎉 SUCCESS. REBOOTING...");
             setTimeout(() => location.reload(), 2000);
