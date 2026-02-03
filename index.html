@@ -146,11 +146,11 @@
         /* --- MEDIA DECK MOVED TO TOP LEFT --- */
         .media-overlay {
             position: fixed; 
-            top: 80px; /* Below Header */
-            left: 20px; /* Left aligned */
+            top: 80px; 
+            left: 20px; 
             bottom: auto;
             right: auto;
-            width: 300px; /* Fixed width for compactness */
+            width: 300px; 
             max-height: 70vh;
             z-index: 40; 
             transform: none;
@@ -237,16 +237,8 @@
             .editor-body { display: flex; flex-direction: column; }
             .code-area { flex: 0 0 45%; min-height: 250px; border-bottom: 1px solid #222; }
             .copilot-sidebar { flex: 1; border-left: none; }
-            .media-overlay { 
-                width: 90%; 
-                left: 5%; 
-                top: 70px; 
-            }
-            .media-minimized {
-                width: 30px; 
-                height: 30px; 
-                top: 65px;
-            }
+            .media-overlay { width: 90%; left: 5%; top: 70px; }
+            .media-minimized { width: 30px; height: 30px; top: 65px; }
         }
 
         .hidden-custom { display: none !important; }
@@ -287,26 +279,23 @@
                 <span class="text-[9px] text-[#D4AF37] tracking-[0.3em] block mt-1">CLEAN EDITION</span>
             </div>
             
-            <!-- MEDIA DECK BUTTON (TOP LEFT) -->
+            <!-- MEDIA DECK BUTTON -->
             <button onclick="toggleMediaOverlay()" class="btn-fashion px-2 py-1 md:px-3 md:py-2 rounded-full flex items-center gap-1 md:gap-2" title="Open Media Deck">
                 <span class="text-lg md:text-xl">📺</span> <span class="hidden md:inline">MEDIA</span>
             </button>
         </div>
         
-        <!-- RIGHT SIDE (Menu Buttons - Visible on All Devices) -->
+        <!-- RIGHT SIDE -->
         <div class="flex items-center gap-1 md:gap-3">
-            <!-- Status Indicator (Desktop Only) -->
             <div class="hidden md:flex items-center gap-2 px-3 py-1 border border-white/10 rounded-full bg-black/20">
                 <div id="status-dot" class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
                 <span id="room-display" class="text-[9px] text-gray-400 uppercase tracking-widest font-mono">OFFLINE</span>
             </div>
 
-            <!-- IDE Button -->
             <button onclick="toggleCodeEditor()" class="btn-fashion px-2 py-1 md:px-4 md:py-2 rounded-none flex flex-col md:flex-row items-center gap-1">
                 <span>🖋</span> <span class="text-[9px] md:text-[10px]">IDE</span>
             </button>
 
-            <!-- Setup Button -->
             <button onclick="openSettings()" class="btn-fashion primary px-2 py-1 md:px-4 md:py-2 rounded-none flex flex-col md:flex-row items-center gap-1">
                 <span>⚙️</span> <span class="text-[9px] md:text-[10px]">SETUP</span>
             </button>
@@ -327,15 +316,12 @@
             <!-- MAIN INPUT ROW -->
             <div class="flex items-end gap-3 bg-black/60 rounded-2xl p-2 border border-white/5 shadow-[0_0_30pxrgba(0,0,0,0.5)] input-glow transition-all">
                 
-                <!-- Kernel/Copilot Shortcut -->
                 <button onclick="toggleBottomCopilot()" class="p-3 rounded-xl text-[#D4AF37] hover:text-white hover:bg-[#D4AF37]/10 transition-colors shrink-0" title="Toggle Copilot String">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
                 </button>
 
-                <!-- Main Input -->
-                <input type="text" id="user-input" placeholder="Command: /ai, /join, /kernel..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light font-sans">
+                <input type="text" id="user-input" placeholder="Command: /setkey <key>, /ai, /join..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light font-sans">
                 
-                <!-- Send Button -->
                 <button id="send-btn" class="p-3 rounded-xl bg-[#D4AF37] hover:bg-[#e5c158] text-black shadow-lg transition-all transform active:scale-95 shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 5l-7 7 5 14z"></path></svg>
                 </button>
@@ -470,7 +456,7 @@
             </div>
         </div>
         <div class="editor-body">
-            <div class="relative flex flex-col h-full min-h-0">
+            <div class="relative flex flex-col h-full min-height-0">
                 <textarea id="code-editor-textarea" class="code-area" spellcheck="false" placeholder="// Write or ask Copilot..."></textarea>
             </div>
             <div class="copilot-sidebar">
@@ -498,7 +484,6 @@
     </div>
 
     <script>
-        // --- STATE MANAGEMENT ---
         let isKernelOpen = false; 
 
         const state = {
@@ -522,7 +507,6 @@
             installedModules: []
         };
 
-        // --- DOM ELEMENTS ---
         const els = {
             boot: document.getElementById('boot-screen'), 
             chat: document.getElementById('chat-container'),
@@ -540,7 +524,7 @@
             avatarFileInput: document.getElementById('avatar-file-upload'),
             btnGroq: document.getElementById('btn-groq'), 
             btnZhipu: document.getElementById('btn-zhipu'),
-            copilotInput: document.getElementById('copilot-input'), // IDE Copilot
+            copilotInput: document.getElementById('copilot-input'), 
             copilotChat: document.getElementById('copilot-chat'),
             testStatus: document.getElementById('test-status'), 
             btnTestApi: document.getElementById('btn-test-api'),
@@ -621,7 +605,6 @@
             els.bottomCopilotContainer.classList.add('hidden-custom');
         }
 
-        // --- FOCUS MANAGEMENT ---
         function toggleCodeEditor() { 
             isKernelOpen = !isKernelOpen; 
             const overlay = document.getElementById('code-editor-overlay');
@@ -674,10 +657,8 @@
         function toggleMediaUI() { els.media.classList.add('media-minimized'); }
         function switchMediaTab(tab) { document.getElementById('media-radio').classList.add('hidden'); document.getElementById('media-video').classList.add('hidden'); document.getElementById('media-' + tab).classList.remove('hidden'); }
 
-        // --- SETTINGS LOGIC ---
         function openSettings() { 
             els.nameInput.value = state.userName;
-            // FIXED: Use correct variable
             els.apiKeyInput.value = state.provider === 'groq' ? state.groqKey : state.zhipuKey;
             els.avatarEmojiInput.value = (state.userAvatar.startsWith('data:') ? "" : state.userAvatar);
             updateAvatarPreview(state.userAvatar);
@@ -738,6 +719,24 @@
                 els.chat.innerHTML = `<div class="text-center mt-16 mb-10 opacity-90 select-none"><h2 class="font-header text-2xl md:text-4xl text-white mb-4 tracking-widest">SYSTEM READY</h2><p class="font-mono text-xs md:text-sm text-gray-500 tracking-[0.4em] uppercase">Waiting for input.</p></div>`;
                 els.input.value = ''; return;
             }
+            if(txt.startsWith('/setkey ')) {
+                // FIX: RESTORED /SETKEY COMMAND
+                const key = txt.substring(9).trim();
+                if(!key) return addMessage('system', "Usage: /setkey <your_api_key>");
+                
+                if(state.provider === 'groq') {
+                    state.groqKey = key;
+                    localStorage.setItem('termos_groq_key', key);
+                } else {
+                    state.zhipuKey = key;
+                    localStorage.setItem('termos_zhipu_key', key);
+                }
+                
+                updateStatusDot(true);
+                addMessage('system', `✅ Key updated for ${state.provider.toUpperCase()}.`);
+                els.input.value = '';
+                return;
+            }
             if(txt.startsWith('/join')) { document.getElementById('join-room-input').value = txt.substring(6); document.getElementById('join-room-modal').classList.remove('hidden-custom'); els.input.value = ''; return; }
             if(txt === '/leave') { leaveRoom(); els.input.value=''; return; }
             if(txt.startsWith('/video')) { switchMediaTab('video'); toggleMediaOverlay(); els.input.value=''; return; }
@@ -790,7 +789,6 @@
                 }
                 const res = await fetch(url, { method: "POST", headers, body });
                 if (!res.ok) {
-                    // Better Error Handling
                     const errText = await res.text();
                     let msg = `API Error (${res.status})`;
                     try {
