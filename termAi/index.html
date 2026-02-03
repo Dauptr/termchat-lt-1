@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#8b5cf6">
     <title>Orkestro AI</title>
     
-    <!-- Link to Manifest for Installation -->
+    <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
 
     <style>
@@ -40,15 +40,36 @@
 
         .brand { font-weight: bold; letter-spacing: 1px; color: #fff; }
         
-        /* Hidden Install Button (appears via JS) */
-        #installBtn {
-            background: var(--accent);
-            border: none;
+        /* Cycle Button Style */
+        .model-tag {
+            background: rgba(139, 92, 246, 0.2);
+            border: 1px solid #8b5cf6;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+
+        .model-tag:hover {
+            background: #8b5cf6;
             color: white;
-            padding: 5px 15px;
+            transform: translateY(-1px);
+        }
+
+        /* Install Button (Hidden by default) */
+        #installBtn {
+            background: #333;
+            border: 1px solid #666;
+            color: white;
+            padding: 5px 12px;
             border-radius: 4px;
             cursor: pointer;
-            display: none; /* Hidden by default */
+            font-size: 0.8rem;
+            display: none; 
         }
 
         #chat-container {
@@ -74,9 +95,24 @@
             margin-right: 10px;
             background: var(--accent);
             display: flex; align-items: center; justify-content: center;
+            font-size: 0.8rem;
         }
 
         .content { line-height: 1.5; }
+
+        /* Typing Indicator Animation */
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite;
+            margin-right: 4px;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 
         .input-area {
             padding: 15px;
@@ -89,6 +125,7 @@
             background: var(--bg-light);
             border-radius: 8px;
             padding: 5px;
+            border: 1px solid #333;
         }
 
         textarea {
@@ -112,17 +149,22 @@
         }
     </style>
     
-    <!-- Puter.js Library -->
+    <!-- Libraries -->
     <script src="https://js.puter.com/v2/"></script>
-    <!-- Logic -->
     <script src="puter.js"></script>
 </head>
 <body>
 
     <header>
-        <div class="brand">ORKESTRO <span id="configStatus" style="font-size:0.7em; color:#666;"> (Configuring...)</span></div>
-        <div>
-            <button id="installBtn" onclick="installApp()">Install App</button>
+        <div class="brand">ORKESTRO <span id="configStatus" style="font-size:0.7em; color:#666;">(Connecting...)</span></div>
+        
+        <!-- Cycle Model Button -->
+        <div style="display:flex; align-items:center;">
+            <button id="modelBtn" class="model-tag" onclick="cycleModel()">GPT-4o</button>
+            
+            <div style="display:flex; gap:10px;">
+                <button id="installBtn" onclick="installApp()">Install</button>
+            </div>
         </div>
     </header>
 
@@ -130,8 +172,8 @@
         <div class="message-row ai">
             <div class="avatar">AI</div>
             <div class="content">
-                <p>Orkestro Online.</p>
-                <p>I will auto-configure my connection to the cloud on startup.</p>
+                <p><strong>Orkestro AI is ready.</strong></p>
+                <p>Click the <strong>Model Tag</strong> to switch AI modes (GPT-4o, Mini, Claude).</p>
             </div>
         </div>
     </div>
@@ -148,12 +190,8 @@
         let deferredPrompt;
 
         window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent Chrome 67 and earlier from automatically showing the prompt
             e.preventDefault();
-            // Stash the event so it can be triggered later.
             deferredPrompt = e;
-            
-            // Update UI to notify the user they can add to home screen
             const installBtn = document.getElementById('installBtn');
             installBtn.style.display = 'block';
         });
@@ -173,3 +211,4 @@
 
 </body>
 </html>
+
