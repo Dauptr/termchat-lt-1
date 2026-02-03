@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D.P.-Ai | Free Advanced AI</title>
+
+    <!-- 1. Puter.js Library -->
+    <script src="https://js.puter.com/v2/"></script>
+
+    <!-- 2. Icons and Fonts -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --sidebar-bg: #1e293b;
+            --chat-bg: #0f172a;
+            --input-bg: #334155;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --text-main: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --msg-user: #6366f1;
+            --msg-ai: #334155;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- Sidebar --- */
+        aside {
+            width: 300px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            transition: transform 0.3s ease;
+            z-index: 10;
+            overflow-y: auto;
+        }
+
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .brand span { color: var(--text-main); }
+
+        .settings-group { margin-bottom: 1.5rem; }
+        .settings-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 20px;
+        }
+
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--input-bg);
+            transition: .4s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        .credit-info {
+            margin-top: auto;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+        }
+
+        /* --- Main Chat Area --- */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .chat-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .mode-tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover { background-color: rgba(255,255,255,0.05); }
+        .tab-btn.active {
+            background-color: var(--input-bg);
+            color: var(--primary);
+            font-weight: 600;
+            border-color: var(--border-color);
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-main);
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-right: 1rem;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            scroll-behavior: smooth;
+        }
+
+        /* Messages */
+        .message {
+            display: flex;
+            gap: 1rem;
+            max-width: 850px;
+            width: 100%;
+            margin: 0 auto;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .message.user { flex-direction: row-reverse; }
+
+        .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 1rem;
+        }
+
+        .avatar.ai { background-color: var(--success); color: #fff; }
+        .avatar.user { background-color: var(--primary); color: #fff; }
+
+        .msg-content {
+            background-color: var(--msg-ai);
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            position: relative;
+            max-width: 85%;
+            word-wrap: break-word;
+        }
+
+        .message.user .msg-content {
+            background-color: var(--msg-user);
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.ai .msg-content {
+            border-bottom-left-radius: 2px;
+        }
+
+        .msg-content p { margin-bottom: 0.5rem; }
+        .msg-content p:last-child { margin-bottom: 0; }
+        .msg-content pre {
+            background: #000;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            margin: 0.5rem 0;
+            color: #4ade80;
+        }
+        .msg-content img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            border: 1px solid var(--border-color);
+        }
+        .msg-content audio {
+            margin-top: 0.8rem;
+            width: 100%;
+            height: 32px;
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 1.5rem;
+            background-color: var(--bg-color);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .input-wrapper {
+            max-width: 850px;
+            margin: 0 auto;
+            position: relative;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        textarea {
+            flex: 1;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            color: var(--text-main);
+            font-family: inherit;
+            resize: none;
+            height: 60px;
+            transition: border-color 0.2s, height 0.2s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            height: 100px;
+        }
+
+        .send-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            width: 60px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover { background-color: var(--primary-hover); }
+        .send-btn:disabled { background-color: var(--border-color); cursor: not-allowed; opacity: 0.7; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background-color: var(--sidebar-bg);
+            color: var(--text-main);
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .toast.show { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+        .toast.error { border-color: var(--error); color: var(--error); }
+
+        /* Loading Animation */
+        .typing-indicator {
+            display: inline-flex;
+            gap: 4px;
+            padding: 0.5rem 0;
+        }
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background-color: var(--text-secondary);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+        @media (max-width: 768px) {
+            aside { position: fixed; height: 100%; transform: translateX(-100%); }
+            aside.open { transform: translateX(0); }
+            .mobile-menu-btn { display: block; }
+            .chat-container { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Configuration -->
+    <aside id="sidebar">
+        <div class="brand">
+            <i class="fa-solid fa-robot"></i>
+            D.P.-Ai
+        </div>
+
+        <div class="settings-group">
+            <label>AI Model</label>
+            <select id="model-select">
+                <optgroup label="GPT-5 Series (Latest)">
+                    <option value="gpt-5.2" selected>GPT-5.2 (Default)</option>
+                    <option value="gpt-5.2-chat">GPT-5.2 Chat</option>
+                    <option value="gpt-5.2-pro">GPT-5.2 Pro</option>
+                    <option value="gpt-5.1">GPT-5.1</option>
+                    <option value="gpt-5">GPT-5</option>
+                    <option value="gpt-5-nano">GPT-5 Nano</option>
+                </optgroup>
+                <optgroup label="Codex (Code Generation)">
+                    <option value="openrouter:openai/gpt-5.1-codex">Codex 5.1</option>
+                    <option value="openrouter:openai/gpt-5.1-codex-max">Codex Max</option>
+                </optgroup>
+                <optgroup label="GPT-4 Series">
+                    <option value="gpt-4o">GPT-4o</option>
+                    <option value="gpt-4.1">GPT-4.1</option>
+                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                </optgroup>
+                <optgroup label="Reasoning Models">
+                    <option value="o1">o1</option>
+                    <option value="o3">o3</option>
+                    <option value="openrouter:openai/gpt-oss-120b">GPT-OSS 120B</option>
+                </optgroup>
+            </select>
+        </div>
+
+        <div class="settings-group">
+            <label>Generation Parameters</label>
+            <div style="display: flex; gap: 8px;">
+                <input type="number" id="temp-input" placeholder="Temp (0-2)" value="0.7" step="0.1" min="0" max="2" title="Creativity">
+                <input type="number" id="tokens-input" placeholder="Max Tokens" value="2000" title="Response Length">
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <label>Features & Modes</label>
+            <div class="toggle-row">
+                <span><i class="fa-solid fa-globe"></i> Web Search</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="web-search-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="toggle-row">
+                <span><i class="fa-solid fa-image"></i> Image Generation</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="image-mode-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="toggle-row">
+                <span><i class="fa-solid fa-volume-high"></i> Text-to-Speech</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="tts-mode-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="settings-group" id="image-model-group" style="display:none;">
+            <label>Image Model</label>
+            <select id="image-model-select">
+                <option value="gpt-image-1.5" selected>GPT Image 1.5</option>
+                <option value="gpt-image-1-mini">GPT Image Mini</option>
+                <option value="dall-e-3">DALL-E 3</option>
+                <option value="dall-e-2">DALL-E 2</option>
+            </select>
+        </div>
+
+        <div class="settings-group" id="tts-model-group" style="display:none;">
+            <label>Voice Model</label>
+            <select id="tts-model-select">
+                <option value="gpt-4o-mini-tts">GPT-4o Mini TTS</option>
+                <option value="tts-1">TTS-1</option>
+                <option value="tts-1-hd">TTS-1 HD</option>
+            </select>
+        </div>
+
+        <div class="credit-info">
+            <p>Powered by <strong>Puter.js</strong></p>
+            <p>User-Pays Model • No API Key</p>
+            <p>&copy; 2026 D.P.-Ai</p>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main>
+        <div class="chat-header">
+            <div style="display: flex; align-items: center;">
+                <button class="mobile-menu-btn" id="menu-toggle"><i class="fa-solid fa-bars"></i></button>
+                <div class="mode-tabs">
+                    <button class="tab-btn active" id="mode-chat">Chat</button>
+                    <button class="tab-btn" id="mode-studio">Studio</button>
+                </div>
+            </div>
+            <button class="tab-btn" onclick="clearChat()" title="Clear History"><i class="fa-solid fa-trash"></i></button>
+        </div>
+
+        <div class="chat-container" id="chat-container">
+            <!-- Default Welcome Message -->
+            <div class="message ai">
+                <div class="avatar ai"><i class="fa-solid fa-robot"></i></div>
+                <div class="msg-content">
+                    <p><strong>Hello! I am D.P.-Ai.</strong></p>
+                    <p>I have access to <strong>GPT-5.2, Codex, DALL-E</strong>, and Web Search capabilities for free via Puter.js.</p>
+                    <p>Simply type your request below. Use the sidebar to switch models or enable features like Image Generation.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <div class="input-wrapper">
+                <textarea id="user-input" placeholder="Type a message..." rows="1"></textarea>
+                <button class="send-btn" id="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <i class="fa-solid fa-circle-info"></i>
+        <span id="toast-msg">Notification</span>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // --- Application State ---
+        const appState = {
+            model: 'gpt-5.2',
+            temperature: 0.7,
+            maxTokens: 2000,
+            webSearch: false,
+            isImageMode: false,
+            isTTSMode: false,
+            imageModel: 'gpt-image-1.5',
+            ttsModel: 'gpt-4o-mini-tts',
+            isGenerating: false
+        };
+
+        // --- DOM Elements ---
+        const ui = {
+            input: document.getElementById('user-input'),
+            sendBtn: document.getElementById('send-btn'),
+            chatContainer: document.getElementById('chat-container'),
+            sidebar: document.getElementById('sidebar'),
+            menuBtn: document.getElementById('menu-toggle'),
+            toast: document.getElementById('toast'),
+            toastMsg: document.getElementById('toast-msg'),
+            modelSelect: document.getElementById('model-select'),
+            imgModelSelect: document.getElementById('image-model-select'),
+            ttsModelSelect: document.getElementById('tts-model-select'),
+            tempInput: document.getElementById('temp-input'),
+            tokensInput: document.getElementById('tokens-input'),
+            webSearchToggle: document.getElementById('web-search-toggle'),
+            imageModeToggle: document.getElementById('image-mode-toggle'),
+            ttsModeToggle: document.getElementById('tts-mode-toggle'),
+            imgGroup: document.getElementById('image-model-group'),
+            ttsGroup: document.getElementById('tts-model-group'),
+            modeChat: document.getElementById('mode-chat'),
+            modeStudio: document.getElementById('mode-studio')
+        };
+
+        // --- Safety Check Function ---
+        function checkPuter() {
+            if (typeof puter === 'undefined') {
+                const errorMsg = `
+                    <div style="color: #ef4444;">
+                        <strong><i class="fa-solid fa-triangle-exclamation"></i> Connection Error</strong>
+                        <p>The Puter.js library failed to load.</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Check your Internet connection.</li>
+                            <li><strong>Disable your AdBlocker</strong> (uBlock, AdBlock, etc.) as it blocks external scripts.</li>
+                            <li>Try refreshing the page.</li>
+                        </ul>
+                    </div>
+                `;
+                addMessage('ai', errorMsg);
+                setLoading(false);
+                return false;
+            }
+            return true;
+        }
+
+        // --- Event Listeners ---
+
+        // Send Interaction
+        ui.sendBtn.addEventListener('click', handleSend);
+        ui.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+            }
+        });
+
+        // UI Toggles
+        ui.menuBtn.addEventListener('click', () => ui.sidebar.classList.toggle('open'));
+
+        // Settings Changes
+        ui.modelSelect.addEventListener('change', (e) => appState.model = e.target.value);
+        ui.imgModelSelect.addEventListener('change', (e) => appState.imageModel = e.target.value);
+        ui.ttsModelSelect.addEventListener('change', (e) => appState.ttsModel = e.target.value);
+        ui.tempInput.addEventListener('change', (e) => appState.temperature = parseFloat(e.target.value));
+        ui.tokensInput.addEventListener('change', (e) => appState.maxTokens = parseInt(e.target.value));
+
+        // Feature Toggles
+        ui.webSearchToggle.addEventListener('change', (e) => {
+            appState.webSearch = e.target.checked;
+            showToast(appState.webSearch ? 'Web Search Enabled' : 'Web Search Disabled');
+        });
+
+        ui.imageModeToggle.addEventListener('change', (e) => {
+            appState.isImageMode = e.target.checked;
+            ui.imgGroup.style.display = appState.isImageMode ? 'block' : 'none';
+            ui.input.placeholder = appState.isImageMode ? "Describe an image to create..." : "Type a message...";
+            if(appState.isImageMode) showToast("Switched to Image Generation");
+        });
+
+        ui.ttsModeToggle.addEventListener('change', (e) => {
+            appState.isTTSMode = e.target.checked;
+            ui.ttsGroup.style.display = appState.isTTSMode ? 'block' : 'none';
+            showToast(appState.isTTSMode ? "Voice Output Enabled" : "Voice Output Disabled");
+        });
+
+        // Mode Switcher Tabs
+        ui.modeChat.addEventListener('click', () => {
+            ui.modeChat.classList.add('active');
+            ui.modeStudio.classList.remove('active');
+            appState.isImageMode = false;
+            ui.imageModeToggle.checked = false;
+            ui.imgGroup.style.display = 'none';
+            ui.input.placeholder = "Type a message...";
+            showToast("Chat Mode Active");
+        });
+
+        ui.modeStudio.addEventListener('click', () => {
+            ui.modeStudio.classList.add('active');
+            ui.modeChat.classList.remove('active');
+            appState.isImageMode = true;
+            ui.imageModeToggle.checked = true;
+            ui.imgGroup.style.display = 'block';
+            ui.input.placeholder = "Describe an image to create...";
+            showToast("Studio Mode Active");
+        });
+
+        // --- Core Logic ---
+
+        async function handleSend() {
+            // Check if library exists before doing anything
+            if (!checkPuter()) return;
+
+            const text = ui.input.value.trim();
+            if (!text || appState.isGenerating) return;
+
+            // Reset Input
+            ui.input.value = '';
+            ui.input.style.height = '60px';
+
+            // Add User Message
+            addMessage('user', text);
+            appState.isGenerating = true;
+            setLoading(true);
+
+            try {
+                if (appState.isImageMode) {
+                    await generateImage(text);
+                } else {
+                    await generateChat(text);
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                addMessage('ai', `<span style="color:var(--error)">Error: ${error.message || "Something went wrong."}</span>`);
+            } finally {
+                setLoading(false);
+                appState.isGenerating = false;
+            }
+        }
+
+        // Text Generation (Example 1, 4, 5, 6, 8)
+        async function generateChat(prompt) {
+            const options = {
+                model: appState.model,
+                stream: true, // Example 5: Stream responses
+                temperature: appState.temperature,
+                max_tokens: appState.maxTokens
+            };
+
+            // Example 8: Web Search
+            if (appState.webSearch) {
+                options.tools = [{ type: "web_search" }];
+            }
+
+            // Create placeholder for streaming
+            const msgId = Date.now().toString();
+            const contentDiv = addMessage('ai', '', msgId);
+            let fullText = "";
+
+            try {
+                const response = await puter.ai.chat(prompt, options);
+
+                for await (const part of response) {
+                    if (part?.text) {
+                        fullText += part.text;
+                        contentDiv.innerHTML = formatText(fullText);
+                        scrollToBottom();
+                    }
+                }
+
+                // Example 9: Text-to-speech
+                if (appState.isTTSMode && fullText) {
+                    generateSpeech(fullText, contentDiv);
+                }
+
+            } catch (e) {
+                throw e;
+            }
+        }
+
+        // Image Generation (Example 2)
+        async function generateImage(prompt) {
+            const loadingId = addMessage('ai', `<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`);
+
+            try {
+                const imageElement = await puter.ai.txt2img(prompt, { model: appState.imageModel });
+
+                // Update loading message with result
+                const loadingMsg = document.querySelector(`[data-id="${loadingId}"] .msg-content`);
+                loadingMsg.innerHTML = '';
+                loadingMsg.appendChild(imageElement);
+                loadingMsg.innerHTML += `<p style="margin-top:8px; font-size:0.9em; color:var(--text-secondary)"><em>${prompt}</em></p>`;
+
+                if(appState.isTTSMode) generateSpeech("Here is the image you requested.", loadingMsg);
+            } catch (e) {
+                throw e;
+            }
+        }
+
+        // Speech Generation (Example 9)
+        async function generateSpeech(text, container) {
+            try {
+                const audio = await puter.ai.txt2speech(text, {
+                    provider: "openai",
+                    model: appState.ttsModel
+                });
+                audio.setAttribute("controls", "");
+                container.appendChild(audio);
+            } catch (e) {
+                console.error("TTS Error", e);
+            }
+        }
+
+        // --- Helper Functions ---
+
+        function addMessage(role, html, id = null) {
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+            if(id) div.dataset.id = id;
+
+            const icon = role === 'user' ? 'fa-user' : 'fa-robot';
+            const avatarClass = role === 'user' ? 'user' : 'ai';
+
+            div.innerHTML = `
+                <div class="avatar ${avatarClass}"><i class="fa-solid ${icon}"></i></div>
+                <div class="msg-content">${html}</div>
+            `;
+
+            ui.chatContainer.appendChild(div);
+            scrollToBottom();
+            return div.querySelector('.msg-content');
+        }
+
+        function formatText(text) {
+            // Safe HTML escaping
+            let safe = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            // Basic code block formatting
+            safe = safe.replace(/```([\s\S]*?)```/g, '<pre>$1</pre>');
+            // Line breaks
+            safe = safe.replace(/\n/g, '<br>');
+            return safe;
+        }
+
+        function scrollToBottom() {
+            ui.chatContainer.scrollTop = ui.chatContainer.scrollHeight;
+        }
+
+        function setLoading(isLoading) {
+            ui.sendBtn.disabled = isLoading;
+            if(isLoading) {
+                ui.sendBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+            } else {
+                ui.sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>';
+            }
+        }
+
+        function showToast(msg) {
+            ui.toastMsg.textContent = msg;
+            ui.toast.className = 'toast show';
+            setTimeout(() => { ui.toast.className = 'toast'; }, 3000);
+        }
+
+        function clearChat() {
+            ui.chatContainer.innerHTML = '';
+            showToast("Chat cleared");
+        }
+
+        // Initialize
+        console.log("D.P.-Ai loaded. Waiting for Puter.js...");
+    </script>
+</body>
+</html>
