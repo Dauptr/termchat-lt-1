@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#8b5cf6">
+    <title>Orkestro AI</title>
+    
+    <!-- Link to Manifest for Installation -->
+    <link rel="manifest" href="manifest.json">
+
+    <style>
+        :root {
+            --bg-dark: #000000;
+            --bg-light: #1e1e1e;
+            --text-primary: #ffffff;
+            --accent: #8b5cf6;
+            --font-main: 'Segoe UI', Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        header {
+            padding: 10px 20px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #0a0a0a;
+        }
+
+        .brand { font-weight: bold; letter-spacing: 1px; color: #fff; }
+        
+        /* Hidden Install Button (appears via JS) */
+        #installBtn {
+            background: var(--accent);
+            border: none;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: none; /* Hidden by default */
+        }
+
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 20px;
+        }
+
+        .message-row {
+            display: flex;
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .message-row.ai { background-color: var(--bg-light); }
+        .message-row.user { background-color: var(--bg-dark); }
+
+        .avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+            background: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .content { line-height: 1.5; }
+
+        .input-area {
+            padding: 15px;
+            background: #0a0a0a;
+            border-top: 1px solid #333;
+        }
+
+        .input-wrapper {
+            display: flex;
+            background: var(--bg-light);
+            border-radius: 8px;
+            padding: 5px;
+        }
+
+        textarea {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: white;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+            height: 24px;
+        }
+
+        #sendBtn {
+            background: var(--accent);
+            border: none;
+            color: white;
+            padding: 0 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+    
+    <!-- Puter.js Library -->
+    <script src="https://js.puter.com/v2/"></script>
+    <!-- Logic -->
+    <script src="puter.js"></script>
+</head>
+<body>
+
+    <header>
+        <div class="brand">ORKESTRO <span id="configStatus" style="font-size:0.7em; color:#666;"> (Configuring...)</span></div>
+        <div>
+            <button id="installBtn" onclick="installApp()">Install App</button>
+        </div>
+    </header>
+
+    <div id="chat-container">
+        <div class="message-row ai">
+            <div class="avatar">AI</div>
+            <div class="content">
+                <p>Orkestro Online.</p>
+                <p>I will auto-configure my connection to the cloud on startup.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-area">
+        <div class="input-wrapper">
+            <textarea id="userInput" placeholder="Type here..." onkeydown="checkEnter(event)"></textarea>
+            <button id="sendBtn" onclick="handleSend()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // --- PWA INSTALLATION LOGIC ---
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
+            deferredPrompt = e;
+            
+            // Update UI to notify the user they can add to home screen
+            const installBtn = document.getElementById('installBtn');
+            installBtn.style.display = 'block';
+        });
+
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        document.getElementById('installBtn').style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+    </script>
+
+</body>
+</html>
