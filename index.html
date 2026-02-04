@@ -18,8 +18,8 @@
 
     <style>
         :root {
-            --glass-bg: rgba(15, 23, 42, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-bg: rgba(15, 23, 42, 0.9);
+            --glass-border: rgba(255, 255, 255, 0.1);
             --accent-primary: #a855f7;
             --accent-secondary: #06b6d4;
             --msg-user-bg: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
@@ -50,15 +50,15 @@
         #matrix-canvas.active { display: block; }
 
         /* --- SCROLLBARS --- */
-        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
 
         /* --- UI COMPONENTS --- */
         .glass-panel {
             background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
             border: 1px solid var(--glass-border);
             transition: all 0.3s ease;
         }
@@ -67,16 +67,16 @@
         .font-mono { font-family: 'Fira Code', monospace; }
         
         .input-glow:focus-within {
-            box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
-            border-color: rgba(168, 85, 247, 0.5);
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+            border-color: rgba(168, 85, 247, 0.8);
         }
 
         /* --- ANIMATIONS --- */
         @keyframes slideUpFade {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .msg-anim { animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .msg-anim { animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         
         @keyframes pulse-red {
             0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
@@ -98,8 +98,8 @@
             transition: opacity 1s ease;
         }
         .loader-ring {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             border: 3px solid #333;
             border-top: 3px solid var(--accent-primary);
             border-radius: 50%;
@@ -107,14 +107,14 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* --- MEDIA OVERLAY --- */
+        /* --- MEDIA OVERLAY (CENTERED) --- */
         .media-overlay {
             position: fixed;
-            bottom: 90px; 
+            bottom: 80px; 
             left: 50%;
-            transform: translateX(-50%) translateY(20px);
-            width: 90%;
-            max-width: 500px; 
+            transform: translateX(-50%) translateY(30px);
+            width: 92%;
+            max-width: 450px; 
             z-index: 40;
             opacity: 0;
             pointer-events: none;
@@ -129,8 +129,8 @@
         /* --- VIDEO GRID --- */
         .video-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 8px;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 6px;
         }
         .video-container {
             background: #000;
@@ -151,7 +151,7 @@
             color: #22d3ee;
             padding: 2px 4px;
             border-radius: 2px;
-            font-size: 9px;
+            font-size: 8px;
             font-family: monospace;
             z-index: 10;
         }
@@ -206,6 +206,20 @@
         .markdown-body pre { background: #0d1117 !important; padding: 1em; border-radius: 8px; overflow-x: auto; margin: 10px 0; }
         .markdown-body pre code { background: transparent; padding: 0; color: inherit; }
 
+        /* Radio Search Bar */
+        .radio-search-input {
+            width: 100%;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #333;
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            outline: none;
+        }
+        .radio-search-input:focus { border-color: #a855f7; }
+
         .hidden-ui { display: none !important; }
         .flex-ui { display: flex !important; }
     </style>
@@ -253,13 +267,13 @@
     </header>
 
     <!-- MAIN CHAT AREA -->
-    <main id="chat-container" class="flex-1 overflow-y-auto pt-20 pb-32 px-4 z-10 scroll-smooth max-w-4xl mx-auto w-full space-y-3">
+    <main id="chat-container" class="flex-1 overflow-y-auto pt-20 pb-32 px-4 z-10 scroll-smooth max-w-3xl mx-auto w-full space-y-3">
         <!-- Messages injected here -->
     </main>
 
     <!-- INPUT AREA -->
     <div class="fixed bottom-0 left-0 w-full z-30 glass-panel border-t border-white/10 pt-3 pb-[calc(12px+var(--safe-bottom))] px-4">
-        <div class="max-w-4xl mx-auto">
+        <div class="max-w-3xl mx-auto">
             <div class="flex items-end gap-2 bg-black/40 rounded-xl p-1.5 border border-white/5 input-glow">
                 <button onclick="openKernelInput()" class="p-2.5 rounded-lg text-cyan-400 hover:bg-cyan-900/30 shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
@@ -294,15 +308,10 @@
             </div>
             
             <div id="tab-radio" class="hidden">
-                <div class="space-y-2">
-                    <div onclick="playRadio(this, 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3')" class="cursor-pointer p-2 rounded bg-white/5 hover:bg-white/10 border border-white/5 flex justify-between items-center group">
-                        <span class="text-xs text-gray-300">Lofi Galaxy</span>
-                        <div class="w-1.5 h-1.5 rounded-full bg-cyan-500 group-hover:shadow-[0_0_8px_#06b6d4]"></div>
-                    </div>
-                    <div onclick="playRadio(this, 'https://streams.ilovemusic.de/iloveradio17.mp3')" class="cursor-pointer p-2 rounded bg-white/5 hover:bg-white/10 border border-white/5 flex justify-between items-center group">
-                        <span class="text-xs text-gray-300">Cyberpunk</span>
-                        <div class="w-1.5 h-1.5 rounded-full bg-purple-500 group-hover:shadow-[0_0_8px_#a855f7]"></div>
-                    </div>
+                <!-- NEW SEARCH BAR -->
+                <input type="text" id="radio-search" class="radio-search-input" placeholder="🔍 Search genres (e.g., LoFi, Jazz, Cyberpunk)..." onkeyup="filterRadioList()">
+                <div id="radio-list" class="space-y-2 max-h-40 overflow-y-auto">
+                    <!-- List injected via JS -->
                 </div>
             </div>
         </div>
@@ -401,13 +410,24 @@
         // --- WEBRTC STATE (ROBUST FIX) ---
         let localStream = null;
         const peers = {}; // Map: { "Username": RTCPeerConnection }
-        // Updated STUN servers including Twilio for better NAT traversal
         const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:global.stun.twilio.com:3478' }
             ]
         };
+
+        // --- RADIO DATABASE (SEARCHABLE) ---
+        const radioStations = [
+            { name: "Lofi Galaxy", genre: "lofi chill", url: "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3" },
+            { name: "Cyberpunk City", genre: "cyberpunk synthwave", url: "https://streams.ilovemusic.de/iloveradio17.mp3" },
+            { name: "Deep Focus", genre: "focus ambient", url: "https://stream.zeno.fm/0r0xa792kwzuv" },
+            { name: "Classical Core", genre: "classical", url: "https://media-ice.musicradio.com/ClassicMP3" },
+            { name: "Techno Bunker", genre: "techno", url: "https://stream.zeno.fm/f3wvbbqMDg8uv" },
+            { name: "Jazz Lounge", genre: "jazz", url: "https://stream.zeno.fm/s3p5x29s88zuv" },
+            { name: "Retrowave FM", genre: "retrowave 80s", url: "https://streams.ilovemusic.de/iloveradio16.mp3" },
+            { name: "Dark Ambient", genre: "dark horror", url: "https://stream.zeno.fm/yn0w2p5q02zuv" }
+        ];
 
         // --- DOM ELEMENTS ---
         const UI = {
@@ -429,7 +449,9 @@
             profileNameInput: document.getElementById('edit-name'),
             videoGrid: document.getElementById('video-grid'),
             btnVideoEnable: document.getElementById('btn-enable-video'),
-            btnVideoDisable: document.getElementById('btn-disable-video')
+            btnVideoDisable: document.getElementById('btn-disable-video'),
+            radioList: document.getElementById('radio-list'),
+            radioSearch: document.getElementById('radio-search')
         };
 
         // --- SOUND FX ---
@@ -462,6 +484,7 @@
                     UI.boot.remove();
                     initCosmos(); 
                     startSystem();
+                    renderRadioList(); // Init Radio List
                 }, 800);
             }, 1500);
 
@@ -547,6 +570,27 @@
             }
         }
 
+        /* --- FIXED /ai COMMAND --- */
+        async function processAICommand(prompt) {
+            const id = 'ai-' + Date.now();
+            addThinking(id);
+            AudioFX.system();
+            
+            try {
+                const messages = [
+                    { role: "system", content: SYSTEM_PROMPT },
+                    { role: "user", content: prompt }
+                ];
+                
+                const reply = await safeFetch(messages);
+                removeThinking(id);
+                addAIMessage(reply);
+            } catch (e) {
+                removeThinking(id);
+                addSystemMessage("AI Error: " + e.message, "error");
+            }
+        }
+
         /* --- CHAT LOGIC --- */
         async function handleInput() {
             const text = UI.input.value.trim();
@@ -627,6 +671,41 @@
             }
         }
 
+        /* --- RADIO SEARCH LOGIC --- */
+        function renderRadioList(query = "") {
+            UI.radioList.innerHTML = "";
+            const lowerQuery = query.toLowerCase();
+
+            const filtered = radioStations.filter(st => 
+                st.name.toLowerCase().includes(lowerQuery) || 
+                st.genre.toLowerCase().includes(lowerQuery)
+            );
+
+            if (filtered.length === 0) {
+                UI.radioList.innerHTML = `<div class="text-center text-gray-500 text-xs p-2">No stations found.</div>`;
+                return;
+            }
+
+            filtered.forEach(st => {
+                const div = document.createElement('div');
+                div.className = "cursor-pointer p-2 rounded bg-white/5 hover:bg-white/10 border border-white/5 flex justify-between items-center group";
+                div.onclick = (e) => playRadio(e.currentTarget, st.url);
+                div.innerHTML = `
+                    <div>
+                        <div class="text-xs text-white font-bold">${st.name}</div>
+                        <div class="text-[9px] text-purple-400">${st.genre}</div>
+                    </div>
+                    <div class="w-1.5 h-1.5 rounded-full bg-cyan-500 group-hover:shadow-[0_0_8px_#06b6d4]"></div>
+                `;
+                UI.radioList.appendChild(div);
+            });
+        }
+
+        function filterRadioList() {
+            const query = UI.radioSearch.value;
+            renderRadioList(query);
+        }
+
         /* --- ROBUST WEBRTC LOGIC --- */
         async function startWebRTC() {
             try {
@@ -640,7 +719,6 @@
                 addLocalVideo(stream);
                 addSystemMessage("📹 Uplink Established. Broadcasting...", "info");
 
-                // Broadcast a signal saying "I am Ready"
                 broadcastWebRTC({ type: 'video_ready' });
 
             } catch (err) {
@@ -1098,7 +1176,7 @@
                 
                 if (!repoRes.ok) {
                     if(repoRes.status === 404) {
-                        alert("❌ Repository Not Found.\nPlease check the Username and Repository Name spelling.");
+                        alert("❌ Repository Not Found.\nPlease check Username and Repository Name spelling.");
                         return;
                     }
                     if(repoRes.status === 401 || repoRes.status === 403) {
@@ -1367,7 +1445,7 @@
             updateStatus(true);
             addSystemMessage(`Switched to frequency: ${roomName}`, "info");
             if (mqttClient && mqttClient.isConnected()) {
-                mqttClient.subscribe(`termos/rooms/${currentRoom}`, { qos: 1 });
+                mqttClient.subscribe(`termos/rooms/${currentRoom}`, { qos:1 });
                 const joinMsg = new Paho.MQTT.Message(JSON.stringify({ type: 'join', user: userProfile.name }));
                 joinMsg.destinationName = `termos/rooms/${currentRoom}`;
                 mqttClient.send(joinMsg);
