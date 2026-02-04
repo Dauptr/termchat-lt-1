@@ -113,7 +113,7 @@
             left: 50%;
             transform: translateX(-50%) translateY(20px);
             width: 90%;
-            max-width: 400px;
+            max-width: 500px; /* Wider for video */
             z-index: 40;
             opacity: 0;
             pointer-events: none;
@@ -128,18 +128,32 @@
         /* --- VIDEO GRID --- */
         .video-grid {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 8px;
         }
         .video-container {
             background: #000;
-            border-radius: 12px;
+            border-radius: 8px;
             overflow: hidden;
             position: relative;
             aspect-ratio: 16/9;
             border: 1px solid rgba(168, 85, 247, 0.3);
         }
+        .video-container.local { border-color: #a855f7; }
+        .video-container.remote { border-color: #06b6d4; }
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        
+        .remote-label {
+            position: absolute;
+            bottom: 2px; left: 2px;
+            background: rgba(0,0,0,0.8);
+            color: #22d3ee;
+            padding: 2px 4px;
+            border-radius: 2px;
+            font-size: 9px;
+            font-family: monospace;
+            z-index: 10;
+        }
 
         /* --- CODE EDITOR LAYOUT --- */
         #code-editor-overlay {
@@ -270,11 +284,12 @@
             </div>
             
             <div id="tab-video">
-                <div id="video-placeholder" class="bg-black/50 rounded-lg p-6 text-center border border-white/5 border-dashed">
+                <div id="video-placeholder" class="bg-black/50 rounded-lg p-6 text-center border border-white/5 border-dashed mb-3">
                     <p class="text-xs text-gray-500 mb-2">Video Link Offline</p>
-                    <button onclick="startWebRTC()" class="text-[10px] bg-purple-600 text-white px-3 py-1.5 rounded hover:bg-purple-500">ENABLE CAM (Call)</button>
+                    <button id="btn-enable-video" onclick="startWebRTC()" class="text-[10px] bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded shadow-lg transition-all w-full">📹 ENABLE CAMERA (Broadcast)</button>
+                    <button id="btn-disable-video" onclick="stopWebRTC()" class="hidden-ui text-[10px] bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded shadow-lg transition-all w-full">🛑 STOP VIDEO</button>
                 </div>
-                <div id="video-grid" class="hidden mt-2 grid grid-cols-1 gap-2"></div>
+                <div id="video-grid" class="hidden video-grid"></div>
             </div>
             
             <div id="tab-radio" class="hidden">
@@ -382,11 +397,14 @@
         let mqttClient = null;
         let isAdmin = false;
 
-        // WebRTC State
+        // --- WEBRTC STATE (Improved) ---
         let localStream = null;
-        const peers = {}; // peerConnections
+        const peers = {}; // Map: { "Username": RTCPeerConnection }
         const rtcConfig = {
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:global.stun.twilio.com:3478' }
+            ]
         };
 
         // --- DOM ELEMENTS ---
@@ -406,10 +424,13 @@
             apiKeyInput: document.getElementById('api-key-input'),
             profileModal: document.getElementById('profile-modal'),
             profilePreview: document.getElementById('profile-avatar-preview'),
-            profileNameInput: document.getElementById('edit-name')
+            profileNameInput: document.getElementById('edit-name'),
+            videoGrid: document.getElementById('video-grid'),
+            btnVideoEnable: document.getElementById('btn-enable-video'),
+            btnVideoDisable: document.getElementById('btn-disable-video')
         };
 
-        // --- SOUND FX (7) ---
+        // --- SOUND FX ---
         const AudioFX = {
             ctx: new (window.AudioContext || window.webkitAudioContext)(),
             playTone: function(freq, type, duration) {
@@ -437,7 +458,7 @@
                 UI.boot.style.opacity = '0';
                 setTimeout(() => {
                     UI.boot.remove();
-                    initCosmos();
+                    initCosmos(); // Simpler map
                     startSystem();
                 }, 800);
             }, 1500);
@@ -457,7 +478,6 @@
                 }
             });
 
-            // Avatar Upload Handler
             document.getElementById('avatar-upload').addEventListener('change', function(e) {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -485,7 +505,6 @@
                 connectMQTT();
             }
             
-            // Load History (4)
             loadHistory();
             UI.input.focus();
         }
@@ -532,14 +551,13 @@
             if (!text) return;
 
             UI.input.value = '';
-            AudioFX.send(); // (7)
+            AudioFX.send();
             
             if (text.startsWith('/')) {
                 handleCommand(text);
                 return;
             }
 
-            // Standard Chat
             addUserMessage(text, true, userProfile.name, userProfile.avatar);
             
             if (mqttClient && mqttClient.isConnected()) {
@@ -547,7 +565,7 @@
                     const payload = JSON.stringify({
                         type: 'chat',
                         user: userProfile.name,
-                        avatar: userProfile.avatar, // (5) Broadcast avatar
+                        avatar: userProfile.avatar,
                         text: text,
                         ts: Date.now()
                     });
@@ -556,7 +574,7 @@
                     msg.destinationName = topic;
                     msg.qos = 1;
                     mqttClient.send(msg);
-                    saveToHistory({type:'chat', user:userProfile.name, text, isMe:true}); // (4)
+                    saveToHistory({type:'chat', user:userProfile.name, text, isMe:true});
                 } catch(e) { console.error("MQTT Send Error", e); }
             }
         }
@@ -595,7 +613,6 @@
                     toggleMedia();
                     break;
                 case '/sys':
-                    // (1) System Modules
                     if(parts[1] === 'install') {
                         const moduleName = parts[2];
                         if(moduleName) SystemRebuilder.install(moduleName);
@@ -608,26 +625,219 @@
             }
         }
 
-        async function processAICommand(prompt) {
-            const id = 'ai-' + Date.now();
-            addThinking(id, "AI");
-            
+        /* --- IMPROVED WEBRTC LOGIC --- */
+        async function startWebRTC() {
             try {
-                const messages = [
-                    { role: "system", content: "You are a helpful AI assistant. Output markdown if needed." },
-                    { role: "user", content: prompt }
-                ];
-                const reply = await safeFetch(messages);
-                removeThinking(id);
-                addAIMessage(reply);
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                localStream = stream;
+
+                // Update UI
+                UI.btnVideoEnable.classList.add('hidden-ui');
+                UI.btnVideoDisable.classList.remove('hidden-ui');
+                UI.btnVideoDisable.classList.add('flex-ui');
+                
+                addLocalVideo(stream);
+                addSystemMessage("📹 Uplink Established. Broadcasting...", "info");
+
+                // Broadcast Offer to Room
+                // We broadcast an offer to everyone.
+                // Peers will check if they already have a connection to us.
+                broadcastWebRTC({ type: 'offer', sdp: null }); // SDP null means "I'm ready, please send me an offer" or we create offers immediately?
+                // Better Strategy for Mesh:
+                // 1. I create offer.
+                // 2. Send to everyone.
+                
+                // Loop through everyone (we don't have a list, so we just send a 'start_call' signal)
+                // Simpler: Just send an Offer immediately to the room.
+                createOffersForRoom();
+
             } catch (err) {
-                removeThinking(id);
-                addSystemMessage(`AI ERROR: ${err.message}`, "error");
+                addSystemMessage("Camera Error: " + err.message, "error");
                 AudioFX.error();
             }
         }
 
-        /* --- (1) SYSTEM MODULES --- */
+        function stopWebRTC() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
+            // Close all connections
+            Object.values(peers).forEach(pc => pc.close());
+            for (let key in peers) delete peers[key];
+
+            // Clean UI
+            UI.videoGrid.innerHTML = '';
+            UI.btnVideoDisable.classList.add('hidden-ui');
+            UI.btnVideoDisable.classList.remove('flex-ui');
+            UI.btnVideoEnable.classList.remove('hidden-ui');
+
+            addSystemMessage("📹 Uplink Terminated.", "warning");
+            
+            // Notify others
+            broadcastWebRTC({ type: 'leave_call' });
+        }
+
+        function createOffersForRoom() {
+            // In a broadcast model without a server list, we just send a generic 'offer' signal.
+            // Since we can't target specific users easily without a list, we broadcast to room.
+            // To avoid spam, we send one 'offer' signal. 
+            // Since we don't know SDP yet without a peer, we send a signal asking for a handshake.
+            
+            // Actually, simplest mesh:
+            // We create an Offer. We broadcast it.
+            // The issue is 'RemoteDescription' needs an 'SDP'. 
+            // So we generate one Offer for everyone.
+            
+            // Wait, creating 1 Offer and sending it to 10 people breaks WebRTC (SDP keys are unique).
+            // CORRECT WAY WITHOUT SERVER:
+            // 1. User A broadcasts "I am ready".
+            // 2. User B sees "I am ready". B creates PC, creates Offer, sends Offer specifically to A (via payload 'target': username).
+            // 3. A sees Offer (if target is A), Answers.
+            
+            broadcastWebRTC({ type: 'ready' });
+        }
+
+        async function handleReadySignal(sender) {
+            if(sender === userProfile.name) return;
+            // If I have a stream, I should send an offer to the person who just got ready.
+            if(localStream) {
+                const pc = createPeerConnection(sender);
+                if(pc) {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    // Target specific user
+                    broadcastWebRTC({ type: 'offer', sdp: offer, target: sender });
+                }
+            }
+        }
+
+        async function handleOffer(data) {
+            // Only accept if it's for ME, or if it's broadcast (target undefined)
+            if(data.target && data.target !== userProfile.name) return;
+            
+            const sender = data.user;
+            if(sender === userProfile.name) return;
+
+            // Check if already connected
+            if(peers[sender]) return;
+
+            const pc = createPeerConnection(sender);
+            if(pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                // Send answer back to sender (broadcast to room works if payload has sender info, but ideally target)
+                // We broadcast, logic filters it.
+                broadcastWebRTC({ type: 'answer', sdp: answer, target: sender });
+            }
+        }
+
+        async function handleAnswer(data) {
+            if(data.target && data.target !== userProfile.name) return;
+            const sender = data.user;
+            const pc = peers[sender];
+            if(pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            }
+        }
+
+        async function handleCandidate(data) {
+            if(data.target && data.target !== userProfile.name) return;
+            const sender = data.user;
+            const pc = peers[sender];
+            if(pc) {
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                } catch (e) {
+                    console.log("Candidate Error (Ignored)", e);
+                }
+            }
+        }
+
+        function handleLeaveCall(sender) {
+            if(peers[sender]) {
+                peers[sender].close();
+                delete peers[sender];
+                const el = document.getElementById(`vid-remote-${sender}`);
+                if(el) el.remove();
+            }
+        }
+
+        function createPeerConnection(remoteUser) {
+            const pc = new RTCPeerConnection(rtcConfig);
+            peers[remoteUser] = pc;
+
+            pc.onicecandidate = (e) => {
+                if(e.candidate) {
+                    broadcastWebRTC({ type: 'candidate', candidate: e.candidate, target: remoteUser });
+                }
+            };
+
+            pc.ontrack = (e) => {
+                const el = document.getElementById(`vid-remote-${remoteUser}`);
+                if(el) return; // Already added
+
+                const div = document.createElement('div');
+                div.id = `vid-remote-${remoteUser}`;
+                div.className = "video-container remote";
+                div.innerHTML = `<video autoplay playsinline></video><div class="remote-label">${remoteUser}</div>`;
+                div.querySelector('video').srcObject = e.streams[0];
+                UI.videoGrid.appendChild(div);
+                AudioFX.system();
+            };
+
+            pc.onconnectionstatechange = () => {
+                if(pc.connectionState === 'disconnected') {
+                    handleLeaveCall(remoteUser);
+                }
+            }
+
+            // Add my tracks
+            if(localStream) {
+                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            }
+
+            return pc;
+        }
+
+        function addLocalVideo(stream) {
+            const div = document.createElement('div');
+            div.id = "vid-local";
+            div.className = "video-container local";
+            div.innerHTML = `<video autoplay muted playsinline></video><div class="remote-label">ME</div>`;
+            div.querySelector('video').srcObject = stream;
+            UI.videoGrid.appendChild(div);
+        }
+
+        function broadcastWebRTC(payload) {
+            if(mqttClient && mqttClient.isConnected()) {
+                const topic = currentRoom === "public" ? "termos/public" : `termos/rooms/${currentRoom}`;
+                const fullPayload = {
+                    ...payload,
+                    user: userProfile.name,
+                    type: 'webrtc' // Wrapper type
+                };
+                
+                // We override the wrapper type inside the payload content for the handler
+                const msg = new Paho.MQTT.Message(JSON.stringify(fullPayload));
+                msg.destinationName = topic;
+                mqttClient.send(msg);
+            }
+        }
+
+        function handleWebRTCMessage(data) {
+            const type = data.type; // offer, answer, candidate, ready, leave_call
+            
+            if(type === 'ready') handleReadySignal(data.user);
+            else if(type === 'offer') handleOffer(data);
+            else if(type === 'answer') handleAnswer(data);
+            else if(type === 'candidate') handleCandidate(data);
+            else if(type === 'leave_call') handleLeaveCall(data.user);
+        }
+
+        /* --- SYSTEM MODULES --- */
         const SystemRebuilder = {
             install: function(name) {
                 name = name.toLowerCase();
@@ -656,13 +866,13 @@
                     addSystemMessage("Module Matrix: Disabled", "warning");
                 } else {
                     mCanvas.style.display = 'block';
-                    initMatrix(); // Start Matrix loop
+                    initMatrix(); 
                     addSystemMessage("Module Matrix: Active", "info");
                 }
             }
         };
 
-        /* --- (3) MARKDOWN PARSING --- */
+        /* --- MARKDOWN PARSING --- */
         function parseMarkdown(text) {
             return marked.parse(text);
         }
@@ -697,18 +907,15 @@
             const div = document.createElement('div');
             div.className = `flex gap-3 my-1 msg-anim ${isMe ? 'flex-row-reverse' : 'flex-row'}`;
             
-            // (5) Avatar Logic
             let avatarHTML = `<div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-[10px] font-bold text-white shrink-0">?</div>`;
             
             if (senderAvatar) {
                 if(senderAvatar.startsWith('data:') || senderAvatar.startsWith('http')) {
                     avatarHTML = `<div class="w-8 h-8 rounded-full overflow-hidden border border-white/20 shrink-0"><img src="${senderAvatar}" class="w-full h-full object-cover"></div>`;
                 } else {
-                    // It's an emoji
                     avatarHTML = `<div class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-lg shrink-0 border border-white/10">${senderAvatar}</div>`;
                 }
             } else {
-                // Fallback to Initials
                 avatarHTML = `<div class="w-8 h-8 rounded-full bg-${isMe?'purple':'cyan'}-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">${senderName.substring(0,2).toUpperCase()}</div>`;
             }
 
@@ -742,7 +949,6 @@
         function addAIMessage(text) {
             const div = document.createElement('div');
             div.className = "flex gap-3 my-2 msg-anim";
-            // (3) Parse Markdown
             const htmlContent = parseMarkdown(text);
             
             div.innerHTML = `
@@ -753,7 +959,7 @@
             `;
             UI.chat.appendChild(div);
             scrollToBottom();
-            highlightCode(); // (3) Apply Syntax Highlighting
+            highlightCode(); 
         }
 
         function addThinking(id, label = "AI") {
@@ -777,15 +983,14 @@
             if(el) el.remove();
         }
 
-        /* --- (4) PERSISTENCE --- */
+        /* --- PERSISTENCE --- */
         function saveToHistory(msgObj) {
             try {
                 let history = JSON.parse(localStorage.getItem('termos_chat_history') || '[]');
                 history.push(msgObj);
-                if(history.length > 50) history.shift(); // Keep last 50
+                if(history.length > 50) history.shift(); 
                 localStorage.setItem('termos_chat_history', JSON.stringify(history));
             } catch(e) {
-                // Quota exceeded
                 localStorage.removeItem('termos_chat_history');
             }
         }
@@ -842,7 +1047,7 @@
             try {
                 const codeContext = UI.codeArea.value.substring(UI.codeArea.value.length - 2000);
                 const messages = [
-                    { role: "system", content: "You are an expert frontend engineer. Return ONLY the code block, no explanation." },
+                    { role: "system", content: "You are an expert frontend engineer. Return ONLY code block, no explanation." },
                     { role: "user", content: `Current Code Context:\n${codeContext}\n\nRequest: ${prompt}` }
                 ];
                 
@@ -884,7 +1089,7 @@
             return str.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
         }
 
-        /* --- (6) GITHUB EVOLUTION --- */
+        /* --- GITHUB EVOLUTION --- */
         async function pushToGitHub() {
             const owner = prompt("GitHub Username:");
             if(!owner) return;
@@ -897,7 +1102,6 @@
             const content = UI.codeArea.value;
             
             try {
-                // 1. Get Current SHA (to update file)
                 const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
                     headers: { 'Authorization': `token ${token}` }
                 });
@@ -908,10 +1112,8 @@
                     sha = data.sha;
                 }
 
-                // 2. Base64 Encode Content
                 const encodedContent = btoa(unescape(encodeURIComponent(content)));
 
-                // 3. Push
                 const body = {
                     message: "Update from TermOS",
                     content: encodedContent,
@@ -951,7 +1153,7 @@
             try {
                 const context = `Time: ${new Date().toLocaleTimeString()}, User: ${userProfile.name}, Room: ${currentRoom}`;
                 const messages = [
-                    { role: "system", content: `You are the TermOS Kernel. ${context}. Suggest a system update or interesting fact about the galaxy.` },
+                    { role: "system", content: `You are TermOS Kernel. ${context}. Suggest a system update or interesting fact about the galaxy.` },
                     { role: "user", content: "Analyze system state." }
                 ];
                 
@@ -1025,7 +1227,7 @@
             location.reload();
         }
 
-        /* --- (5) PROFILE --- */
+        /* --- PROFILE --- */
         function toggleProfile() {
             const p = UI.profileModal;
             if(p.classList.contains('hidden-ui')) {
@@ -1052,7 +1254,6 @@
             localStorage.setItem('termos_username', userProfile.name);
             localStorage.setItem('termos_avatar', userProfile.avatar);
             
-            // Announce change
             if(mqttClient && mqttClient.isConnected()) {
                  const payload = JSON.stringify({
                     type: 'profile_update',
@@ -1070,7 +1271,7 @@
             toggleProfile();
         }
 
-        /* --- (2) WEBRTC & MQTT --- */
+        /* --- MQTT --- */
         function connectMQTT() {
             if (typeof Paho === 'undefined') return;
             
@@ -1084,29 +1285,40 @@
             mqttClient.onMessageArrived = (message) => {
                 try {
                     const payload = JSON.parse(message.payloadString);
+                    const sender = payload.user;
 
-                    // Chat
+                    // CHAT
                     if (payload.type === 'chat') {
-                        if (payload.user !== userProfile.name) {
-                            AudioFX.receive(); // (7)
-                            addUserMessage(payload.text, false, payload.user, payload.avatar); // (5)
+                        if (sender !== userProfile.name) {
+                            AudioFX.receive();
+                            addUserMessage(payload.text, false, sender, payload.avatar);
                         }
                     }
 
-                    // Join/Leave
-                    if (payload.type === 'join' && payload.user !== userProfile.name) {
-                         addSystemMessage(`${payload.user} joined.`, "join");
+                    // JOIN/LEAVE
+                    if (payload.type === 'join' && sender !== userProfile.name) {
+                         addSystemMessage(`${sender} joined.`, "join");
                          AudioFX.system();
+                         // Auto-connect video if I have video on
+                         if(localStream) {
+                             const pc = createPeerConnection(sender);
+                             if(pc) {
+                                 pc.createOffer().then(offer => {
+                                     pc.setLocalDescription(offer);
+                                     broadcastWebRTC({ type: 'offer', sdp: offer, target: sender });
+                                 });
+                             }
+                         }
                     }
-                    if (payload.type === 'leave' && payload.user !== userProfile.name) addSystemMessage(`${payload.user} disconnected.`, "warning");
+                    if (payload.type === 'leave' && sender !== userProfile.name) addSystemMessage(`${sender} disconnected.`, "warning");
 
-                    // Profile Update
-                    if (payload.type === 'profile_update' && payload.user !== userProfile.name) {
-                        addSystemMessage(`${payload.user} updated identity.`, "info");
+                    // PROFILE UPDATE
+                    if (payload.type === 'profile_update' && sender !== userProfile.name) {
+                        addSystemMessage(`${sender} updated identity.`, "info");
                     }
 
-                    // WebRTC Signaling
-                    if (payload.type === 'webrtc' && payload.user !== userProfile.name) {
+                    // WEBRTC
+                    if (payload.type === 'webrtc') {
                         handleWebRTCMessage(payload);
                     }
 
@@ -1132,93 +1344,14 @@
             mqttClient.connect(options);
         }
 
-        /* --- (2) WEBRTC LOGIC --- */
-        async function startWebRTC() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                localStream = stream;
-                document.getElementById('video-placeholder').classList.add('hidden');
-                document.getElementById('video-grid').classList.remove('hidden');
-                
-                // Add Local Video
-                const grid = document.getElementById('video-grid');
-                const div = document.createElement('div');
-                div.className = "video-container relative";
-                div.innerHTML = `<video autoplay muted playsinline></video><div class="absolute bottom-2 left-2 bg-black/50 text-white text-[10px] px-1 rounded">ME</div>`;
-                div.querySelector('video').srcObject = stream;
-                grid.appendChild(div);
-
-                // Broadcast Offer to Room
-                broadcastWebRTC({ type: 'offer', user: userProfile.name });
-                addSystemMessage("📹 Broadcasting Uplink...", "info");
-
-            } catch (err) {
-                addSystemMessage("Camera Error: " + err.message, "error");
-            }
-        }
-
-        function broadcastWebRTC(data) {
-            if(mqttClient && mqttClient.isConnected()) {
-                const topic = currentRoom === "public" ? "termos/public" : `termos/rooms/${currentRoom}`;
-                const msg = new Paho.MQTT.Message(JSON.stringify({ ...data, type: 'webrtc' }));
-                msg.destinationName = topic;
-                mqttClient.send(msg);
-            }
-        }
-
-        function handleWebRTCMessage(data) {
-            if(data.type === 'offer') handleOffer(data);
-            else if(data.type === 'answer') handleAnswer(data);
-            else if(data.type === 'candidate') handleCandidate(data);
-        }
-
-        async function handleOffer(data) {
-            if(!localStream) return; // Must have cam on to answer
-            const pc = createPeerConnection(data.user);
-            await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            broadcastWebRTC({ type: 'answer', user: userProfile.name, sdp: answer });
-        }
-
-        async function handleAnswer(data) {
-            const pc = peers[data.user];
-            if(pc) await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        }
-
-        async function handleCandidate(data) {
-            const pc = peers[data.user];
-            if(pc) await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-        }
-
-        function createPeerConnection(remoteUser) {
-            const pc = new RTCPeerConnection(rtcConfig);
-            peers[remoteUser] = pc;
-
-            pc.onicecandidate = (e) => {
-                if(e.candidate) broadcastWebRTC({ type: 'candidate', user: userProfile.name, candidate: e.candidate });
-            };
-
-            pc.ontrack = (e) => {
-                const grid = document.getElementById('video-grid');
-                if(document.getElementById(`vid-${remoteUser}`)) return;
-                
-                const div = document.createElement('div');
-                div.id = `vid-${remoteUser}`;
-                div.className = "video-container relative";
-                div.innerHTML = `<video autoplay playsinline></video><div class="absolute bottom-2 left-2 bg-black/50 text-cyan-400 text-[10px] px-1 rounded">${remoteUser}</div>`;
-                div.querySelector('video').srcObject = e.streams[0];
-                grid.appendChild(div);
-            };
-
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-            return pc;
-        }
-
         function joinRoom(roomName) {
             if(roomName === currentRoom) return;
+            
+            // Stop current connections
+            stopWebRTC();
+
             if(mqttClient && mqttClient.isConnected()) {
-                 mqttClient.unsubscribe(currentRoom === "public" ? "termos/public" : `termos/rooms/${currentRoom}`);
+                mqttClient.unsubscribe(currentRoom === "public" ? "termos/public" : `termos/rooms/${currentRoom}`);
             }
             currentRoom = roomName;
             updateStatus(true);
@@ -1260,33 +1393,40 @@
             el.classList.add('bg-white/20');
         }
 
-        /* --- VISUALS --- */
+        /* --- VISUALS (SIMPLER MAP) --- */
         function initCosmos() {
             const canvas = document.getElementById('cosmic-canvas');
             const ctx = canvas.getContext('2d');
             let w = canvas.width = window.innerWidth;
             let h = canvas.height = window.innerHeight;
             
-            const stars = Array(150).fill().map(() => ({
+            // Create less stars for a simpler look
+            const stars = Array(100).fill().map(() => ({
                 x: Math.random() * w,
                 y: Math.random() * h,
-                size: Math.random() * 2,
-                opacity: Math.random(),
-                speed: Math.random() * 0.2 + 0.05
+                size: Math.random() * 2 + 1, // Larger stars
+                opacity: Math.random() * 0.5 + 0.1, // Fainter background stars
+                speed: Math.random() * 0.05 + 0.02 // Much slower drift
             }));
 
             function draw() {
+                // Fade out for trails (optional, but simpler without)
                 ctx.clearRect(0, 0, w, h);
-                ctx.fillStyle = "#FFF";
                 
                 stars.forEach(s => {
-                    ctx.globalAlpha = s.opacity;
+                    ctx.fillStyle = `rgba(255, 255, 255, ${s.opacity})`;
                     ctx.beginPath();
                     ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
                     ctx.fill();
                     
+                    // Slow drift up
                     s.y -= s.speed;
-                    if(s.y < 0) s.y = h;
+                    
+                    // Reset if off screen
+                    if(s.y < 0) {
+                        s.y = h;
+                        s.x = Math.random() * w;
+                    }
                 });
                 
                 requestAnimationFrame(draw);
